@@ -117,15 +117,34 @@ anything still being drafted. If you change how events are published, keep
 
 ## Minigames
 
-`src/components/games/` — three real puzzle games, not click toys:
+`src/components/games/` — three real puzzle games, not click toys, plus one
+link-out:
 
 - `OrbitalSlingshot.tsx` — Newtonian gravity sim on canvas; drag *toward* the
   target to launch, speed scales with drag distance. Sim state lives in refs
   because 60fps React state would thrash.
 - `MoleculeBuilder.tsx` — SVG modelling kit. Win condition is every atom's
   valence exactly satisfied **and** the bond graph connected. Levels are keyed
-  by formula, not molecule name, because C₂H₆O has valid isomers.
+  by formula, not molecule name, because C₂H₆O has valid isomers. Starting
+  atom positions come from `MOLECULE_GEOMETRY`, a hand-placed layout per
+  formula that approximates the molecule's real shape (water bent, CO₂
+  linear, methane's tetrahedral splay) — a formula not in that table falls
+  back to an evenly spaced ring.
 - `RobotProgrammer.tsx` — write a program, then run it. Later mazes give too
   few main slots on purpose, forcing the F1 subroutine to call itself.
+- `ChemTextAdventure.tsx` — not hosted here. Links out to an external
+  choose-your-own-path chemistry story; clicking the link *is* the win
+  condition and the only way to earn its "Adventurer" badge.
 
-`VirtualLab.tsx` is just the shell that hosts them and awards XP once per level.
+`VirtualLab.tsx` is the shell that hosts them, keyed by `GameId` in
+`types.ts`, and awards XP once per level (`ChemTextAdventure` only ever has
+level 0).
+
+Note: the badges games award (`Navigator`/`Chemist`/`Engineer`/`Adventurer`,
+passed as strings into `userProfile.unlockedBadges`) are **not** the same
+badges shown on the Dashboard's achievements grid — `Dashboard.tsx` has its
+own hardcoded `badgeCatalog` (`Foundation Member`, `Lava Lamp Alchemist`,
+`Volcano Catalyst`, `Stargazing Scout`) left over from the AI-Studio-era
+template, none of which the running app can actually unlock except
+`Foundation Member` on join. This mismatch predates the current games and is
+not something recent minigame work introduced.

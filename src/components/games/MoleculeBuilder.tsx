@@ -122,11 +122,90 @@ function bondKey(a: number, b: number) {
   return a < b ? `${a}-${b}` : `${b}-${a}`;
 }
 
-/** Lay the starting atoms out on a ring so nothing overlaps at load. */
+/**
+ * Hand-placed starting coordinates (offsets from board centre) that mimic each
+ * molecule's real shape — water's bent angle, CO₂'s linearity, methane's
+ * tetrahedral splay — so the puzzle starts looking like the thing it is,
+ * indexed to match each level's `atoms` array. Any formula not listed here
+ * falls back to an evenly spaced ring.
+ */
+const MOLECULE_GEOMETRY: Record<string, Array<[number, number]>> = {
+  'H₂O': [
+    [0, -40],
+    [-71, 15],
+    [71, 15]
+  ],
+  'NH₃': [
+    [0, -60],
+    [-70, 40],
+    [70, 40],
+    [0, 70]
+  ],
+  'CH₄': [
+    [0, 0],
+    [-65, -65],
+    [65, -65],
+    [-45, 75],
+    [45, 75]
+  ],
+  'O₂': [
+    [-60, 0],
+    [60, 0]
+  ],
+  'N₂': [
+    [-60, 0],
+    [60, 0]
+  ],
+  'CO₂': [
+    [0, 0],
+    [-100, 0],
+    [100, 0]
+  ],
+  'C₂H₄': [
+    [-45, 0],
+    [45, 0],
+    [-100, -55],
+    [-100, 55],
+    [100, -55],
+    [100, 55]
+  ],
+  'CH₃Cl': [
+    [0, -10],
+    [-65, -70],
+    [65, -70],
+    [-50, 70],
+    [70, 60]
+  ],
+  'C₂H₆O': [
+    [-150, 40],
+    [-90, -25],
+    [-10, 40],
+    [-215, -10],
+    [-225, 70],
+    [-155, 115],
+    [-125, -95],
+    [-55, -95],
+    [60, -5]
+  ]
+};
+
+/** Lay the starting atoms out to approximate the molecule's real geometry,
+ *  falling back to a ring so nothing overlaps if a formula isn't mapped. */
 function initialAtoms(level: Level): Atom[] {
-  const count = level.atoms.length;
   const cx = BOARD_W / 2;
   const cy = BOARD_H / 2;
+  const layout = MOLECULE_GEOMETRY[level.formula];
+
+  if (layout) {
+    return level.atoms.map((element, i) => ({
+      id: i,
+      element,
+      x: cx + layout[i][0],
+      y: cy + layout[i][1]
+    }));
+  }
+
+  const count = level.atoms.length;
   const radius = Math.min(150, 55 + count * 12);
 
   return level.atoms.map((element, i) => {

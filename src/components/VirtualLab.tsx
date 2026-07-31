@@ -3,7 +3,8 @@ import { UserProfile, GameId, GameProgress, EMPTY_GAME_PROGRESS } from '../types
 import OrbitalSlingshot from './games/OrbitalSlingshot';
 import MoleculeBuilder from './games/MoleculeBuilder';
 import RobotProgrammer from './games/RobotProgrammer';
-import { Orbit, FlaskConical, Bot, Lock } from 'lucide-react';
+import ChemTextAdventure from './games/ChemTextAdventure';
+import { Orbit, FlaskConical, Bot, ScrollText, Lock } from 'lucide-react';
 
 interface VirtualLabProps {
   userProfile: UserProfile;
@@ -48,6 +49,16 @@ const GAMES: {
     icon: Bot,
     accent: 'violet',
     badge: 'Engineer'
+  },
+  {
+    id: 'adventure',
+    title: 'Chemistry Text Adventure',
+    tagline:
+      'A choose-your-own-path chemistry story hosted on its own site. Click through to open it — that click is the whole game.',
+    field: 'Chemistry · Storytelling',
+    icon: ScrollText,
+    accent: 'emerald',
+    badge: 'Adventurer'
   }
 ];
 
@@ -66,6 +77,11 @@ const ACCENT_CLASSES: Record<string, { active: string; idle: string; text: strin
     active: 'bg-violet-500/15 border-violet-500/40',
     idle: 'bg-white/[0.03] border-white/10 hover:border-violet-500/30',
     text: 'text-violet-400'
+  },
+  emerald: {
+    active: 'bg-emerald-500/15 border-emerald-500/40',
+    idle: 'bg-white/[0.03] border-white/10 hover:border-emerald-500/30',
+    text: 'text-emerald-400'
   }
 };
 
@@ -114,12 +130,13 @@ export default function VirtualLab({ userProfile, onUpdateXp }: VirtualLabProps)
         </h2>
         <p className="text-sm text-zinc-400 font-sans max-w-2xl leading-relaxed">
           Three real puzzle games built on actual science — orbital mechanics, chemical bonding and
-          programming logic. Each one has levels that get genuinely harder.
+          programming logic — plus a text adventure hosted elsewhere on the web. Each puzzle game
+          has levels that get genuinely harder.
         </p>
       </div>
 
       {/* Game picker */}
-      <div className="grid sm:grid-cols-3 gap-3">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {GAMES.map((game) => {
           const Icon = game.icon;
           const isActive = game.id === activeGame;
@@ -165,6 +182,12 @@ export default function VirtualLab({ userProfile, onUpdateXp }: VirtualLabProps)
           <RobotProgrammer
             solvedLevels={gameProgress.robot}
             onSolve={makeSolveHandler('robot', 'Engineer')}
+          />
+        )}
+        {activeGame === 'adventure' && (
+          <ChemTextAdventure
+            solvedLevels={gameProgress.adventure}
+            onSolve={makeSolveHandler('adventure', 'Adventurer')}
           />
         )}
       </div>
