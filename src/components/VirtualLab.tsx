@@ -1,5 +1,5 @@
-import React, { useCallback, useState } from 'react';
-import { UserProfile } from '../types';
+import React, { useCallback, useEffect, useState } from 'react';
+import { UserProfile, GameId, GameProgress, EMPTY_GAME_PROGRESS } from '../types';
 import OrbitalSlingshot from './games/OrbitalSlingshot';
 import MoleculeBuilder from './games/MoleculeBuilder';
 import RobotProgrammer from './games/RobotProgrammer';
@@ -9,8 +9,6 @@ interface VirtualLabProps {
   userProfile: UserProfile;
   onUpdateXp: (xpToAdd: number, badgeToUnlock?: string) => void;
 }
-
-type GameId = 'orbit' | 'molecule' | 'robot';
 
 const GAMES: {
   id: GameId;
@@ -74,20 +72,30 @@ const ACCENT_CLASSES: Record<string, { active: string; idle: string; text: strin
 export default function VirtualLab({ userProfile, onUpdateXp }: VirtualLabProps) {
   const [activeGame, setActiveGame] = useState<GameId>('orbit');
 
-  // Each level pays out once. Guests can still play; they just have no profile
-  // to bank the XP in.
-  const [awarded, setAwarded] = useState<Set<string>>(() => new Set());
+  // Which levels of each game have been solved — drives both the level strip's
+  // trophies and the once-per-level XP payout. Persisted so switching tabs
+  // (which unmounts this component) doesn't forget any of it.
+  const [gameProgress, setGameProgress] = useState<GameProgress>(() => {
+    try {
+      const saved = localStorage.getItem('tr_sc_game_progress');
+      if (saved) return { ...EMPTY_GAME_PROGRESS, ...JSON.parse(saved) };
+    } catch (e) {
+      console.error('Failed reading game progress from storage', e);
+    }
+    return EMPTY_GAME_PROGRESS;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('tr_sc_game_progress', JSON.stringify(gameProgress));
+  }, [gameProgress]);
 
   const makeSolveHandler = useCallback(
     (gameId: GameId, badge: string) => (levelIndex: number) => {
-      const key = `${gameId}:${levelIndex}`;
-      setAwarded((prev) => {
-        if (prev.has(key)) return prev;
-        const next = new Set(prev);
-        next.add(key);
+      setGameProgress((prev) => {
+        if (prev[gameId].includes(levelIndex)) return prev;
         // Later levels are harder, so they are worth more.
         onUpdateXp(10 + levelIndex * 5, badge);
-        return next;
+        return { ...prev, [gameId]: [...prev[gameId], levelIndex] };
       });
     },
     [onUpdateXp]
@@ -142,13 +150,22 @@ export default function VirtualLab({ userProfile, onUpdateXp }: VirtualLabProps)
       {/* Active game */}
       <div className="rounded-3xl border border-white/10 bg-white/[0.02] p-5 sm:p-7">
         {activeGame === 'orbit' && (
-          <OrbitalSlingshot onSolve={makeSolveHandler('orbit', 'Navigator')} />
+          <OrbitalSlingshot
+            solvedLevels={gameProgress.orbit}
+            onSolve={makeSolveHandler('orbit', 'Navigator')}
+          />
         )}
         {activeGame === 'molecule' && (
-          <MoleculeBuilder onSolve={makeSolveHandler('molecule', 'Chemist')} />
+          <MoleculeBuilder
+            solvedLevels={gameProgress.molecule}
+            onSolve={makeSolveHandler('molecule', 'Chemist')}
+          />
         )}
         {activeGame === 'robot' && (
-          <RobotProgrammer onSolve={makeSolveHandler('robot', 'Engineer')} />
+          <RobotProgrammer
+            solvedLevels={gameProgress.robot}
+            onSolve={makeSolveHandler('robot', 'Engineer')}
+          />
         )}
       </div>
 

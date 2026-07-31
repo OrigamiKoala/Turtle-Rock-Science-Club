@@ -40,6 +40,7 @@ export interface FAQItem {
 
 export interface UserProfile {
   name: string;
+  school: string;
   role: string;
   joinedDate: string;
   level: number;

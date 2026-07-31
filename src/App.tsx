@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { UserProfile, GalleryPhoto, Mission } from './types';
 import { initialGalleryPhotos, faqItems, pressMentions } from './data';
-import { useSiteContent } from './useSiteContent';
+import { useSiteContent, SignupResult } from './useSiteContent';
 
 // Components
 import Header from './components/Header';
@@ -25,6 +25,8 @@ export default function App() {
   const [showJoinModal, setShowJoinModal] = useState<boolean>(false);
   const [showLevelUpAlert, setShowLevelUpAlert] = useState<boolean>(false);
   const [signupMission, setSignupMission] = useState<Mission | null>(null);
+  /** Feedback for a signup submitted without the modal (already-joined members). */
+  const [signupNotice, setSignupNotice] = useState<{ mission: Mission; result: SignupResult } | null>(null);
 
   // Events and announcements published from the Google Sheet. Falls back to the
   // bundled content in data.ts when the Sheet is unreachable or unconfigured.
@@ -43,6 +45,7 @@ export default function App() {
     // Default guest profile (level 0 means not joined)
     return {
       name: '',
+      school: '',
       role: '',
       joinedDate: '',
       level: 0,
@@ -93,6 +96,13 @@ export default function App() {
     localStorage.setItem('tr_sc_signed_up_ids', JSON.stringify(signedUpIds));
   }, [signedUpIds]);
 
+  // Auto-dismiss the no-modal signup toast after a few seconds.
+  useEffect(() => {
+    if (!signupNotice) return;
+    const timer = setTimeout(() => setSignupNotice(null), 5000);
+    return () => clearTimeout(timer);
+  }, [signupNotice]);
+
   // Handle XP Updates & level ups
   const handleUpdateXp = (xpToAdd: number, badgeToUnlock?: string) => {
     if (userProfile.level === 0) return; // Guests do not collect XP
@@ -131,6 +141,31 @@ export default function App() {
     setSignedUpIds((prev) => (prev.includes(missionId) ? prev : [...prev, missionId]));
     // +15 XP for committing to a science event (members only)
     handleUpdateXp(15);
+  };
+
+  // A joined member already has a name and school on file — skip the modal and
+  // book them straight in. Guests (and members who somehow lack a school, e.g.
+  // profiles saved before that field existed) still fill out the form.
+  const isLoggedIn = userProfile.level > 0 && !!userProfile.name && !!userProfile.school;
+
+  const handleSignUp = async (mission: Mission) => {
+    // "Sign up another student" reuses this same button for a sibling/friend,
+    // so it always needs the form — only the first, member-only signup skips it.
+    const alreadyReserved = signedUpIds.includes(mission.id);
+    if (!isLoggedIn || alreadyReserved) {
+      setSignupMission(mission);
+      return;
+    }
+
+    const result = await content.submitSignup({
+      eventId: mission.id,
+      eventTitle: mission.title,
+      studentName: userProfile.name,
+      school: userProfile.school
+    });
+
+    if (result.ok) handleSignupSuccess(mission.id);
+    setSignupNotice({ mission, result });
   };
 
   // Handle Newsletter Signups
@@ -191,7 +226,7 @@ export default function App() {
               missions={content.missions}
               contentStatus={content.status}
               signedUpIds={signedUpIds}
-              onSignUp={setSignupMission}
+              onSignUp={handleSignUp}
             />
           </div>
         )}
@@ -252,6 +287,34 @@ export default function App() {
           onSubmit={content.submitSignup}
           onSuccess={handleSignupSuccess}
         />
+      )}
+
+      {/* Toast for signups submitted without the modal (already-joined members) */}
+      {signupNotice && (
+        <div
+          id="signup-toast"
+          className={`fixed bottom-6 right-6 z-50 max-w-sm rounded-2xl border px-4 py-3.5 shadow-2xl animate-fade-in font-sans ${
+            signupNotice.result.ok
+              ? 'bg-zinc-900 border-emerald-500/30'
+              : 'bg-zinc-900 border-red-500/30'
+          }`}
+        >
+          <p className={`text-xs font-bold ${signupNotice.result.ok ? 'text-emerald-400' : 'text-red-300'}`}>
+            {signupNotice.result.ok ? "You're signed up!" : 'Sign-up failed'}
+          </p>
+          <p className="text-[11px] text-zinc-400 mt-0.5 leading-relaxed">
+            {signupNotice.result.ok
+              ? `${userProfile.name} is booked in for ${signupNotice.mission.title}.`
+              : signupNotice.result.error ?? 'Something went wrong. Please try again.'}
+          </p>
+          <button
+            id="close-signup-toast"
+            onClick={() => setSignupNotice(null)}
+            className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 hover:text-white mt-2 cursor-pointer"
+          >
+            Dismiss
+          </button>
+        </div>
       )}
 
       {/* JOIN / SIGN UP FORM MODAL */}

@@ -14,6 +14,7 @@ export default function JoinModal({
 
   // Form states
   const [childName, setChildName] = useState('');
+  const [school, setSchool] = useState('');
   const [parentName, setParentName] = useState('');
   const [childAge, setChildAge] = useState('');
   const [email, setEmail] = useState('');
@@ -27,7 +28,7 @@ export default function JoinModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!childName || !parentName || !email || !childAge) {
+    if (!childName || !school || !parentName || !email || !childAge) {
       setErrorMsg('Please populate all scientific record fields.');
       return;
     }
@@ -41,6 +42,7 @@ export default function JoinModal({
 
     const initialProfile: UserProfile = {
       name: childName,
+      school,
       role: 'Novice Discovery Scholar',
       joinedDate: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
       level: 1,
@@ -102,6 +104,21 @@ export default function JoinModal({
                   placeholder="e.g. Timothy"
                   value={childName}
                   onChange={(e) => setChildName(e.target.value)}
+                  className="w-full p-2.5 rounded-xl text-xs border border-white/10 bg-zinc-950/60 text-white focus:outline-none focus:border-white/20"
+                  required
+                />
+              </div>
+
+              {/* School */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold font-mono uppercase tracking-widest text-zinc-500">School</label>
+                <input
+                  id="join-school"
+                  type="text"
+                  placeholder="e.g. Turtle Rock Elementary"
+                  value={school}
+                  onChange={(e) => setSchool(e.target.value)}
+                  autoComplete="organization"
                   className="w-full p-2.5 rounded-xl text-xs border border-white/10 bg-zinc-950/60 text-white focus:outline-none focus:border-white/20"
                   required
                 />
