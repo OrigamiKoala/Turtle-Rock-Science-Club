@@ -33,7 +33,7 @@ export default function HeroSection({
           </h2>
 
           <p className="text-sm sm:text-base max-w-xl mx-auto leading-relaxed text-[#4B6169] font-sans">
-            Turtle Rock Science Club is a group of students, parents, and mentors, all dedicated to exploring science.
+            Turtle Rock Science Club (TRSC) is a group of students, parents, and mentors, all exploring science. We strive to help young students find passion in STEM, and show the world that science is a lot more than just memorizing textbooks.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
