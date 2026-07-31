@@ -98,6 +98,9 @@ const LEVELS: Level[] = [
   }
 ];
 
+/** Read by `badges.ts` so the "built them all" achievement tracks reality. */
+export const MOLECULE_LEVEL_COUNT = LEVELS.length;
+
 interface Atom {
   id: number;
   element: string;
@@ -326,7 +329,7 @@ export default function MoleculeBuilder({ solvedLevels, onSolve }: MoleculeBuild
                 : 'bg-white/5 border-white/10 text-zinc-400 hover:text-white'
             }`}
           >
-            {solvedLevels[i] && <Trophy className="w-3 h-3 text-amber-400" />}
+            {solvedLevels.includes(i) && <Trophy className="w-3 h-3 text-amber-400" />}
             {lvl.formula}
           </button>
         ))}
@@ -363,7 +366,12 @@ export default function MoleculeBuilder({ solvedLevels, onSolve }: MoleculeBuild
           onPointerLeave={() => {
             dragRef.current = null;
           }}
-          onClick={() => setSelected(null)}
+          // Clearing the selection has to happen on the background *press*, not
+          // on a click. A click bubbles up from the atom you just tapped and
+          // fires after pointerup, so it used to wipe the selection the instant
+          // it was made — which made bonding two atoms impossible. Atoms call
+          // stopPropagation on pointerdown, so this only sees the background.
+          onPointerDown={() => setSelected(null)}
         >
           {/* Bonds first so atoms sit on top of the line ends. */}
           {bonds.map((bond) => {

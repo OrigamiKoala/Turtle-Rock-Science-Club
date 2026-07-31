@@ -114,6 +114,18 @@ const LEVELS: Level[] = [
   }
 ];
 
+/** Read by `badges.ts` so the lab achievements track the real level list. */
+export const ROBOT_LEVEL_COUNT = LEVELS.length;
+
+/**
+ * Levels whose main program is deliberately too short to finish without the F1
+ * subroutine. Solving one of these is the "you actually used recursion" signal.
+ */
+export const ROBOT_SUBROUTINE_LEVELS = LEVELS.reduce<number[]>(
+  (acc, level, i) => (level.f1Slots > 0 ? [...acc, i] : acc),
+  []
+);
+
 const CELL = 46;
 const STEP_MS = 340;
 const MAX_TRACE = 300;
@@ -244,10 +256,12 @@ const PALETTE: { id: Instruction; label: string; icon: typeof ArrowUp; color: st
 ];
 
 interface RobotProgrammerProps {
+  /** Level indices already solved, owned and persisted by the app. */
+  solvedLevels: number[];
   onSolve: (levelIndex: number) => void;
 }
 
-export default function RobotProgrammer({ onSolve }: RobotProgrammerProps) {
+export default function RobotProgrammer({ solvedLevels, onSolve }: RobotProgrammerProps) {
   const [levelIndex, setLevelIndex] = useState(0);
   const level = LEVELS[levelIndex];
   const parsed = useMemo(() => parseLevel(level), [level]);
@@ -268,7 +282,6 @@ export default function RobotProgrammer({ onSolve }: RobotProgrammerProps) {
   }));
   const [running, setRunning] = useState(false);
   const [traceIndex, setTraceIndex] = useState(-1);
-  const [solvedLevels, setSolvedLevels] = useState<boolean[]>(() => LEVELS.map(() => false));
   const [showHint, setShowHint] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -324,14 +337,8 @@ export default function RobotProgrammer({ onSolve }: RobotProgrammerProps) {
     robot.collected.length === parsed.samples.size && parsed.samples.size > 0 && !robot.crashed;
 
   useEffect(() => {
-    if (!solved || solvedLevels[levelIndex]) return;
-    setSolvedLevels((prev) => {
-      const next = [...prev];
-      next[levelIndex] = true;
-      return next;
-    });
-    onSolve(levelIndex);
-  }, [solved, solvedLevels, levelIndex, onSolve]);
+    if (solved) onSolve(levelIndex);
+  }, [solved, levelIndex, onSolve]);
 
   // ---------------------------------------------------------------- execution
 
@@ -483,7 +490,7 @@ export default function RobotProgrammer({ onSolve }: RobotProgrammerProps) {
                 : 'bg-white/5 border-white/10 text-zinc-400 hover:text-white'
             }`}
           >
-            {solvedLevels[i] && <Trophy className="w-3 h-3 text-amber-400" />}
+            {solvedLevels.includes(i) && <Trophy className="w-3 h-3 text-amber-400" />}
             {i + 1}. {lvl.name}
           </button>
         ))}
@@ -519,8 +526,13 @@ export default function RobotProgrammer({ onSolve }: RobotProgrammerProps) {
                 return (
                   <div
                     key={`${x}-${y}`}
+                    // Walls used to composite to rgb(31,31,35) against a
+                    // rgb(23,23,27) floor — a maze you could not see. The robot
+                    // crashes into these, so they have to read as solid.
                     className={`absolute rounded-md ${
-                      isWall ? 'bg-zinc-800/70' : 'bg-white/[0.04] border border-white/5'
+                      isWall
+                        ? 'bg-zinc-600/80 border border-zinc-500/50 shadow-inner'
+                        : 'bg-white/[0.03] border border-white/10'
                     }`}
                     style={{
                       left: x * CELL + 2,
