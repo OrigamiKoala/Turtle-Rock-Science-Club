@@ -1,65 +1,39 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800;900&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Space Grotesk", sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-sans: "Nunito", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Baloo 2", sans-serif;
+  --font-mono: "Nunito", ui-monospace, SFMono-Regular, monospace;
 }
 
-/* Custom styles for background grids */
 .bg-grid-pattern {
   background-size: 30px 30px;
-  background-image: linear-gradient(to right, rgba(120, 119, 198, 0.05) 1px, transparent 1px),
-                    linear-gradient(to bottom, rgba(120, 119, 198, 0.05) 1px, transparent 1px);
+  background-image: linear-gradient(to right, rgba(31, 58, 66, 0.05) 1px, transparent 1px),
+                    linear-gradient(to bottom, rgba(31, 58, 66, 0.05) 1px, transparent 1px);
 }
 
 .bg-dot-pattern {
   background-size: 20px 20px;
-  background-image: radial-gradient(circle, rgba(120, 119, 198, 0.08) 1px, transparent 1px);
+  background-image: radial-gradient(circle, rgba(76, 154, 58, 0.10) 1px, transparent 1px);
 }
 
-/* Smooth active focus highlights */
 input:focus, select:focus, textarea:focus {
-  outline: 2px solid var(--color-violet-500);
+  outline: 2px solid #6CC24A;
   outline-offset: 1px;
 }
 
-/* Scrollbar styling */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(31, 58, 66, 0.2); border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(31, 58, 66, 0.35); }
 
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(156, 163, 175, 0.3);
-  border-radius: 9999px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(156, 163, 175, 0.5);
-}
-
-/* Breathing animation for lava lamp cells */
 @keyframes lavaBubbleUp {
-  0% {
-    transform: translateY(110%) scale(1);
-    opacity: 0.8;
-  }
-  50% {
-    transform: translateY(50%) scale(1.15) translateX(10px);
-    opacity: 0.95;
-  }
-  100% {
-    transform: translateY(-10%) scale(0.9) translateX(-10px);
-    opacity: 0;
-  }
+  0% { transform: translateY(110%) scale(1); opacity: 0.8; }
+  50% { transform: translateY(50%) scale(1.15) translateX(10px); opacity: 0.95; }
+  100% { transform: translateY(-10%) scale(0.9) translateX(-10px); opacity: 0; }
 }
+.lava-bubble { animation: lavaBubbleUp 8s infinite ease-in-out; }
 
-.lava-bubble {
-  animation: lavaBubbleUp 8s infinite ease-in-out;
-}
+@keyframes fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+.animate-fade-in { animation: fade-in 0.25s ease; }

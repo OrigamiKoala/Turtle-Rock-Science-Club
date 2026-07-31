@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { LabLog, Announcement, PressMention, UserProfile } from '../types';
-import { BookOpen, Newspaper, Send, CheckCircle, Mail, Quote, Clock, User, X, MessageSquare, AlertCircle } from 'lucide-react';
+import { Newspaper, Send, CheckCircle, Mail, Clock, User, X, MessageSquare, AlertCircle } from 'lucide-react';
 
 interface LabLogAnnouncementsProps {
   logs: LabLog[];
@@ -10,25 +10,14 @@ interface LabLogAnnouncementsProps {
   onSubscribeNewsletter: () => void;
 }
 
-export default function LabLogAnnouncements({
-  logs,
-  announcements,
-  press,
-  userProfile,
-  onSubscribeNewsletter
-}: LabLogAnnouncementsProps) {
-
-  // Modal / overlay detail state
+export default function LabLogAnnouncements({ logs, announcements, press, userProfile, onSubscribeNewsletter }: LabLogAnnouncementsProps) {
   const [activeLogId, setActiveLogId] = useState<string | null>(null);
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [emailSuccess, setEmailSuccess] = useState(false);
   const [emailError, setEmailError] = useState('');
 
-  // Comment state inside logs
   const [comments, setComments] = useState<Record<string, Array<{ name: string; text: string; date: string }>>>({
-    'log-1': [
-      { name: 'Parent David L.', text: 'My daughter can not stop talking about the Volcano eruption! The colorful pigments were a huge hit.', date: 'June 19, 2026' }
-    ]
+    'log-1': [{ name: 'Parent David L.', text: 'My daughter can not stop talking about the volcano eruption!', date: 'June 19, 2026' }]
   });
   const [newCommentName, setNewCommentName] = useState('');
   const [newCommentText, setNewCommentText] = useState('');
@@ -37,86 +26,46 @@ export default function LabLogAnnouncements({
 
   const handleSubscribe = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newsletterEmail || !newsletterEmail.includes('@')) {
-      setEmailError('Please enter a valid email address.');
-      return;
-    }
-
+    if (!newsletterEmail || !newsletterEmail.includes('@')) { setEmailError('Please enter a valid email address.'); return; }
     setEmailError('');
     onSubscribeNewsletter();
     setEmailSuccess(true);
     setNewsletterEmail('');
-
-    setTimeout(() => {
-      setEmailSuccess(false);
-    }, 4000);
+    setTimeout(() => setEmailSuccess(false), 4000);
   };
 
   const handleAddComment = (e: React.FormEvent, logId: string) => {
     e.preventDefault();
     if (!newCommentName || !newCommentText) return;
-
-    const added = {
-      name: newCommentName,
-      text: newCommentText,
-      date: 'Today'
-    };
-
-    setComments((prev) => ({
-      ...prev,
-      [logId]: [...(prev[logId] || []), added]
-    }));
-
-    setNewCommentName('');
-    setNewCommentText('');
+    const added = { name: newCommentName, text: newCommentText, date: 'Today' };
+    setComments((prev) => ({ ...prev, [logId]: [...(prev[logId] || []), added] }));
+    setNewCommentName(''); setNewCommentText('');
   };
 
   return (
-    <section className="py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-16 text-left relative z-10 font-sans">
-      
-      {/* SECTION 1: LAB LOGS (Featured journals) */}
+    <section className="py-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-14 text-left relative z-10 font-sans">
       <div className="space-y-8">
         <div>
-          <h3 className="font-display font-bold text-2xl sm:text-3xl tracking-tighter text-white">
-            Latest From the Lab Log
-          </h3>
-          <p className="text-xs mt-1 text-zinc-400 font-sans max-w-2xl">
-            Journal entries and research documentation published by our lead mentors and junior experimenters.
-          </p>
+          <h3 className="font-display font-bold text-2xl sm:text-3xl tracking-tight text-[#1F3A42]">Latest From the Lab Log</h3>
+          <p className="text-xs mt-1 text-[#4B6169] max-w-2xl">Journal entries from our lead mentors and junior experimenters.</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {logs.map((log) => (
-            <div
-              id={`log-card-${log.id}`}
-              key={log.id}
-              className="rounded-[2rem] border border-white/10 bg-zinc-900/40 backdrop-blur-md overflow-hidden flex flex-col justify-between transition hover:border-white/20 hover:shadow-2xl cursor-pointer"
-              onClick={() => setActiveLogId(log.id)}
-            >
-              <div className="relative h-44 overflow-hidden border-b border-white/5">
+            <div id={`log-card-${log.id}`} key={log.id} className="rounded-[28px] border-2 border-[#1F3A42]/8 bg-white overflow-hidden flex flex-col justify-between transition hover:border-[#1F3A42]/15 hover:shadow-lg cursor-pointer" onClick={() => setActiveLogId(log.id)}>
+              <div className="relative h-44 overflow-hidden border-b-2 border-[#1F3A42]/5">
                 <img src={log.image} alt={log.title} className="w-full h-full object-cover transition-transform duration-500 hover:scale-105" referrerPolicy="no-referrer" />
-                <span className="absolute top-3 right-3 bg-zinc-950/80 text-white border border-white/10 font-mono text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full shadow-md">
-                  {log.category}
-                </span>
+                <span className="absolute top-3 right-3 bg-white/95 text-[#1F3A42] text-[10px] font-display font-bold px-2.5 py-1 rounded-full">{log.category}</span>
               </div>
-
               <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
                 <div className="space-y-1.5">
-                  <div className="flex items-center gap-2 text-[9px] font-mono text-zinc-500 uppercase tracking-widest">
-                    <Clock className="w-3.5 h-3.5 text-zinc-600" />
-                    <span>{log.date}</span>
-                  </div>
-                  <h4 className="font-display font-bold text-base leading-snug tracking-tight text-white hover:text-zinc-200">
-                    {log.title}
-                  </h4>
-                  <p className="text-xs leading-relaxed line-clamp-2 text-zinc-400">
-                    {log.summary}
-                  </p>
+                  <div className="flex items-center gap-2 text-[11px] font-bold text-[#9AA6A6]"><Clock className="w-3.5 h-3.5" /><span>{log.date}</span></div>
+                  <h4 className="font-display font-bold text-base leading-snug text-[#1F3A42]">{log.title}</h4>
+                  <p className="text-xs leading-relaxed line-clamp-2 text-[#4B6169]">{log.summary}</p>
                 </div>
-
-                <div className="pt-3 border-t border-white/10 flex items-center justify-between text-[10px] font-mono uppercase tracking-wide text-zinc-400">
+                <div className="pt-3 border-t-2 border-[#1F3A42]/8 flex items-center justify-between text-[11px] font-bold text-[#4B6169]">
                   <span>By: {log.author}</span>
-                  <span className="font-bold font-mono text-[9px] uppercase tracking-widest text-emerald-400 hover:text-emerald-300">Read Entry →</span>
+                  <span className="font-bold text-[#4C9A3A]">Read Entry →</span>
                 </div>
               </div>
             </div>
@@ -124,259 +73,138 @@ export default function LabLogAnnouncements({
         </div>
       </div>
 
-      {/* SECTION 2: ANNOUNCEMENTS & NEWSLETTER SPLIT */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch pt-6 border-t border-white/5">
-        
-        {/* Left Column: Club Announcements */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch pt-6 border-t-2 border-[#1F3A42]/8">
         <div className="lg:col-span-7 space-y-6">
           <div className="space-y-1">
-            <h4 className="font-display font-bold text-xl sm:text-2xl tracking-tighter text-white">
-              Club Announcements
-            </h4>
-            <p className="text-xs text-zinc-400">
-              Stay updated with club expansion project schedules, material check-ins, and safety notifications.
-            </p>
+            <h4 className="font-display font-bold text-xl sm:text-2xl tracking-tight text-[#1F3A42]">Club Announcements</h4>
+            <p className="text-xs text-[#4B6169]">Expansion updates, toolkit releases, and volunteer calls.</p>
           </div>
 
           <div className="space-y-4">
             {announcements.map((ann) => (
-              <div
-                id={`announcement-${ann.id}`}
-                key={ann.id}
-                className="p-5 rounded-2xl border border-white/10 bg-zinc-900/40 backdrop-blur-md space-y-2.5 text-white hover:border-white/20 transition-all"
-              >
+              <div id={`announcement-${ann.id}`} key={ann.id} className="p-5 rounded-2xl border-2 border-[#1F3A42]/8 bg-white space-y-2.5 hover:border-[#1F3A42]/15 transition-all">
                 <div className="flex items-center justify-between gap-4">
-                  <span className={`px-2.5 py-1 rounded-full text-[9px] font-mono font-bold uppercase tracking-widest bg-zinc-950/80 border border-white/10 ${
-                    ann.category === 'expansion' 
-                      ? 'text-purple-400' 
-                      : ann.category === 'toolkit'
-                        ? 'text-blue-400'
-                        : 'text-amber-400'
-                  }`}>
-                    {ann.category}
-                  </span>
-                  <span className="text-[9px] font-mono text-zinc-500 uppercase tracking-wider">{ann.date}</span>
+                  <span className="px-2.5 py-1 rounded-full text-[10px] font-display font-bold bg-[#E4F5DA] text-[#2E7D46]">{ann.category}</span>
+                  <span className="text-[10px] text-[#9AA6A6] font-bold">{ann.date}</span>
                 </div>
-                <h5 className="font-display font-bold text-sm tracking-tight leading-snug text-white">
-                  {ann.title}
-                </h5>
-                <p className="text-xs leading-relaxed text-zinc-400">
-                  {ann.content}
-                </p>
+                <h5 className="font-display font-bold text-sm tracking-tight leading-snug text-[#1F3A42]">{ann.title}</h5>
+                <p className="text-xs leading-relaxed text-[#4B6169]">{ann.content}</p>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Right Column: Press & Newsletter Signup */}
         <div className="lg:col-span-5 flex flex-col justify-between gap-6">
-          
-          {/* Newsletter Box */}
-          <div className="p-6 rounded-[2rem] border border-white/10 bg-zinc-900/40 backdrop-blur-md flex flex-col justify-between space-y-4 text-white shadow-2xl">
+          <div className="p-6 rounded-[28px] border-2 border-[#1F3A42]/8 bg-white flex flex-col justify-between space-y-4 shadow-[0_8px_24px_rgba(31,58,66,0.06)]">
             <div className="space-y-2">
-              <div className="p-2 rounded-xl inline-block bg-emerald-500 text-stone-950 animate-pulse">
-                <Mail className="w-5 h-5" />
-              </div>
-              <h5 className="font-display font-bold text-lg leading-tight text-zinc-100 tracking-tighter">
-                Broadcasting Discovery to the Neighborhood
-              </h5>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                Subscribe to our bi-weekly dispatch. Get illustrated science experiments, stargazing coordinates, and RSVP notifications sent straight to your family inbox!
+              <div className="p-2 rounded-xl inline-block bg-[#6CC24A] text-[#14351F]"><Mail className="w-5 h-5" /></div>
+              <h5 className="font-display font-bold text-lg leading-tight text-[#1F3A42]">Get Our Newsletter</h5>
+              <p className="text-xs text-[#4B6169] leading-relaxed">
+                Bi-weekly dispatch with experiments, stargazing coordinates, and event reminders.
               </p>
             </div>
 
             {userProfile.newsletterSubscribed ? (
-              <div className="p-3.5 rounded-xl bg-emerald-950/40 border border-emerald-500/20 text-xs font-mono font-bold uppercase tracking-widest flex items-center gap-2 text-emerald-400">
-                <CheckCircle className="w-5 h-5 shrink-0 text-emerald-400" />
-                <span>Subscribed! Check inbox for Science Toolkit. (+20 XP)</span>
+              <div className="p-3.5 rounded-xl bg-[#E4F5DA] text-xs font-bold flex items-center gap-2 text-[#2E7D46]">
+                <CheckCircle className="w-5 h-5 shrink-0" />
+                <span>Subscribed! (+20 XP)</span>
               </div>
             ) : emailSuccess ? (
-              <div className="p-3.5 rounded-xl bg-emerald-950/40 border border-emerald-500/20 text-xs font-mono font-bold uppercase tracking-widest flex items-center gap-2 text-emerald-400">
-                <CheckCircle className="w-5 h-5 shrink-0 text-emerald-400" />
-                <span>Subscription Success! Welcome package sent.</span>
+              <div className="p-3.5 rounded-xl bg-[#E4F5DA] text-xs font-bold flex items-center gap-2 text-[#2E7D46]">
+                <CheckCircle className="w-5 h-5 shrink-0" />
+                <span>Subscription success!</span>
               </div>
             ) : (
               <form onSubmit={handleSubscribe} className="space-y-2">
                 <div className="flex gap-2">
-                  <input
-                    id="newsletter-email-input"
-                    type="email"
-                    placeholder="parent-scientist@domain.com"
-                    value={newsletterEmail}
-                    onChange={(e) => setNewsletterEmail(e.target.value)}
-                    className="flex-1 px-3 py-2.5 rounded-xl text-xs border border-white/10 bg-zinc-950/60 text-white focus:outline-none focus:border-white/20"
-                    required
-                  />
-                  <button
-                    id="newsletter-submit-btn"
-                    type="submit"
-                    className="px-4 py-2.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-widest transition flex items-center justify-center gap-1.5 cursor-pointer bg-emerald-500 hover:bg-emerald-400 text-stone-950"
-                  >
-                    <span>Join</span>
-                    <Send className="w-3 h-3" />
+                  <input id="newsletter-email-input" type="email" placeholder="you@example.com" value={newsletterEmail} onChange={(e) => setNewsletterEmail(e.target.value)}
+                    className="flex-1 px-3 py-2.5 rounded-xl text-xs border-2 border-[#1F3A42]/12 bg-[#FBF7EC] text-[#1F3A42] focus:outline-none" required />
+                  <button id="newsletter-submit-btn" type="submit" className="px-4 py-2.5 rounded-full text-[11px] font-display font-bold transition flex items-center justify-center gap-1.5 cursor-pointer bg-[#6CC24A] text-[#14351F]">
+                    <span>Join</span><Send className="w-3 h-3" />
                   </button>
                 </div>
-                {emailError && (
-                  <p className="text-[10px] text-red-400 font-mono flex items-center gap-1">
-                    <AlertCircle className="w-3.5 h-3.5" />
-                    {emailError}
-                  </p>
-                )}
-                <p className="text-[9px] font-mono text-zinc-500 uppercase tracking-widest">We never spam. Unsubscribe with one click.</p>
+                {emailError && <p className="text-[11px] text-red-500 font-bold flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" />{emailError}</p>}
+                <p className="text-[10px] text-[#9AA6A6]">We never spam. Unsubscribe with one click.</p>
               </form>
             )}
           </div>
 
-          {/* Press Clips */}
           <div className="space-y-4">
-            <h5 className="font-mono font-bold text-[10px] uppercase tracking-widest flex items-center gap-2 text-zinc-400">
-              <Newspaper className="w-4 h-4 text-zinc-500" />
-              In the News
+            <h5 className="font-display font-bold text-[12px] flex items-center gap-2 text-[#4B6169]">
+              <Newspaper className="w-4 h-4" />In the News
             </h5>
-
             <div className="space-y-4">
               {press.map((pr) => (
-                <div key={pr.id} className="space-y-1.5 pl-4 border-l border-white/10">
-                  <p className="text-[9px] font-mono text-zinc-500 uppercase tracking-widest flex items-center gap-1.5">
-                    <span>{pr.source}</span>
-                    <span>•</span>
-                    <span>{pr.date}</span>
-                  </p>
-                  <h6 className="font-semibold text-xs leading-snug text-white">
-                    {pr.title}
-                  </h6>
-                  <p className="text-xs leading-relaxed italic text-zinc-400">
-                    "{pr.snippet}"
-                  </p>
+                <div key={pr.id} className="space-y-1.5 pl-4 border-l-2 border-[#1F3A42]/10">
+                  <p className="text-[10px] text-[#9AA6A6] font-bold flex items-center gap-1.5"><span>{pr.source}</span><span>•</span><span>{pr.date}</span></p>
+                  <h6 className="font-bold text-xs leading-snug text-[#1F3A42]">{pr.title}</h6>
+                  <p className="text-xs leading-relaxed italic text-[#4B6169]">"{pr.snippet}"</p>
                 </div>
               ))}
             </div>
           </div>
-
         </div>
-
       </div>
 
-      {/* OVERLAY / DRILL DOWN LOG DETAIL MODAL */}
       {activeLog && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-zinc-950/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div 
-            id="log-detail-modal"
-            className="w-full max-w-2xl rounded-[2rem] overflow-hidden shadow-2xl border border-white/10 bg-zinc-900/95 backdrop-blur-xl text-white flex flex-col justify-between max-h-[90vh]"
-          >
-            {/* Header image & close button */}
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-[#1F3A42]/45 backdrop-blur-sm flex items-center justify-center p-4">
+          <div id="log-detail-modal" className="w-full max-w-2xl rounded-[28px] overflow-hidden shadow-2xl bg-[#FBF7EC] flex flex-col justify-between max-h-[90vh]">
             <div className="relative h-60">
               <img src={activeLog.image} alt={activeLog.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-              <button
-                id="close-log-modal-btn"
-                onClick={() => setActiveLogId(null)}
-                className="absolute top-4 right-4 p-2 bg-zinc-950/80 border border-white/10 hover:bg-zinc-950 text-white rounded-full transition-all cursor-pointer"
-              >
+              <button id="close-log-modal-btn" onClick={() => setActiveLogId(null)} className="absolute top-4 right-4 p-2 bg-white/90 hover:bg-white text-[#1F3A42] rounded-full transition-all cursor-pointer">
                 <X className="w-4 h-4" />
               </button>
-              <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-zinc-900/40 to-transparent flex items-end p-6">
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent flex items-end p-6">
                 <div className="text-white space-y-1">
-                  <span className="bg-zinc-950/90 text-white border border-white/10 text-[9px] font-mono font-bold uppercase tracking-widest px-2.5 py-1 rounded-full shadow-md">
-                    {activeLog.category}
-                  </span>
-                  <h3 className="font-display font-bold text-lg sm:text-2xl tracking-tighter leading-tight text-white">
-                    {activeLog.title}
-                  </h3>
+                  <span className="bg-white/90 text-[#1F3A42] text-[10px] font-display font-bold px-2.5 py-1 rounded-full">{activeLog.category}</span>
+                  <h3 className="font-display font-bold text-lg sm:text-2xl tracking-tight leading-tight text-white">{activeLog.title}</h3>
                 </div>
               </div>
             </div>
 
-            {/* Scrollable content body */}
             <div className="p-6 overflow-y-auto space-y-6 flex-1">
-              {/* Author & date metadata bar */}
-              <div className="flex items-center gap-4 text-[10px] font-mono text-zinc-400 uppercase tracking-wide border-b border-white/10 pb-4">
-                <div className="flex items-center gap-1">
-                  <User className="w-3.5 h-3.5 text-zinc-500" />
-                  <span>{activeLog.author}</span>
-                </div>
+              <div className="flex items-center gap-4 text-[11px] font-bold text-[#4B6169] border-b-2 border-[#1F3A42]/8 pb-4">
+                <div className="flex items-center gap-1"><User className="w-3.5 h-3.5" /><span>{activeLog.author}</span></div>
                 <span>•</span>
-                <div className="flex items-center gap-1">
-                  <Clock className="w-3.5 h-3.5 text-zinc-500" />
-                  <span>{activeLog.date}</span>
-                </div>
+                <div className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /><span>{activeLog.date}</span></div>
               </div>
 
-              {/* Main Log paragraphs */}
-              <p className="text-xs leading-relaxed font-sans text-zinc-300 font-medium">
-                {activeLog.content}
-              </p>
+              <p className="text-sm leading-relaxed font-sans text-[#1F3A42]">{activeLog.content}</p>
 
-              {/* Comments Board inside Log */}
-              <div className="space-y-4 pt-6 border-t border-white/10">
-                <h5 className="font-display font-bold text-sm text-white flex items-center gap-1.5">
-                  <MessageSquare className="w-4 h-4 text-zinc-500" />
-                  Discussion ({comments[activeLog.id]?.length || 0})
+              <div className="space-y-4 pt-6 border-t-2 border-[#1F3A42]/8">
+                <h5 className="font-display font-bold text-sm text-[#1F3A42] flex items-center gap-1.5">
+                  <MessageSquare className="w-4 h-4" />Discussion ({comments[activeLog.id]?.length || 0})
                 </h5>
 
                 <div className="space-y-3">
                   {(comments[activeLog.id] || []).map((comm, index) => (
-                    <div 
-                      key={index} 
-                      className="p-3.5 rounded-xl border border-white/5 bg-zinc-950/60 text-xs space-y-1 text-white"
-                    >
-                      <div className="flex items-center justify-between font-mono text-[9px] text-zinc-400 uppercase tracking-wide">
-                        <span className="font-bold text-white">{comm.name}</span>
-                        <span>{comm.date}</span>
-                      </div>
-                      <p className="leading-relaxed text-zinc-300">{comm.text}</p>
+                    <div key={index} className="p-3.5 rounded-xl border-2 border-[#1F3A42]/8 bg-white text-xs space-y-1">
+                      <div className="flex items-center justify-between font-bold text-[#4B6169]"><span className="text-[#1F3A42]">{comm.name}</span><span>{comm.date}</span></div>
+                      <p className="leading-relaxed text-[#4B6169]">{comm.text}</p>
                     </div>
                   ))}
                 </div>
 
-                {/* Comment Submission Form */}
                 <form onSubmit={(e) => handleAddComment(e, activeLog.id)} className="space-y-2 pt-2">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <input
-                      id="comment-name-input"
-                      type="text"
-                      placeholder="Your Name / Title"
-                      value={newCommentName}
-                      onChange={(e) => setNewCommentName(e.target.value)}
-                      className="p-2 rounded-xl text-xs border border-white/10 bg-zinc-950/60 text-white focus:outline-none focus:border-white/20"
-                      required
-                    />
-                  </div>
+                  <input id="comment-name-input" type="text" placeholder="Your Name" value={newCommentName} onChange={(e) => setNewCommentName(e.target.value)}
+                    className="w-full p-2 rounded-xl text-xs border-2 border-[#1F3A42]/12 bg-white text-[#1F3A42] focus:outline-none" required />
                   <div className="flex gap-2">
-                    <input
-                      id="comment-text-input"
-                      type="text"
-                      placeholder="Add to the discovery discussion..."
-                      value={newCommentText}
-                      onChange={(e) => setNewCommentText(e.target.value)}
-                      className="flex-1 p-2 rounded-xl text-xs border border-white/10 bg-zinc-950/60 text-white focus:outline-none focus:border-white/20"
-                      required
-                    />
-                    <button
-                      id="comment-submit-btn"
-                      type="submit"
-                      className="px-4 py-2 rounded-full text-[10px] font-mono font-bold uppercase tracking-widest cursor-pointer bg-emerald-500 hover:bg-emerald-400 text-stone-950"
-                    >
-                      Comment
-                    </button>
+                    <input id="comment-text-input" type="text" placeholder="Add to the discussion..." value={newCommentText} onChange={(e) => setNewCommentText(e.target.value)}
+                      className="flex-1 p-2 rounded-xl text-xs border-2 border-[#1F3A42]/12 bg-white text-[#1F3A42] focus:outline-none" required />
+                    <button id="comment-submit-btn" type="submit" className="px-4 py-2 rounded-full text-[11px] font-display font-bold cursor-pointer bg-[#6CC24A] text-[#14351F]">Comment</button>
                   </div>
                 </form>
               </div>
             </div>
 
-            {/* Bottom action panel */}
-            <div className="p-4 border-t border-white/10 bg-zinc-950/40 flex justify-end">
-              <button
-                id="close-log-footer-btn"
-                onClick={() => setActiveLogId(null)}
-                className="px-4 py-2 border border-white/10 bg-zinc-900 text-zinc-300 text-[10px] font-mono font-bold uppercase tracking-widest rounded-full hover:bg-white/5 hover:text-white transition cursor-pointer"
-              >
+            <div className="p-4 border-t-2 border-[#1F3A42]/8 bg-white flex justify-end">
+              <button id="close-log-footer-btn" onClick={() => setActiveLogId(null)} className="px-4 py-2 border-2 border-[#1F3A42]/10 bg-white text-[#4B6169] text-[11px] font-bold rounded-full hover:text-[#1F3A42] transition cursor-pointer">
                 Close Journal
               </button>
             </div>
           </div>
         </div>
       )}
-
     </section>
   );
 }

@@ -1,7 +1,7 @@
 import React from 'react';
 import { UserProfile } from '../types';
 import TurtleRockLogo from './TurtleRockLogo';
-import { Sparkles, ArrowRight, Shield, Award, Users, GraduationCap, Zap, Atom } from 'lucide-react';
+import { ArrowRight, Atom } from 'lucide-react';
 
 interface HeroSectionProps {
   userProfile: UserProfile;
@@ -16,56 +16,52 @@ export default function HeroSection({
 }: HeroSectionProps) {
 
   return (
-    <div className="relative overflow-hidden pt-12 pb-16 transition-all duration-300 bg-transparent text-white">
-
-      {/* Background Decorative Accents */}
-      <div className="absolute inset-0 bg-dot-pattern opacity-25 pointer-events-none" />
+    <div className="relative overflow-hidden pt-14 pb-10 bg-transparent text-[#1F3A42]">
+      <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full bg-[#E4F5DA] pointer-events-none" />
+      <div className="absolute -bottom-10 -left-20 w-52 h-52 rounded-full bg-[#CFF2E0] pointer-events-none" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="text-center max-w-3xl mx-auto space-y-6 flex flex-col items-center">
 
-          <div className="mb-4 hover:scale-105 transition-transform duration-500 cursor-pointer drop-shadow-[0_10px_15px_rgba(16,185,129,0.15)] animate-fade-in">
-            <TurtleRockLogo size={165} />
+          <div className="mb-2 hover:scale-105 transition-transform duration-500 cursor-pointer">
+            <TurtleRockLogo size={150} />
           </div>
 
-          {/* Core Captivating Heading */}
-          <h2 className="font-display font-bold text-4xl sm:text-5xl lg:text-6xl tracking-tighter leading-[1.05] text-white">
-            Discover the <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-300">Magic of Science</span> Together
+          <h2 className="font-display font-bold text-4xl sm:text-5xl lg:text-6xl tracking-tight leading-[1.05] text-[#1F3A42]">
+            Curiosity is welcome here.<br />
+            <span className="text-[#4C9A3A]">Come do science with us.</span>
           </h2>
 
-          {/* Descriptive Subtitle */}
-          <p className="text-xs sm:text-sm max-w-2xl mx-auto leading-relaxed text-zinc-400 font-sans">
-            Founded by local parents, we make advanced chemistry, astronomy, and robotics
-            collaborative and accessible for inquisitive minds. Where friendships and lifelong
-            discoveries are born!
+          <p className="text-sm sm:text-base max-w-xl mx-auto leading-relaxed text-[#4B6169] font-sans">
+            Turtle Rock Science Club is a neighborhood crew of kids, parents, and mentors
+            exploring chemistry, robotics, and astronomy together — messy experiments included.
           </p>
 
-          {/* Action CTAs */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
             {userProfile.level === 0 ? (
               <button
                 id="hero-join-cta-btn"
                 onClick={onOpenJoin}
-                className="w-full sm:w-auto px-6 py-2.5 rounded-full font-bold text-xs uppercase tracking-widest transition-all duration-300 hover:scale-[1.02] active:scale-95 cursor-pointer flex items-center justify-center gap-2 shadow-lg bg-emerald-500 text-stone-950 hover:bg-emerald-400 hover:shadow-emerald-500/10"
+                className="w-full sm:w-auto px-6 py-3 rounded-full font-display font-bold text-sm transition-all duration-300 hover:scale-[1.02] active:scale-95 cursor-pointer flex items-center justify-center gap-2 bg-[#6CC24A] text-[#14351F] shadow-[0_4px_0_#4C9A3A]"
               >
                 <span>Join This Mission</span>
-                <ArrowRight className="w-3.5 h-3.5" />
+                <ArrowRight className="w-4 h-4" />
               </button>
             ) : (
               <button
                 id="hero-lab-cta-btn"
                 onClick={() => setCurrentTab('lab')}
-                className="w-full sm:w-auto px-6 py-2.5 rounded-full font-bold text-xs uppercase tracking-widest transition-all duration-300 hover:scale-[1.02] active:scale-95 cursor-pointer flex items-center justify-center gap-2 shadow-lg bg-emerald-500 text-stone-950 hover:bg-emerald-400"
+                className="w-full sm:w-auto px-6 py-3 rounded-full font-display font-bold text-sm transition-all duration-300 hover:scale-[1.02] active:scale-95 cursor-pointer flex items-center justify-center gap-2 bg-[#6CC24A] text-[#14351F] shadow-[0_4px_0_#4C9A3A]"
               >
-                <span>Minigames</span>
-                <Atom className="w-3.5 h-3.5 animate-spin-slow" />
+                <span>Play Minigames</span>
+                <Atom className="w-4 h-4" />
               </button>
             )}
 
             <button
               id="hero-learn-more-btn"
               onClick={() => setCurrentTab('about')}
-              className="w-full sm:w-auto px-6 py-2.5 rounded-full font-bold text-xs uppercase tracking-widest transition-all border cursor-pointer bg-white/5 hover:bg-white/10 text-zinc-300 border-white/10"
+              className="w-full sm:w-auto px-6 py-3 rounded-full font-display font-bold text-sm transition-all cursor-pointer bg-white hover:bg-[#1F3A42]/5 text-[#1F3A42] border-2 border-[#1F3A42]/15"
             >
               About Us
             </button>
@@ -73,7 +69,6 @@ export default function HeroSection({
 
         </div>
       </div>
-
     </div>
   );
 }

@@ -36,11 +36,10 @@ export default function Header({
   ];
 
   return (
-    <header className="sticky top-0 z-40 transition-all duration-300 border-b border-white/10 bg-[#0A0A0B]/85 text-white backdrop-blur-xl">
+    <header className="sticky top-0 z-40 border-b-2 border-[#1F3A42]/10 bg-[#FBF7EC]/90 text-[#1F3A42] backdrop-blur-xl">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
 
-          {/* Brand/Logo */}
           <button
             id="brand-logo-btn"
             onClick={() => setCurrentTab('missions')}
@@ -48,17 +47,16 @@ export default function Header({
           >
             <TurtleRockLogo size={44} hideText={true} className="shrink-0 -my-1" />
             <div>
-              <h1 className="font-display font-bold text-base leading-tight tracking-tight text-white">
+              <h1 className="font-display font-bold text-base leading-tight tracking-tight text-[#1F3A42]">
                 Turtle Rock
               </h1>
-              <p className="text-[9px] font-mono tracking-widest uppercase font-bold text-emerald-500">
+              <p className="text-[11px] font-display font-bold tracking-wide text-[#4C9A3A]">
                 Science Club
               </p>
             </div>
           </button>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center gap-2" id="desktop-nav">
+          <nav className="hidden lg:flex items-center gap-1.5" id="desktop-nav">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = currentTab === item.id;
@@ -67,9 +65,9 @@ export default function Header({
                   id={`nav-item-${item.id}`}
                   key={item.id}
                   onClick={() => setCurrentTab(item.id)}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-mono font-medium transition-all duration-200 flex items-center gap-1.5 cursor-pointer border ${isActive
-                    ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
-                    : 'text-zinc-400 border-transparent hover:text-white hover:bg-white/5'
+                  className={`px-3.5 py-2 rounded-full text-[13px] font-sans font-extrabold transition-all duration-200 flex items-center gap-1.5 cursor-pointer border-2 ${isActive
+                    ? 'bg-[#E4F5DA] text-[#2E7D46] border-transparent'
+                    : 'text-[#4B6169] border-transparent hover:bg-[#1F3A42]/5'
                     }`}
                 >
                   <Icon className="w-3.5 h-3.5" />
@@ -79,21 +77,20 @@ export default function Header({
             })}
           </nav>
 
-          {/* User Profile / Join CTA */}
           <div className="hidden sm:flex items-center gap-3">
             {userProfile.level > 0 ? (
               <button
                 id="header-profile-btn"
                 onClick={() => setCurrentTab('dashboard')}
-                className="flex items-center gap-2.5 pl-2 pr-4 py-1 rounded-full text-xs font-mono font-medium transition-all cursor-pointer bg-zinc-900 border border-white/10 hover:bg-zinc-800 text-zinc-200"
+                className="flex items-center gap-2.5 pl-2 pr-4 py-1 rounded-full text-xs font-sans font-bold transition-all cursor-pointer bg-white border-2 border-[#1F3A42]/10 hover:border-[#1F3A42]/20 text-[#1F3A42]"
               >
-                <div className="w-5 h-5 rounded-full text-white flex items-center justify-center font-bold text-[10px] uppercase bg-emerald-600">
+                <div className="w-7 h-7 rounded-full text-white flex items-center justify-center font-display font-bold text-[12px] uppercase bg-[#6CC24A]">
                   {userProfile.name[0].toUpperCase()}
                 </div>
                 <div className="text-left">
-                  <p className="font-semibold leading-none text-white text-[11px]">{userProfile.name}</p>
-                  <p className="text-[9px] opacity-75 flex items-center gap-1 mt-0.5">
-                    <Trophy className="w-2.5 h-2.5 text-amber-500" />
+                  <p className="font-bold leading-none text-[#1F3A42] text-[11px]">{userProfile.name}</p>
+                  <p className="text-[10px] opacity-75 flex items-center gap-1 mt-0.5">
+                    <Trophy className="w-2.5 h-2.5 text-[#F2C94C]" />
                     Lvl {userProfile.level}
                   </p>
                 </div>
@@ -102,21 +99,19 @@ export default function Header({
               <button
                 id="header-join-btn"
                 onClick={onOpenJoin}
-                className="px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest transition-all duration-300 hover:scale-[1.02] active:scale-95 cursor-pointer bg-emerald-500 text-stone-950 hover:bg-emerald-400 shadow-md shadow-emerald-500/10"
+                className="px-4 py-2 rounded-full text-xs font-display font-bold transition-all duration-300 hover:scale-[1.02] active:scale-95 cursor-pointer bg-[#6CC24A] text-[#14351F] hover:brightness-105 shadow-[0_3px_0_#4C9A3A]"
               >
                 Join
               </button>
             )}
           </div>
 
-          {/* Mobile Menu Toggle */}
           <div className="lg:hidden flex items-center gap-2">
-            {/* Quick dashboard profile link on mobile */}
             {userProfile.level > 0 && (
               <button
                 id="mobile-profile-quick-btn"
                 onClick={() => setCurrentTab('dashboard')}
-                className="w-7 h-7 rounded-full text-white flex items-center justify-center font-bold text-xs cursor-pointer bg-emerald-600"
+                className="w-8 h-8 rounded-full text-white flex items-center justify-center font-display font-bold text-xs cursor-pointer bg-[#6CC24A]"
               >
                 {userProfile.name[0].toUpperCase()}
               </button>
@@ -125,7 +120,7 @@ export default function Header({
             <button
               id="mobile-menu-toggle-btn"
               onClick={() => setMenuOpen(!menuOpen)}
-              className="p-2 rounded-lg cursor-pointer hover:bg-white/5 text-zinc-300"
+              className="p-2 rounded-lg cursor-pointer hover:bg-[#1F3A42]/5 text-[#1F3A42]"
             >
               {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -134,9 +129,8 @@ export default function Header({
         </div>
       </div>
 
-      {/* Mobile Menu Drawer */}
       {menuOpen && (
-        <div id="mobile-nav-drawer" className="lg:hidden border-t border-white/10 px-4 py-3 space-y-2 animate-fade-in bg-[#0A0A0B] text-white">
+        <div id="mobile-nav-drawer" className="lg:hidden border-t-2 border-[#1F3A42]/10 px-4 py-3 space-y-2 animate-fade-in bg-[#FBF7EC]">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentTab === item.id;
@@ -148,9 +142,9 @@ export default function Header({
                   setCurrentTab(item.id);
                   setMenuOpen(false);
                 }}
-                className={`w-full text-left px-4 py-2 rounded-full text-xs font-mono font-medium flex items-center gap-3 cursor-pointer border ${isActive
-                  ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
-                  : 'text-zinc-400 border-transparent hover:text-white hover:bg-white/5'
+                className={`w-full text-left px-4 py-2.5 rounded-full text-[13px] font-sans font-extrabold flex items-center gap-3 cursor-pointer border-2 ${isActive
+                  ? 'bg-[#E4F5DA] text-[#2E7D46] border-transparent'
+                  : 'text-[#4B6169] border-transparent hover:bg-[#1F3A42]/5'
                   }`}
               >
                 <Icon className="w-3.5 h-3.5" />
@@ -160,14 +154,14 @@ export default function Header({
           })}
 
           {userProfile.level === 0 && (
-            <div className="pt-2 border-t border-white/10 mt-2">
+            <div className="pt-2 border-t-2 border-[#1F3A42]/10 mt-2">
               <button
                 id="mobile-join-btn"
                 onClick={() => {
                   onOpenJoin();
                   setMenuOpen(false);
                 }}
-                className="w-full py-2 rounded-full text-center text-xs font-bold uppercase tracking-widest cursor-pointer bg-emerald-500 text-stone-900 hover:bg-emerald-400"
+                className="w-full py-2.5 rounded-full text-center text-xs font-display font-bold cursor-pointer bg-[#6CC24A] text-[#14351F]"
               >
                 Join the Club
               </button>
