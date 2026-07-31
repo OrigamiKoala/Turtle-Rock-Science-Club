@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { UserProfile } from '../types';
+import { Theme } from '../useTheme';
 import TurtleRockLogo from './TurtleRockLogo';
 import {
   Trophy,
@@ -9,7 +10,9 @@ import {
   HelpCircle,
   Calendar,
   BookOpen,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Moon,
+  Sun
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -17,13 +20,17 @@ interface HeaderProps {
   setCurrentTab: (tab: string) => void;
   userProfile: UserProfile;
   onOpenJoin: () => void;
+  theme: Theme;
+  onToggleTheme: () => void;
 }
 
 export default function Header({
   currentTab,
   setCurrentTab,
   userProfile,
-  onOpenJoin
+  onOpenJoin,
+  theme,
+  onToggleTheme
 }: HeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -78,6 +85,15 @@ export default function Header({
           </nav>
 
           <div className="hidden sm:flex items-center gap-3">
+            <button
+              id="theme-toggle-btn"
+              onClick={onToggleTheme}
+              aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              className="w-8 h-8 flex items-center justify-center rounded-full border-2 border-[#1F3A42]/10 text-[#1F3A42] hover:bg-[#1F3A42]/5 cursor-pointer transition-colors shrink-0"
+            >
+              {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
             {userProfile.level > 0 ? (
               <button
                 id="header-profile-btn"
@@ -107,6 +123,15 @@ export default function Header({
           </div>
 
           <div className="lg:hidden flex items-center gap-2">
+            <button
+              id="theme-toggle-btn-mobile"
+              onClick={onToggleTheme}
+              aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              className="w-8 h-8 flex items-center justify-center rounded-full border-2 border-[#1F3A42]/10 text-[#1F3A42] hover:bg-[#1F3A42]/5 cursor-pointer transition-colors shrink-0"
+            >
+              {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
             {userProfile.level > 0 && (
               <button
                 id="mobile-profile-quick-btn"

@@ -10,7 +10,7 @@
 .bg-grid-pattern {
   background-size: 30px 30px;
   background-image: linear-gradient(to right, rgba(31, 58, 66, 0.05) 1px, transparent 1px),
-                    linear-gradient(to bottom, rgba(31, 58, 66, 0.05) 1px, transparent 1px);
+    linear-gradient(to bottom, rgba(31, 58, 66, 0.05) 1px, transparent 1px);
 }
 
 .bg-dot-pattern {
@@ -18,22 +18,176 @@
   background-image: radial-gradient(circle, rgba(76, 154, 58, 0.10) 1px, transparent 1px);
 }
 
-input:focus, select:focus, textarea:focus {
+input:focus,
+select:focus,
+textarea:focus {
   outline: 2px solid #6CC24A;
   outline-offset: 1px;
 }
 
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(31, 58, 66, 0.2); border-radius: 9999px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(31, 58, 66, 0.35); }
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(31, 58, 66, 0.2);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(31, 58, 66, 0.35);
+}
 
 @keyframes lavaBubbleUp {
-  0% { transform: translateY(110%) scale(1); opacity: 0.8; }
-  50% { transform: translateY(50%) scale(1.15) translateX(10px); opacity: 0.95; }
-  100% { transform: translateY(-10%) scale(0.9) translateX(-10px); opacity: 0; }
-}
-.lava-bubble { animation: lavaBubbleUp 8s infinite ease-in-out; }
+  0% {
+    transform: translateY(110%) scale(1);
+    opacity: 0.8;
+  }
 
-@keyframes fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
-.animate-fade-in { animation: fade-in 0.25s ease; }
+  50% {
+    transform: translateY(50%) scale(1.15) translateX(10px);
+    opacity: 0.95;
+  }
+
+  100% {
+    transform: translateY(-10%) scale(0.9) translateX(-10px);
+    opacity: 0;
+  }
+}
+
+.lava-bubble {
+  animation: lavaBubbleUp 8s infinite ease-in-out;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.25s ease;
+}
+
+/* ---------- Dark mode: whole site ----------
+   `.dark` is applied to <html> by src/useTheme.ts. It defaults to following
+   the OS setting (prefers-color-scheme) but can be overridden manually via
+   the half-moon toggle in the header, which is why this is a plain class
+   selector rather than a @media query. */
+
+:root.dark .bg-\[\#FBF7EC\],
+:root.dark .bg-\[\#FBF7EC\]\/90 {
+  background-color: #12181A !important;
+}
+
+:root.dark .bg-\[\#F3F0E4\] {
+  background-color: #0D1213 !important;
+}
+
+:root.dark .bg-white {
+  background-color: #1B2426 !important;
+}
+
+:root.dark .bg-\[\#E4F5DA\] {
+  background-color: rgba(108, 194, 74, 0.18) !important;
+}
+
+:root.dark .text-\[\#1F3A42\] {
+  color: #E7EDE9 !important;
+}
+
+:root.dark .text-\[\#4B6169\] {
+  color: #93A6A0 !important;
+}
+
+:root.dark .text-\[\#9AA6A6\] {
+  color: #67807A !important;
+}
+
+:root.dark .text-\[\#2E7D46\] {
+  color: #8FE07A !important;
+}
+
+:root.dark .text-\[\#14351F\] {
+  color: #14351F !important;
+}
+
+/* button label stays dark-on-green */
+
+:root.dark .border-\[\#1F3A42\]\/10,
+:root.dark .border-\[\#1F3A42\]\/8 {
+  border-color: rgba(255, 255, 255, 0.09) !important;
+}
+
+/* Orbital Slingshot is space-themed and stays dark in every mode — no rule needed. */
+
+/* Molecule Builder / Robot Programmer / Chem Text Adventure: dark chrome in dark mode */
+:root.dark .game-molecule .bg-\[\#0d0d12\],
+:root.dark .game-robot .bg-\[\#0d0d12\] {
+  background-color: #0d0d12 !important;
+}
+
+:root.dark .game-molecule .bg-white,
+:root.dark .game-robot .bg-white,
+:root.dark .game-adventure .bg-white {
+  background-color: #1B2426 !important;
+}
+
+:root.dark .game-molecule .text-\[\#1F3A42\],
+:root.dark .game-robot .text-\[\#1F3A42\],
+:root.dark .game-adventure .text-\[\#1F3A42\] {
+  color: #ffffff !important;
+}
+
+:root.dark .game-molecule .text-\[\#4B6169\],
+:root.dark .game-robot .text-\[\#4B6169\],
+:root.dark .game-adventure .text-\[\#4B6169\] {
+  color: #a1a1aa !important;
+}
+
+:root.dark .game-molecule .border-\[\#1F3A42\]\/10,
+:root.dark .game-robot .border-\[\#1F3A42\]\/10 {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* ---------- Light mode: force Molecule/Robot/Adventure light even though their
+   markup still carries the old dark Tailwind classes ---------- */
+.game-molecule .bg-\[\#0d0d12\],
+.game-robot .bg-\[\#0d0d12\] {
+  background-color: #F4F1E8 !important;
+}
+
+.game-molecule .border-white\/10,
+.game-robot .border-white\/10,
+.game-adventure .border-white\/10 {
+  border-color: rgba(31, 58, 66, 0.12) !important;
+}
+
+.game-molecule .text-zinc-400,
+.game-robot .text-zinc-400,
+.game-adventure .text-zinc-400 {
+  color: #4B6169 !important;
+}
+
+.game-molecule .text-white,
+.game-robot .text-white,
+.game-adventure .text-white {
+  color: #1F3A42 !important;
+}
+
+.game-molecule .bg-white\/5,
+.game-robot .bg-white\/5,
+.game-adventure .bg-white\/5 {
+  background-color: rgba(31, 58, 66, 0.04) !important;
+}
