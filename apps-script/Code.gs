@@ -647,41 +647,80 @@ function handleLogin_(body) {
   if (!members) return { ok: false, error: 'No member records found in spreadsheet.' };
 
   var rows = bodyRows_(members, MEMBER_HEADERS.length);
+  var foundUser = null;
+
   for (var i = 0; i < rows.length; i++) {
     var row = rows[i];
     var rName = String(row[1] || '').trim().toLowerCase();
     var rEmail = String(row[5] || '').trim().toLowerCase();
 
     if (rName === identifier || rEmail === identifier) {
-      var name = String(row[1] || '').trim();
-      var school = String(row[2] || '').trim();
-      var role = String(row[3] || 'Rookie Researcher').trim();
-      var level = toWholeNumber_(row[7], 1);
-      var xp = toWholeNumber_(row[8], 15);
-      var rawBadges = String(row[9] || '').trim();
-      var rawMissions = String(row[10] || '').trim();
-
-      var unlockedBadges = rawBadges ? rawBadges.split(',').map(function(s) { return s.trim(); }).filter(Boolean) : ['Foundation Member'];
-      var reservedMissionIds = rawMissions ? rawMissions.split(',').map(function(s) { return s.trim(); }).filter(Boolean) : [];
-
-      return {
-        ok: true,
-        profile: {
-          name: name,
-          school: school,
-          role: role,
-          joinedDate: formatDate_(row[0]) || 'Club Member',
-          level: level || 1,
-          xp: xp || 15,
-          unlockedBadges: unlockedBadges,
-          reservedMissionIds: reservedMissionIds,
-          newsletterSubscribed: false
-        }
-      };
+      foundUser = row;
+      break;
     }
   }
 
-  return { ok: false, error: 'Member not found. Check spelling or click Join to sign up.' };
+  if (!foundUser) {
+    return { ok: false, error: 'Member not found. Check spelling or click Join to sign up.' };
+  }
+
+  var name = String(foundUser[1] || '').trim();
+  var school = String(foundUser[2] || '').trim();
+  var role = String(foundUser[3] || 'Rookie Researcher').trim();
+  var level = toWholeNumber_(foundUser[7], 1);
+  var xp = toWholeNumber_(foundUser[8], 15);
+  var rawBadges = String(foundUser[9] || '').trim();
+  var rawMissions = String(foundUser[10] || '').trim();
+
+  var unlockedBadges = rawBadges ? rawBadges.split(',').map(function(s) { return s.trim(); }).filter(Boolean) : ['Foundation Member'];
+  var reservedMissionIds = rawMissions ? rawMissions.split(',').map(function(s) { return s.trim(); }).filter(Boolean) : [];
+
+  // Cross-reference Signups sheet for signups under this student's name
+  var signupsSheet = ss.getSheetByName(SIGNUPS_SHEET);
+  var eventsSheet = ss.getSheetByName(EVENTS_SHEET);
+
+  if (signupsSheet && name) {
+    var signupRows = bodyRows_(signupsSheet, SIGNUP_HEADERS.length);
+    var nameLower = name.toLowerCase();
+
+    var titleToId = {};
+    if (eventsSheet) {
+      var eventRows = bodyRows_(eventsSheet, EVENT_HEADERS.length);
+      for (var e = 0; e < eventRows.length; e++) {
+        var eTitle = String(eventRows[e][0] || '').trim();
+        if (eTitle) {
+          titleToId[eTitle] = 'sheet-event-' + (e + 2);
+        }
+      }
+    }
+
+    for (var s = 0; s < signupRows.length; s++) {
+      var sEventTitle = String(signupRows[s][1] || '').trim();
+      var sStudentName = String(signupRows[s][2] || '').trim().toLowerCase();
+
+      if (sStudentName === nameLower && sEventTitle) {
+        var eventId = titleToId[sEventTitle] || sEventTitle;
+        if (reservedMissionIds.indexOf(eventId) === -1) {
+          reservedMissionIds.push(eventId);
+        }
+      }
+    }
+  }
+
+  return {
+    ok: true,
+    profile: {
+      name: name,
+      school: school,
+      role: role,
+      joinedDate: formatDate_(foundUser[0]) || 'Club Member',
+      level: level || 1,
+      xp: xp || 15,
+      unlockedBadges: unlockedBadges,
+      reservedMissionIds: reservedMissionIds,
+      newsletterSubscribed: false
+    }
+  };
 }
 
 function handleSyncProfile_(body) {

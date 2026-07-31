@@ -112,7 +112,7 @@ export default function JoinModal({ onClose, onJoinSuccess, onJoinSubmit }: Join
               <div className="grid grid-cols-3 gap-3">
                 <div className="col-span-1 space-y-1">
                   <label className="text-[11px] font-extrabold text-[#4B6169]">Grade</label>
-                  <input id="join-child-age" type="number" min="4" max="18" placeholder="9" value={childAge} onChange={(e) => setChildAge(e.target.value)}
+                  <input id="join-child-age" type="number" min="4" max="18" placeholder="5" value={childAge} onChange={(e) => setChildAge(e.target.value)}
                     className="w-full p-2.5 rounded-xl text-sm border-2 border-[#1F3A42]/12 bg-white text-[#1F3A42] focus:outline-none" required />
                 </div>
                 <div className="col-span-2 space-y-1">

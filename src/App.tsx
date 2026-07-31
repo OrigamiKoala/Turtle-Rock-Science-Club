@@ -153,7 +153,15 @@ export default function App() {
   };
 
   const handleSignupSuccess = (missionId: string) => {
-    setSignedUpIds((prev) => (prev.includes(missionId) ? prev : [...prev, missionId]));
+    setSignedUpIds((prev) => {
+      const updated = prev.includes(missionId) ? prev : [...prev, missionId];
+      if (userProfile.level > 0) {
+        const updatedProfile = { ...userProfile, reservedMissionIds: updated };
+        setUserProfile(updatedProfile);
+        void content.syncProfile(updatedProfile);
+      }
+      return updated;
+    });
     handleUpdateXp(15);
   };
 
