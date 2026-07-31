@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { EventPhoto, GalleryPhoto, UserProfile } from '../types';
 import { Camera, Image as ImageIcon, Filter, CheckCircle, Upload, AlertCircle, ExternalLink } from 'lucide-react';
 
@@ -9,6 +9,69 @@ interface PhotoGalleryProps {
   userProfile: UserProfile;
   onAddPhoto: (newPhoto: GalleryPhoto) => void;
   onOpenJoin: () => void;
+}
+
+const TEST_PUBLIC_ALBUM: EventPhoto = {
+  id: 'test-public-album',
+  title: "Ovo's Adventures in Europe 📸",
+  date: 'Jun 8 – 17',
+  description: 'Shared Google Photos album embedded with PublicAlbum widget.',
+  albumEmbed: `<script src="https://cdn.jsdelivr.net/npm/publicalbum@latest/embed-ui.min.js" async></script>
+<div class="pa-carousel-widget" style="width:640px; height:480px; display:none;"
+  data-link="https://photos.app.goo.gl/E9gTCfxfWdicEBWy5"
+  data-title="Ovo&#39;s Adventures in Europe · Jun 8 – 17 📸"
+  data-description="Shared album · Tap to view!"
+  data-background-color="#ffffff">
+  <object data="https://lh3.googleusercontent.com/pw/AP1GczONCB0nSWhBATwwITCffVs-5W9u3TdrNtcKWbqtsv7m-xm3IBUWXthEK2kw4S_01V2w5NPs4K0_n8foOopX3LS5xNuKR0HCJ6BKXR9nWCAfAyD9DPA=w1920-h1080"></object>
+  <object data="https://lh3.googleusercontent.com/pw/AP1GczP8L_RbXwZ7h0_Sud1n42fwwtqTtf4ccRL4GUKt-HIlLaJCMwTYOMpSGQ2U_sOR9ESCgabYWFS4cS4Oo0DeaXPpqckCSXcHLc4a071hgvyKxAOTszo=w1920-h1080"></object>
+  <object data="https://lh3.googleusercontent.com/pw/AP1GczMPjcpN_cEZJxjanYaIuNxHlgsFOrZlVB6dVoC5Wt-ADC97dRTsM8gErQQX66Xa6c8bVtoV80VWsBYJRjesE_CtRupnVc54l_PI1QTXzx3BfcyIJWY=w1920-h1080"></object>
+</div>`
+};
+
+function HtmlEmbedCard({ embedHtml }: { embedHtml: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!containerRef.current || !embedHtml) return;
+
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(embedHtml, 'text/html');
+
+    const scripts = doc.querySelectorAll('script');
+    const nonScriptHtml = doc.body.innerHTML.replace(/<script[\s\S]*?<\/script>/gi, '');
+
+    containerRef.current.innerHTML = nonScriptHtml;
+
+    scripts.forEach((oldScript) => {
+      const newScript = document.createElement('script');
+      if (oldScript.src) {
+        if (!document.querySelector(`script[src="${oldScript.src}"]`)) {
+          newScript.src = oldScript.src;
+          newScript.async = true;
+          document.body.appendChild(newScript);
+        } else {
+          const w = window as unknown as Record<string, unknown>;
+          if (w.PublicAlbum) {
+            try {
+              (w.PublicAlbum as { init?: () => void }).init?.();
+            } catch {
+              // ignore
+            }
+          }
+        }
+      } else if (oldScript.textContent) {
+        newScript.textContent = oldScript.textContent;
+        document.body.appendChild(newScript);
+      }
+    });
+  }, [embedHtml]);
+
+  return (
+    <div
+      ref={containerRef}
+      className="mt-3 w-full min-h-[300px] rounded-2xl overflow-hidden border-2 border-[#1F3A42]/10 bg-black/5 flex items-center justify-center [&_iframe]:w-full [&_iframe]:h-full [&_iframe]:border-0 [&_.pa-carousel-widget]:!w-full [&_.pa-carousel-widget]:!h-[360px] shadow-inner"
+    />
+  );
 }
 
 export default function PhotoGallery({ photos, sheetPhotos = [], eventPhotos = [], userProfile, onAddPhoto, onOpenJoin }: PhotoGalleryProps) {
@@ -25,17 +88,12 @@ export default function PhotoGallery({ photos, sheetPhotos = [], eventPhotos = [
   const isJoined = userProfile.level > 0;
 
   const isHtmlEmbed = (str?: string) =>
-    typeof str === 'string' && (str.trim().startsWith('<') || str.toLowerCase().includes('<iframe'));
+    typeof str === 'string' && (str.trim().startsWith('<') || str.toLowerCase().includes('<iframe') || str.toLowerCase().includes('<div'));
 
-  const cleanEmbedHtml = (html: string) => {
-    if (!html) return '';
-    return html
-      .replace(/width=["']\d+["']/gi, 'width="100%"')
-      .replace(/height=["']\d+["']/gi, 'height="100%"');
-  };
+  const displayEventPhotos = eventPhotos.length > 0 ? eventPhotos : [TEST_PUBLIC_ALBUM];
 
-  // Convert event photo albums from sheet into gallery items
-  const sheetAlbumPhotos: GalleryPhoto[] = eventPhotos.map((ep) => ({
+  // Convert event photo albums into gallery items
+  const sheetAlbumPhotos: GalleryPhoto[] = displayEventPhotos.map((ep) => ({
     id: ep.id,
     title: ep.title,
     description: ep.description || `Photo album for ${ep.title}`,
@@ -54,139 +112,193 @@ export default function PhotoGallery({ photos, sheetPhotos = [], eventPhotos = [
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) { setSubmitError('Image is too large. Please select an image under 2MB.'); return; }
-      setSubmitError('');
+      if (file.size > 5 * 1024 * 1024) {
+        setSubmitError('File size exceeds 5MB limit.');
+        return;
+      }
       const reader = new FileReader();
-      reader.onloadend = () => setSelectedFileUrl(reader.result as string);
+      reader.onloadend = () => {
+        setSelectedFileUrl(reader.result as string);
+        setSubmitError('');
+      };
       reader.readAsDataURL(file);
     }
   };
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title || !description || !selectedFileUrl) { setSubmitError('Please provide a title, description, and choose a photo.'); return; }
+    if (!title.trim() || !selectedFileUrl) {
+      setSubmitError('Please provide a title and select a photo file.');
+      return;
+    }
 
     const newPhoto: GalleryPhoto = {
-      id: `photo-user-${Date.now()}`,
-      title, description, category,
+      id: 'user-photo-' + Date.now(),
+      title: title.trim(),
+      description: description.trim() || 'Community science moment shared by club member.',
+      category,
       imageUrl: selectedFileUrl,
       submittedBy: userProfile.name || 'Anonymous Scientist',
-      date: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     };
 
     onAddPhoto(newPhoto);
     setSubmitSuccess(true);
-    setSubmitError('');
-    setTitle(''); setDescription(''); setSelectedFileUrl(null);
-
-    setTimeout(() => { setSubmitSuccess(false); setShowSubmitForm(false); }, 1800);
+    setTimeout(() => {
+      setSubmitSuccess(false);
+      setShowSubmitForm(false);
+      setTitle('');
+      setDescription('');
+      setSelectedFileUrl(null);
+    }, 1800);
   };
 
+  const categories = [
+    { id: 'all', label: 'All Photos' },
+    { id: 'experiments', label: 'Experiments' },
+    { id: 'field-trips', label: 'Field Trips' },
+    { id: 'lab-meetings', label: 'Lab Meetings' }
+  ];
+
   return (
-    <section className="py-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto relative z-10 font-sans">
-      <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
+    <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8 font-sans">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b-2 border-[#1F3A42]/10 pb-6">
         <div>
-          <h3 className="font-display font-bold text-2xl sm:text-3xl tracking-tight text-[#1F3A42]">Photo Gallery</h3>
-          <p className="text-xs text-[#4B6169] mt-1.5 max-w-2xl">Real moments from our basecamp experiments and field trips.</p>
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-display font-bold bg-[#E4F5DA] text-[#2E7D46] mb-2">
+            <Camera className="w-3.5 h-3.5" />
+            Photo Gallery
+          </span>
+          <h2 className="font-display font-bold text-3xl sm:text-4xl text-[#1F3A42] tracking-tight">
+            Science in Action
+          </h2>
+          <p className="text-sm text-[#4B6169] mt-1 max-w-xl">
+            Snapshots, lab breakthroughs, and shared photo albums from our Turtle Rock Science Club missions.
+          </p>
         </div>
 
-        <button
-          id="toggle-submit-photo-btn"
-          onClick={() => { if (!isJoined) onOpenJoin(); else setShowSubmitForm(!showSubmitForm); }}
-          className="px-4 py-2.5 rounded-full text-[12px] font-display font-bold border-2 border-[#1F3A42]/10 bg-white hover:bg-[#1F3A42]/5 text-[#1F3A42] transition flex items-center gap-2 cursor-pointer shrink-0"
-        >
-          <span>{showSubmitForm ? 'Hide Submission Box' : 'Add Your Photo'}</span>
-          <Camera className="w-3.5 h-3.5" />
-        </button>
+        {isJoined ? (
+          <button
+            id="share-photo-btn"
+            onClick={() => setShowSubmitForm(!showSubmitForm)}
+            className="px-5 py-2.5 rounded-full text-xs font-display font-bold transition flex items-center gap-2 cursor-pointer bg-[#6CC24A] text-[#14351F] hover:brightness-105 shadow-[0_3px_0_#4C9A3A]"
+          >
+            <Upload className="w-4 h-4" />
+            <span>{showSubmitForm ? 'Cancel Upload' : 'Share a Photo (+25 XP)'}</span>
+          </button>
+        ) : (
+          <button
+            id="join-to-share-photo-btn"
+            onClick={onOpenJoin}
+            className="px-5 py-2.5 rounded-full text-xs font-display font-bold transition flex items-center gap-2 cursor-pointer bg-[#1F3A42] text-white hover:bg-[#14282e]"
+          >
+            <Camera className="w-4 h-4 text-[#6CC24A]" />
+            <span>Join Club to Share Photos</span>
+          </button>
+        )}
       </div>
 
       {showSubmitForm && (
-        <div className="p-6 rounded-[28px] border-2 border-[#1F3A42]/8 bg-white mb-8 animate-fade-in">
-          <h4 className="font-display font-bold text-base mb-4 flex items-center gap-2 text-[#1F3A42]">
-            <Upload className="w-4 h-4 text-[#4B6169]" />
-            Upload Photo to Club Gallery
-          </h4>
+        <div id="photo-upload-card" className="p-6 rounded-[28px] border-2 border-[#1F3A42]/12 bg-[#FBF7EC] space-y-4 animate-fade-in text-left">
+          <div className="flex items-center justify-between">
+            <h4 className="font-display font-bold text-lg text-[#1F3A42]">Submit a Science Snapshot</h4>
+            <span className="text-xs font-bold text-[#6CC24A] bg-[#E4F5DA] px-3 py-1 rounded-full">+25 XP Reward</span>
+          </div>
 
           {submitSuccess ? (
-            <div className="py-8 flex flex-col items-center justify-center text-center space-y-2">
-              <CheckCircle className="w-12 h-12 text-[#6CC24A]" />
-              <p className="font-bold text-[#2E7D46] text-sm">Photo added! (+25 XP)</p>
-              <p className="text-xs text-[#4B6169]">Your contribution is now live on the grid below.</p>
+            <div className="p-4 rounded-xl bg-emerald-50 border-2 border-emerald-200 text-emerald-700 text-sm font-bold flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 shrink-0" />
+              <span>Photo published! You earned +25 XP!</span>
             </div>
           ) : (
             <form onSubmit={handleFormSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-4">
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-extrabold text-[#4B6169]">Photo Title</label>
-                    <input id="photo-title-input" type="text" placeholder="e.g. Baking Soda foam splash" value={title} onChange={(e) => setTitle(e.target.value)}
-                      className="w-full p-2.5 rounded-xl text-sm border-2 border-[#1F3A42]/12 bg-[#FBF7EC] text-[#1F3A42] focus:outline-none" required />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-extrabold text-[#4B6169]">Description / Caption</label>
-                    <textarea id="photo-desc-input" placeholder="e.g. Timmy (age 8) calibrating his lava bottle." value={description} onChange={(e) => setDescription(e.target.value)} rows={3}
-                      className="w-full p-2.5 rounded-xl text-sm border-2 border-[#1F3A42]/12 bg-[#FBF7EC] text-[#1F3A42] focus:outline-none resize-none" required />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-extrabold text-[#4B6169]">Category</label>
-                    <select id="photo-category-select" value={category} onChange={(e) => setCategory(e.target.value as any)}
-                      className="w-full p-2.5 rounded-xl text-sm border-2 border-[#1F3A42]/12 bg-[#FBF7EC] text-[#1F3A42] focus:outline-none">
-                      <option value="experiments">Experiments</option>
-                      <option value="field-trips">Field Trips</option>
-                      <option value="lab-meetings">Lab Meetings</option>
-                    </select>
-                  </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-[#4B6169]">Photo Title</label>
+                  <input
+                    id="photo-title-input"
+                    type="text"
+                    placeholder="e.g. Solar Eclipse Observation"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    className="w-full p-2.5 rounded-xl text-sm border-2 border-[#1F3A42]/12 bg-white text-[#1F3A42] focus:outline-none focus:border-[#6CC24A]"
+                    required
+                  />
                 </div>
 
-                <div className="flex flex-col items-center justify-center border-2 border-dashed border-[#1F3A42]/15 rounded-2xl p-4 bg-[#FBF7EC] relative min-h-[200px]">
-                  {selectedFileUrl ? (
-                    <div className="w-full h-full flex flex-col items-center justify-center space-y-2">
-                      <img src={selectedFileUrl} alt="Preview" className="max-h-36 rounded-lg object-contain" />
-                      <button type="button" onClick={() => setSelectedFileUrl(null)} className="text-[11px] font-bold text-red-500 hover:underline cursor-pointer">Change Photo</button>
-                    </div>
-                  ) : (
-                    <div className="text-center space-y-2">
-                      <div className="p-3 rounded-full bg-white border-2 border-[#1F3A42]/10 text-[#1F3A42] inline-block"><Upload className="w-5 h-5" /></div>
-                      <p className="text-xs font-bold text-[#1F3A42]">Select or drag an image</p>
-                      <p className="text-[11px] text-[#9AA6A6]">Supports JPG, PNG up to 2MB</p>
-                      <input id="photo-file-upload-input" type="file" accept="image/*" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" required />
-                    </div>
-                  )}
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-[#4B6169]">Category</label>
+                  <select
+                    id="photo-category-select"
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value as 'experiments' | 'field-trips' | 'lab-meetings')}
+                    className="w-full p-2.5 rounded-xl text-sm border-2 border-[#1F3A42]/12 bg-white text-[#1F3A42] focus:outline-none focus:border-[#6CC24A]"
+                  >
+                    <option value="experiments">Experiments</option>
+                    <option value="field-trips">Field Trips</option>
+                    <option value="lab-meetings">Lab Meetings</option>
+                  </select>
                 </div>
               </div>
 
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-[#4B6169]">Caption / Description</label>
+                <textarea
+                  id="photo-description-input"
+                  rows={2}
+                  placeholder="What was happening in this experiment or trip?"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="w-full p-2.5 rounded-xl text-sm border-2 border-[#1F3A42]/12 bg-white text-[#1F3A42] focus:outline-none focus:border-[#6CC24A]"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-[#4B6169]">Select Image (Max 5MB)</label>
+                <input
+                  id="photo-file-input"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="w-full p-2 text-xs border-2 border-dashed border-[#1F3A42]/20 rounded-xl cursor-pointer bg-white"
+                  required
+                />
+              </div>
+
               {submitError && (
-                <div className="flex items-center gap-2 text-[11px] text-red-500 font-bold">
-                  <AlertCircle className="w-4 h-4" />
+                <div className="p-3 rounded-xl bg-red-50 border-2 border-red-200 text-red-600 text-xs font-bold flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
                   <span>{submitError}</span>
                 </div>
               )}
 
-              <button id="photo-submit-btn" type="submit" className="w-full py-2.5 rounded-full text-[12px] font-display font-bold transition cursor-pointer bg-[#6CC24A] text-[#14351F] shadow-[0_3px_0_#4C9A3A]">
-                Publish Photo
+              <button
+                id="submit-photo-btn"
+                type="submit"
+                className="w-full py-3 rounded-full font-display font-bold text-sm bg-[#1F3A42] text-white hover:bg-[#14282e] transition cursor-pointer"
+              >
+                Publish Snapshot
               </button>
             </form>
           )}
         </div>
       )}
 
-      <div className="flex items-center gap-2 mb-8 overflow-x-auto pb-2 border-b-2 border-[#1F3A42]/8" id="gallery-filters">
-        <Filter className="w-3.5 h-3.5 text-[#4B6169] shrink-0" />
-        {[
-          { id: 'all', label: 'All Moments' },
-          { id: 'experiments', label: 'Experiments' },
-          { id: 'field-trips', label: 'Field Trips' },
-          { id: 'lab-meetings', label: 'Lab Meetings' }
-        ].map((f) => {
-          const isActive = activeFilter === f.id;
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b-2 border-[#1F3A42]/8" id="gallery-filters">
+        <Filter className="w-4 h-4 text-[#4B6169] shrink-0 mr-1" />
+        {categories.map((cat) => {
+          const isActive = activeFilter === cat.id;
           return (
             <button
-              id={`gallery-filter-${f.id}`}
-              key={f.id}
-              onClick={() => setActiveFilter(f.id as any)}
-              className={`px-3 py-1.5 rounded-full text-[11px] font-extrabold shrink-0 transition cursor-pointer ${isActive ? 'bg-[#E4F5DA] text-[#2E7D46]' : 'text-[#4B6169] hover:text-[#1F3A42]'}`}
+              id={`filter-btn-${cat.id}`}
+              key={cat.id}
+              onClick={() => setActiveFilter(cat.id as 'all' | 'experiments' | 'field-trips' | 'lab-meetings')}
+              className={`px-4 py-1.5 rounded-full text-xs font-sans font-bold transition whitespace-nowrap cursor-pointer border-2 ${
+                isActive
+                  ? 'bg-[#1F3A42] text-white border-[#1F3A42]'
+                  : 'bg-white text-[#4B6169] border-[#1F3A42]/10 hover:border-[#1F3A42]/20'
+              }`}
             >
-              {f.label}
+              {cat.label}
             </button>
           );
         })}
@@ -208,12 +320,7 @@ export default function PhotoGallery({ photos, sheetPhotos = [], eventPhotos = [
               </div>
 
               {photo.albumEmbed && isHtmlEmbed(photo.albumEmbed) ? (
-                <div className="mt-2 w-full h-64 rounded-2xl overflow-hidden border-2 border-[#1F3A42]/10 bg-black/5 flex items-center justify-center [&_iframe]:w-full [&_iframe]:h-full [&_iframe]:border-0 shadow-inner">
-                  <div
-                    className="w-full h-full"
-                    dangerouslySetInnerHTML={{ __html: cleanEmbedHtml(photo.albumEmbed) }}
-                  />
-                </div>
+                <HtmlEmbedCard embedHtml={photo.albumEmbed} />
               ) : photo.albumUrl ? (
                 <a
                   href={photo.albumUrl}
