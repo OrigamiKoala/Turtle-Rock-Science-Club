@@ -44,10 +44,22 @@ export interface UserProfile {
   joinedDate: string;
   level: number;
   xp: number;
+  /** Badge ids from `badges.ts`. Legacy display names are migrated on load. */
   unlockedBadges: string[];
   reservedMissionIds: string[];
   newsletterSubscribed: boolean;
 }
+
+export type GameId = 'orbit' | 'molecule' | 'robot';
+
+/**
+ * Which level indices of each minigame have been solved. Persisted, because an
+ * unmounting Virtual Lab used to forget everything — which both lost the level
+ * strip's trophies and let the same level be farmed for XP over and over.
+ */
+export type GameProgress = Record<GameId, number[]>;
+
+export const EMPTY_GAME_PROGRESS: GameProgress = { orbit: [], molecule: [], robot: [] };
 
 export interface Announcement {
   id: string;

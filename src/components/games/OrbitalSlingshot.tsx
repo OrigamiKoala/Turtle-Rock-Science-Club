@@ -21,6 +21,12 @@ const GRAVITY_STRENGTH = 0.85;
 const MIN_DISTANCE = 12;
 const MAX_STEPS = 1400;
 const MAX_LAUNCH_SPEED = 7;
+/**
+ * Below this the shot is a mis-click, not a launch. Firing it anyway strands the
+ * probe crawling across the canvas for the full MAX_STEPS — about 23 seconds of
+ * a game that will not accept input.
+ */
+const MIN_LAUNCH_SPEED = 0.6;
 
 interface Planet {
   x: number;
@@ -95,6 +101,9 @@ const LEVELS: Level[] = [
   }
 ];
 
+/** Read by `badges.ts` so the "solved everything" achievement tracks reality. */
+export const ORBIT_LEVEL_COUNT = LEVELS.length;
+
 type Phase = 'aiming' | 'flying' | 'won' | 'crashed';
 
 interface Vec {
@@ -123,17 +132,19 @@ function accelerationAt(p: Vec, planets: Planet[]): Vec {
 }
 
 interface OrbitalSlingshotProps {
+  /** Level indices already solved, owned and persisted by the app. */
+  solvedLevels: number[];
   onSolve: (levelIndex: number) => void;
 }
 
-export default function OrbitalSlingshot({ onSolve }: OrbitalSlingshotProps) {
+export default function OrbitalSlingshot({ solvedLevels, onSolve }: OrbitalSlingshotProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const frameRef = useRef<number | null>(null);
 
   const [levelIndex, setLevelIndex] = useState(0);
   const [phase, setPhase] = useState<Phase>('aiming');
   const [attempts, setAttempts] = useState(0);
-  const [solved, setSolved] = useState<boolean[]>(() => LEVELS.map(() => false));
+  const [nudge, setNudge] = useState(false);
 
   // Mutable simulation state lives in refs — React state at 60fps would thrash.
   const probeRef = useRef<Vec>({ x: 0, y: 0 });
@@ -348,14 +359,10 @@ export default function OrbitalSlingshot({ onSolve }: OrbitalSlingshotProps) {
       }
 
       if (Math.hypot(probe.x - level.target.x, probe.y - level.target.y) < level.target.r) {
+        // `setPhaseSynced` updates phaseRef synchronously, so the next frame
+        // bails out at the top and this fires exactly once per winning flight.
         setPhaseSynced('won');
-        setSolved((prev) => {
-          if (prev[levelIndex]) return prev;
-          const next = [...prev];
-          next[levelIndex] = true;
-          onSolve(levelIndex);
-          return next;
-        });
+        onSolve(levelIndex);
         return;
       }
 
@@ -389,6 +396,7 @@ export default function OrbitalSlingshot({ onSolve }: OrbitalSlingshotProps) {
     if (phaseRef.current !== 'aiming') return;
     e.currentTarget.setPointerCapture(e.pointerId);
     dragRef.current = toWorld(e.clientX, e.clientY);
+    setNudge(false);
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -398,8 +406,18 @@ export default function OrbitalSlingshot({ onSolve }: OrbitalSlingshotProps) {
 
   const handlePointerUp = () => {
     if (phaseRef.current !== 'aiming' || !dragRef.current) return;
-    velocityRef.current = computeLaunchVelocity(level.start, dragRef.current);
+
+    const launch = computeLaunchVelocity(level.start, dragRef.current);
     dragRef.current = null;
+
+    // A tap is an aiming mistake, not a shot. Launching it would lock the
+    // canvas while a motionless probe times out.
+    if (Math.hypot(launch.x, launch.y) < MIN_LAUNCH_SPEED) {
+      setNudge(true);
+      return;
+    }
+
+    velocityRef.current = launch;
     trailRef.current = [{ ...probeRef.current }];
     setAttempts((n) => n + 1);
     setPhaseSynced('flying');
@@ -421,7 +439,7 @@ export default function OrbitalSlingshot({ onSolve }: OrbitalSlingshotProps) {
                 : 'bg-white/5 border-white/10 text-zinc-400 hover:text-white'
             }`}
           >
-            {solved[i] && <Trophy className="w-3 h-3 text-amber-400" />}
+            {solvedLevels.includes(i) && <Trophy className="w-3 h-3 text-amber-400" />}
             {i + 1}. {lvl.name}
           </button>
         ))}
@@ -490,7 +508,13 @@ export default function OrbitalSlingshot({ onSolve }: OrbitalSlingshotProps) {
           {phase === 'aiming' ? (
             <>
               <Rocket className="w-3.5 h-3.5 text-amber-400" />
-              Drag from the probe and release to launch
+              {nudge ? (
+                <span className="text-amber-300">
+                  That was barely a nudge — drag further from the probe to build up speed.
+                </span>
+              ) : (
+                'Drag from the probe and release to launch'
+              )}
             </>
           ) : (
             <>
@@ -499,7 +523,18 @@ export default function OrbitalSlingshot({ onSolve }: OrbitalSlingshotProps) {
             </>
           )}
         </span>
-        <span>Attempts: {attempts}</span>
+
+        <span className="flex items-center gap-3">
+          {phase === 'flying' && (
+            <button
+              onClick={resetProbe}
+              className="flex items-center gap-1.5 hover:text-white cursor-pointer transition"
+            >
+              <RotateCcw className="w-3.5 h-3.5" /> Recall probe
+            </button>
+          )}
+          <span>Attempts: {attempts}</span>
+        </span>
       </div>
     </div>
   );

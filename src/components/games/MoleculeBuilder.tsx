@@ -138,17 +138,18 @@ function initialAtoms(level: Level): Atom[] {
 }
 
 interface MoleculeBuilderProps {
+  /** Level indices already solved, owned and persisted by the app. */
+  solvedLevels: number[];
   onSolve: (levelIndex: number) => void;
 }
 
-export default function MoleculeBuilder({ onSolve }: MoleculeBuilderProps) {
+export default function MoleculeBuilder({ solvedLevels, onSolve }: MoleculeBuilderProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
 
   const [levelIndex, setLevelIndex] = useState(0);
   const [atoms, setAtoms] = useState<Atom[]>(() => initialAtoms(LEVELS[0]));
   const [bonds, setBonds] = useState<Bond[]>([]);
   const [selected, setSelected] = useState<number | null>(null);
-  const [solvedLevels, setSolvedLevels] = useState<boolean[]>(() => LEVELS.map(() => false));
   const [showHint, setShowHint] = useState(false);
 
   // Distinguishing a click (make a bond) from a drag (move an atom) needs a
@@ -215,14 +216,8 @@ export default function MoleculeBuilder({ onSolve }: MoleculeBuilderProps) {
   const solved = allSatisfied && isConnected;
 
   useEffect(() => {
-    if (!solved || solvedLevels[levelIndex]) return;
-    setSolvedLevels((prev) => {
-      const next = [...prev];
-      next[levelIndex] = true;
-      return next;
-    });
-    onSolve(levelIndex);
-  }, [solved, solvedLevels, levelIndex, onSolve]);
+    if (solved) onSolve(levelIndex);
+  }, [solved, levelIndex, onSolve]);
 
   // ------------------------------------------------------------------ bonding
 
@@ -288,14 +283,13 @@ export default function MoleculeBuilder({ onSolve }: MoleculeBuilderProps) {
     );
   };
 
-  const handlePointerUp = (e: React.PointerEvent) => {
+  const handlePointerUp = () => {
     const drag = dragRef.current;
     dragRef.current = null;
     if (!drag) return;
 
     // A press that never moved is a click: select, or bond to the selection.
     if (!drag.moved) {
-      e.stopPropagation();
       if (selected === null) {
         setSelected(drag.id);
       } else if (selected === drag.id) {
