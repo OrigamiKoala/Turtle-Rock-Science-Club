@@ -11,8 +11,8 @@
  *
  * Paste the resulting /exec URL below. See apps-script/SETUP.md.
  *
- * While this is empty the site simply shows the bundled content in data.ts, so
- * nothing breaks before the Sheet is connected.
+ * While this is empty the site simply shows an empty state, so nothing
+ * breaks before the Sheet is connected.
  */
 export const SHEET_API_URL =
   'https://script.google.com/macros/s/AKfycbzRXhmifLCQON9FGLWvOLB749Hrj3Tev7kuCdCrH3wWGyOg5zn8N2a2XgMs48t4pMHKeg/exec';

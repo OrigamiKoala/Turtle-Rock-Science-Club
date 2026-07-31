@@ -2,11 +2,30 @@ import React, { useState } from 'react';
 import { FAQItem } from '../types';
 import { ShieldCheck, Heart, Sparkles, Quote, ChevronDown, ChevronUp } from 'lucide-react';
 
-interface AboutUsProps {
-  faqs: FAQItem[];
-}
+const FAQ_ITEMS: FAQItem[] = [
+  {
+    id: 'faq-1',
+    question: 'What age groups can participate in the club?',
+    answer: 'Our programs are optimized for curiosity seekers aged 6 to 14, but older kids and high-schoolers are always welcome to join as mentors and session assistants!'
+  },
+  {
+    id: 'faq-2',
+    question: 'How do you ensure participant safety during experiments?',
+    answer: 'Safety is our absolute #1 priority! All experiments are guided by experienced adult mentors. We provide customized, impact-resistant child safety goggles, splash lab coats, and chemical-resistant gloves. We strictly avoid volatile, toxic, or highly concentrated chemicals.'
+  },
+  {
+    id: 'faq-3',
+    question: 'What materials do we need to bring from home?',
+    answer: 'We provide all lab equipment, reagent materials, electronic parts, safety gear, and instructional worksheets. The only things participants must bring are an inquisitive mind, comfortable clothes, and mandatory closed-toe shoes!'
+  },
+  {
+    id: 'faq-4',
+    question: 'Can parents volunteer or stay during meetings?',
+    answer: 'Yes, absolutely! We love active parent involvement. Parents can volunteer to assist with active bench experiments, coordinate outdoor field trips, provide snack social support, or capture lab photos.'
+  }
+];
 
-export default function AboutUs({ faqs }: AboutUsProps) {
+export default function AboutUs() {
   const [openFaqId, setOpenFaqId] = useState<string | null>(null);
   const toggleFaq = (id: string) => setOpenFaqId(openFaqId === id ? null : id);
 
@@ -90,7 +109,7 @@ export default function AboutUs({ faqs }: AboutUsProps) {
         </div>
 
         <div className="space-y-3.5" id="faq-accordion-group">
-          {faqs.map((faq) => {
+          {FAQ_ITEMS.map((faq) => {
             const isOpen = openFaqId === faq.id;
             return (
               <div id={`faq-item-${faq.id}`} key={faq.id} className="rounded-2xl border-2 border-[#1F3A42]/8 bg-white hover:border-[#1F3A42]/15 transition-all duration-300 overflow-hidden">

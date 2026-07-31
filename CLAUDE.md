@@ -79,10 +79,10 @@ and holds the snapshot.
 private. The one exception is event sign-ups, which write through immediately
 (see below).
 
-`src/data.ts` is **fallback content only**. It renders when `SHEET_API_URL` is
-empty or the fetch fails, so the site is never blank. A sheet that publishes
-zero events legitimately shows the empty state — only a *never published*
-sheet falls back.
+There is no bundled fallback content: if `SHEET_API_URL` is empty, the fetch
+fails, or nothing has been published yet, `useSiteContent.ts` returns empty
+missions/announcements/labLogs arrays and the site shows its normal empty
+state rather than demo data.
 
 ## Sign-up flow
 
@@ -130,6 +130,12 @@ anything still being drafted. If you change how events are published, keep
   `tr_sc_sheet_content_v1` (5-minute content cache), `tr_sc_last_school`,
   `tr_sc_theme` (manual light/dark override — see "Theming" below).
   Clear `tr_sc_sheet_content_v1` when testing a fresh publish.
+- FAQ copy, press mentions, and the seed gallery photos are static site
+  content unrelated to the Sheet. They live inline as local constants in
+  `AboutUs.tsx`, `LabLogAnnouncements.tsx`, and `App.tsx` respectively (there
+  used to be a `src/data.ts` bundling all of this plus Sheet-fallback demo
+  content; it was removed — Sheet data now has no fallback, see "Content
+  pipeline" above).
 - The event list is deliberately **not** cached as app state — an earlier
   version stored missions in `localStorage` and returning visitors never saw
   newly published events.

@@ -2,15 +2,31 @@ import React, { useState } from 'react';
 import { LabLog, Announcement, PressMention, UserProfile } from '../types';
 import { Newspaper, Send, CheckCircle, Mail, Clock, User, X, MessageSquare, AlertCircle } from 'lucide-react';
 
+const PRESS_MENTIONS: PressMention[] = [
+  {
+    id: 'press-1',
+    source: 'The Daily Chronicle',
+    title: 'Turtle Rock Science Club is Redefining Neighborhood STEM Education',
+    date: 'May 14, 2026',
+    snippet: 'By combining hands-on parent-student experimentation with top-tier scientific methodology, this small neighborhood collective is showing that you do not need university funding to inspire the next generation of researchers.'
+  },
+  {
+    id: 'press-2',
+    source: 'The Valley Bugle',
+    title: 'Local Residents Turn Overlook Ridge into Astronomy Hotspot',
+    date: 'June 2, 2026',
+    snippet: 'Armed with community-calibrated refractors, Turtle Rock Star Watch participants mapped Jupiter with stunning precision, demonstrating how local science collectives foster genuine astronomy passion.'
+  }
+];
+
 interface LabLogAnnouncementsProps {
   logs: LabLog[];
   announcements: Announcement[];
-  press: PressMention[];
   userProfile: UserProfile;
   onSubscribeNewsletter: () => void;
 }
 
-export default function LabLogAnnouncements({ logs, announcements, press, userProfile, onSubscribeNewsletter }: LabLogAnnouncementsProps) {
+export default function LabLogAnnouncements({ logs, announcements, userProfile, onSubscribeNewsletter }: LabLogAnnouncementsProps) {
   const [activeLogId, setActiveLogId] = useState<string | null>(null);
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [emailSuccess, setEmailSuccess] = useState(false);
@@ -134,7 +150,7 @@ export default function LabLogAnnouncements({ logs, announcements, press, userPr
               <Newspaper className="w-4 h-4" />In the News
             </h5>
             <div className="space-y-4">
-              {press.map((pr) => (
+              {PRESS_MENTIONS.map((pr) => (
                 <div key={pr.id} className="space-y-1.5 pl-4 border-l-2 border-[#1F3A42]/10">
                   <p className="text-[10px] text-[#9AA6A6] font-bold flex items-center gap-1.5"><span>{pr.source}</span><span>•</span><span>{pr.date}</span></p>
                   <h6 className="font-bold text-xs leading-snug text-[#1F3A42]">{pr.title}</h6>

@@ -1,10 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Announcement, LabLog, Mission } from './types';
-import {
-  announcements as fallbackAnnouncements,
-  initialLabLogs,
-  initialMissions
-} from './data';
 import { CONTENT_CACHE_KEY, CONTENT_CACHE_MS, SHEET_API_URL } from './config';
 
 export type ContentStatus = 'bundled' | 'loading' | 'live' | 'error';
@@ -203,9 +198,8 @@ async function fetchPayload(signal?: AbortSignal): Promise<SheetPayload> {
 /**
  * Loads events, announcements and lab logs from the published Google Sheet.
  *
- * Falls back to the content bundled in data.ts whenever the Sheet is not
- * configured, unreachable, or has published nothing yet — the site is never
- * blank because of a network problem.
+ * Falls back to empty lists whenever the Sheet is not configured,
+ * unreachable, or has published nothing yet.
  */
 export function useSiteContent(): SiteContent {
   const cached = readCache();
@@ -291,13 +285,9 @@ export function useSiteContent(): SiteContent {
   const sheetLabLogs = toLabLogs(payload?.labLogs);
 
   return {
-    // An empty published sheet means "nothing scheduled", not "show the demo
-    // data" — but a sheet that was never published at all falls back.
-    missions: payload ? sheetMissions : initialMissions,
-    announcements: payload ? sheetAnnouncements : fallbackAnnouncements,
-    // The Lab Log tab was added later, so a snapshot published before it exists
-    // has no labLogs key at all. Only an explicit empty array means "none".
-    labLogs: payload && Array.isArray(payload.labLogs) ? sheetLabLogs : initialLabLogs,
+    missions: payload ? sheetMissions : [],
+    announcements: payload ? sheetAnnouncements : [],
+    labLogs: payload && Array.isArray(payload.labLogs) ? sheetLabLogs : [],
     status,
     publishedAt: typeof payload?.publishedAt === 'string' ? payload.publishedAt : null,
     error,

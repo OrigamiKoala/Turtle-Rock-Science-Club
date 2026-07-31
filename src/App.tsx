@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { UserProfile, GalleryPhoto, Mission } from './types';
-import { initialGalleryPhotos, faqItems, pressMentions } from './data';
 import { useSiteContent, SignupResult } from './useSiteContent';
 import { useTheme } from './useTheme';
 
@@ -17,6 +16,63 @@ import JoinModal from './components/JoinModal';
 import SignupModal from './components/SignupModal';
 
 import { Trophy, Star } from 'lucide-react';
+
+const INITIAL_GALLERY_PHOTOS: GalleryPhoto[] = [
+  {
+    id: 'photo-1',
+    title: 'The Glow-in-the-Dark Catalyst',
+    description: 'Youth scientists staring in amazement at luminol chemiluminescent reactions in dark flasks.',
+    category: 'experiments',
+    imageUrl: 'https://images.unsplash.com/photo-1617155093730-a8bf47be792d?auto=format&fit=crop&q=80&w=800',
+    submittedBy: 'Parent Mark T.',
+    date: 'June 10, 2026'
+  },
+  {
+    id: 'photo-2',
+    title: 'Monthly Mission Briefing',
+    description: 'Our core club members planning out their autonomous robot chassis designs on the whiteboard.',
+    category: 'lab-meetings',
+    imageUrl: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&q=80&w=800',
+    submittedBy: 'Mentor Marcus Chen',
+    date: 'June 15, 2026'
+  },
+  {
+    id: 'photo-3',
+    title: 'Stargazing Night at Turtle Rock Park',
+    description: 'A crisp evening setting up the Newtonian reflector telescope on the grassy ridge.',
+    category: 'field-trips',
+    imageUrl: 'https://images.unsplash.com/photo-1539186607619-df476afe3ff1?auto=format&fit=crop&q=80&w=800',
+    submittedBy: 'Stargazer Sarah Jenkins',
+    date: 'June 22, 2026'
+  },
+  {
+    id: 'photo-4',
+    title: 'Turtle Rock Valley Geological Trek',
+    description: 'Collecting mineral specimens and classifying basalt fragments along the creek bed.',
+    category: 'field-trips',
+    imageUrl: 'https://images.unsplash.com/photo-1501555088652-021faa106b9b?auto=format&fit=crop&q=80&w=800',
+    submittedBy: 'Parent Emily S.',
+    date: 'June 29, 2026'
+  },
+  {
+    id: 'photo-5',
+    title: 'Micro-Biology Basics Session',
+    description: 'Calibrating compound microscopes and discovering the tiny tardigrades swimming in local pond moss.',
+    category: 'experiments',
+    imageUrl: 'https://images.unsplash.com/photo-1576086213369-97a306d36557?auto=format&fit=crop&q=80&w=800',
+    submittedBy: 'Dr. Elena Vance',
+    date: 'July 2, 2026'
+  },
+  {
+    id: 'photo-6',
+    title: 'Robotics Workshop Calibration',
+    description: 'Perfecting the weight distribution of the servo crawler chassis to prevent tipping.',
+    category: 'experiments',
+    imageUrl: 'https://images.unsplash.com/photo-1581092335397-9583fe92d232?auto=format&fit=crop&q=80&w=800',
+    submittedBy: 'Youth Scientist Leo G. (Age 11)',
+    date: 'July 5, 2026'
+  }
+];
 
 export default function App() {
   const [currentTab, setCurrentTab] = useState<string>('missions');
@@ -41,7 +97,7 @@ export default function App() {
       const saved = localStorage.getItem('tr_sc_gallery_photos');
       if (saved) return JSON.parse(saved);
     } catch (e) { console.error('Failed reading gallery photos from storage', e); }
-    return initialGalleryPhotos;
+    return INITIAL_GALLERY_PHOTOS;
   });
 
   const [signedUpIds, setSignedUpIds] = useState<string[]>(() => {
@@ -129,14 +185,14 @@ export default function App() {
         {currentTab === 'lab' && <VirtualLab userProfile={userProfile} onUpdateXp={handleUpdateXp} />}
 
         {currentTab === 'logs' && (
-          <LabLogAnnouncements logs={content.labLogs} announcements={content.announcements} press={pressMentions} userProfile={userProfile} onSubscribeNewsletter={handleSubscribeNewsletter} />
+          <LabLogAnnouncements logs={content.labLogs} announcements={content.announcements} userProfile={userProfile} onSubscribeNewsletter={handleSubscribeNewsletter} />
         )}
 
         {currentTab === 'gallery' && (
           <PhotoGallery photos={photos} userProfile={userProfile} onAddPhoto={handleAddPhoto} onOpenJoin={() => setShowJoinModal(true)} />
         )}
 
-        {currentTab === 'about' && <AboutUs faqs={faqItems} />}
+        {currentTab === 'about' && <AboutUs />}
 
         {currentTab === 'dashboard' && (
           <Dashboard userProfile={userProfile} missions={content.missions} signedUpIds={signedUpIds} onUpdateProfileName={handleUpdateProfileName} setCurrentTab={setCurrentTab} />
