@@ -20,8 +20,7 @@ export default function Footer({ setCurrentTab }: FooterProps) {
               </span>
             </div>
             <p className="text-xs text-[#4B6169] leading-relaxed font-sans">
-              Nurturing the next generation of naturalists and innovators through
-              community-centered, hands-on scientific adventure.
+              Fostering passion in STEM for elementary school students.
             </p>
           </div>
 
@@ -45,6 +44,16 @@ export default function Footer({ setCurrentTab }: FooterProps) {
                   Frequently Asked Questions
                 </button>
               </li>
+              <li>
+                <a
+                  href="https://docs.google.com/document/d/1ev0rV0iSfNzGwVkLtUcggu7fINd0rD7nv4nyroO3u9c/edit?tab=t.0"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-[#1F3A42] transition text-[#4B6169] flex items-center gap-1"
+                >
+                  <span>Official Document ↗</span>
+                </a>
+              </li>
             </ul>
           </div>
 
@@ -56,9 +65,8 @@ export default function Footer({ setCurrentTab }: FooterProps) {
             <div className="space-y-1.5 text-xs font-sans font-bold text-[#1F3A42]">
               <p className="flex items-center gap-1.5">
                 <Mail className="w-3.5 h-3.5 text-[#F2C94C]" />
-                jiayou.carl.liu@gmail.com
+                contact@trscienceclub.org
               </p>
-              <p className="opacity-60 text-[10px] uppercase tracking-wider">Response: Under 24 hours</p>
             </div>
           </div>
 

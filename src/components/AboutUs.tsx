@@ -1,27 +1,27 @@
 import React, { useState } from 'react';
 import { FAQItem } from '../types';
-import { ShieldCheck, Heart, Sparkles, Quote, ChevronDown, ChevronUp } from 'lucide-react';
+import { BookOpen, Users, Target, Calendar, MapPin, Award, ChevronDown, ChevronUp, GraduationCap, Compass, History, FileText, ExternalLink, Quote } from 'lucide-react';
 
 const FAQ_ITEMS: FAQItem[] = [
   {
     id: 'faq-1',
     question: 'What age groups can participate in the club?',
-    answer: 'Our programs are optimized for curiosity seekers aged 6 to 14, but older kids and high-schoolers are always welcome to join as mentors and session assistants!'
+    answer: 'Our programs are open to elementary and middle school students seeking hands-on STEM exploration, with high-schoolers serving as coaches and mentors!'
   },
   {
     id: 'faq-2',
-    question: 'How do you ensure participant safety during experiments?',
-    answer: 'Safety is our absolute #1 priority! All experiments are guided by experienced adult mentors. We provide customized, impact-resistant child safety goggles, splash lab coats, and chemical-resistant gloves. We strictly avoid volatile, toxic, or highly concentrated chemicals.'
+    question: 'Where do weekly meetings take place?',
+    answer: 'Meetings take place at UCI’s Paul Merage School of Business (Room SB-117) every Saturday from 7:00 to 8:30 PM until the end of October.'
   },
   {
     id: 'faq-3',
-    question: 'What materials do we need to bring from home?',
-    answer: 'We provide all lab equipment, reagent materials, electronic parts, safety gear, and instructional worksheets. The only things participants must bring are an inquisitive mind, comfortable clothes, and mandatory closed-toe shoes!'
+    question: 'What materials do students need to bring?',
+    answer: 'We provide all lab equipment, project materials, and guide sheets. Students just need curiosity, an eagerness to learn, and closed-toe shoes for safety!'
   },
   {
     id: 'faq-4',
-    question: 'Can parents volunteer or stay during meetings?',
-    answer: 'Yes, absolutely! We love active parent involvement. Parents can volunteer to assist with active bench experiments, coordinate outdoor field trips, provide snack social support, or capture lab photos.'
+    question: 'How do Science Olympiad tryouts work?',
+    answer: 'Tryouts are held near the end of October. Selected students form our SciOly competition team and attend training and official tournaments throughout the year.'
   }
 ];
 
@@ -30,82 +30,219 @@ export default function AboutUs() {
   const toggleFaq = (id: string) => setOpenFaqId(openFaqId === id ? null : id);
 
   return (
-    <section className="py-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-14 relative z-10">
-      <div className="text-center space-y-3">
-        <h3 className="font-display font-bold text-3xl sm:text-4xl tracking-tight text-[#1F3A42]">
-          Nurturing the Next Generation of Naturalists
-        </h3>
-        <p className="text-sm max-w-2xl mx-auto leading-relaxed text-[#4B6169] font-sans">
-          We're a neighborhood collective making real chemistry, electronics, and astronomy
-          accessible, educational, and deeply memorable.
-        </p>
-      </div>
+    <section className="py-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-16 relative z-10 font-sans text-left text-[#1F3A42]">
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
-        <div className="lg:col-span-7 space-y-6 text-left">
-          <div className="space-y-2">
-            <h4 className="font-display font-bold text-xl sm:text-2xl tracking-tight text-[#1F3A42]">Our Story</h4>
-            <div className="h-1.5 w-12 rounded-full bg-[#6CC24A]" />
-          </div>
+      {/* HEADER & OVERVIEW */}
+      <div className="space-y-4 border-b-2 border-[#1F3A42]/10 pb-10">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-display font-bold bg-[#E4F5DA] text-[#2E7D46]">
+          <Compass className="w-3.5 h-3.5" />
+          About Our Club
+        </span>
+        <h1 className="font-display font-bold text-4xl sm:text-5xl lg:text-6xl tracking-tight text-[#1F3A42]">
+          Turtle Rock Science Club
+        </h1>
 
-          <div className="space-y-4 text-sm leading-relaxed font-sans text-[#4B6169]">
-            <p>
-              In spring 2018, three parents living in Turtle Rock Valley gathered around a
-              cardboard table to build a solar filtration box for a partial eclipse. Local
-              schools didn't have the lab time to explore it in depth.
-            </p>
-            <p>
-              A single afternoon eclipse project turned into weekly driveway workshops.
-              Neighbors donated microscopes, teachers volunteered to solder circuit boards,
-              and families pooled funds for astronomy gear.
-            </p>
-            <p>
-              Today, Turtle Rock Science Club has welcomed hundreds of junior scientists into
-              safe lab procedures, robotics, and star mapping — 100% community-run, favoring
-              hands-on exploration over test sheets.
-            </p>
-          </div>
+        <div className="pt-2 max-w-3xl space-y-3">
+          <h2 className="font-display font-bold text-xl sm:text-2xl text-[#2E7D46]">
+            Club Overview
+          </h2>
+          <p className="text-base sm:text-lg leading-relaxed text-[#4B6169]">
+            Turtle Rock Science Club (TRSC) is a group of students, parents, and mentors, all exploring science.
+            We strive to help young students find passion in STEM, and show the world that science is a lot more
+            than just memorizing textbooks.
+          </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-4">
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2"><Sparkles className="w-4 h-4 text-[#F2C94C]" /><h5 className="font-display font-bold text-[12px] text-[#1F3A42]">Curiosity First</h5></div>
-              <p className="text-[11px] leading-relaxed text-[#4B6169]">We ask "why" at every step.</p>
-            </div>
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2"><Heart className="w-4 h-4 text-[#4C9A3A]" /><h5 className="font-display font-bold text-[12px] text-[#1F3A42]">Community Bound</h5></div>
-              <p className="text-[11px] leading-relaxed text-[#4B6169]">Peer partnerships build collaboration.</p>
-            </div>
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-[#2B6CB0]" /><h5 className="font-display font-bold text-[12px] text-[#1F3A42]">Safety Always</h5></div>
-              <p className="text-[11px] leading-relaxed text-[#4B6169]">Goggles, gear, and adult mentors.</p>
-            </div>
+          <div className="pt-2">
+            <a
+              id="official-doc-link-btn"
+              href="https://docs.google.com/document/d/1ev0rV0iSfNzGwVkLtUcggu7fINd0rD7nv4nyroO3u9c/edit?tab=t.0"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-display font-bold bg-[#1F3A42] text-white hover:bg-[#14282e] transition shadow-sm"
+            >
+              <FileText className="w-4 h-4 text-[#6CC24A]" />
+              <span>Read Official Club Overview Document</span>
+              <ExternalLink className="w-3.5 h-3.5 opacity-80" />
+            </a>
           </div>
         </div>
+      </div>
 
-        <div className="lg:col-span-5">
-          <div className="rounded-[28px] p-6 border-2 border-[#1F3A42]/8 bg-white relative overflow-hidden flex flex-col justify-between h-80 shadow-[0_8px_24px_rgba(31,58,66,0.06)]">
-            <Quote className="w-12 h-12 text-[#1F3A42]/10 absolute top-4 left-4" />
-            <div className="relative z-10 space-y-4 pt-4">
-              <blockquote className="font-display font-medium text-base leading-relaxed italic text-[#1F3A42]">
-                "Where friendships meet discoveries. Science isn't just about beaker ratios —
-                it's gasping in wonder alongside a peer as a catalyst blazes in the dark."
-              </blockquote>
+      {/* OUR MISSION */}
+      <div className="space-y-6">
+        <div className="space-y-1">
+          <h2 className="font-display font-bold text-2xl sm:text-3xl text-[#1F3A42]">
+            Our Mission
+          </h2>
+          <p className="text-sm font-semibold text-[#4B6169]">
+            We have three main goals as a club:
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="p-6 rounded-[28px] border-2 border-[#1F3A42]/10 bg-white space-y-3 shadow-[0_8px_24px_rgba(31,58,66,0.05)] hover:border-[#6CC24A] transition-all">
+            <div className="w-12 h-12 rounded-2xl bg-[#E4F5DA] flex items-center justify-center text-[#2E7D46]">
+              <BookOpen className="w-6 h-6" />
             </div>
-            <div className="flex items-center gap-3.5 border-t-2 border-[#1F3A42]/8 pt-4 mt-4 relative z-10">
-              <div className="w-10 h-10 rounded-full flex items-center justify-center font-display font-bold text-xs bg-[#6CC24A] text-[#14351F]">EV</div>
-              <div className="text-left">
-                <h5 className="font-bold text-xs text-[#1F3A42]">Dr. Elena Vance</h5>
-                <p className="text-[10px] text-[#4B6169] uppercase tracking-wider">Founder & Chief Advisor</p>
+            <h3 className="font-display font-bold text-lg text-[#1F3A42]">Build Knowledge</h3>
+            <p className="text-xs leading-relaxed text-[#4B6169]">
+              Introducing students to various STEM fields through hands-on exploration and expert-led seminars.
+            </p>
+          </div>
+
+          <div className="p-6 rounded-[28px] border-2 border-[#1F3A42]/10 bg-white space-y-3 shadow-[0_8px_24px_rgba(31,58,66,0.05)] hover:border-[#6CC24A] transition-all">
+            <div className="w-12 h-12 rounded-2xl bg-[#E4F5DA] flex items-center justify-center text-[#2E7D46]">
+              <Users className="w-6 h-6" />
+            </div>
+            <h3 className="font-display font-bold text-lg text-[#1F3A42]">Build Community</h3>
+            <p className="text-xs leading-relaxed text-[#4B6169]">
+              Creating a safe and supportive space where students with shared interests can grow and collaborate.
+            </p>
+          </div>
+
+          <div className="p-6 rounded-[28px] border-2 border-[#1F3A42]/10 bg-white space-y-3 shadow-[0_8px_24px_rgba(31,58,66,0.05)] hover:border-[#6CC24A] transition-all">
+            <div className="w-12 h-12 rounded-2xl bg-[#E4F5DA] flex items-center justify-center text-[#2E7D46]">
+              <Target className="w-6 h-6" />
+            </div>
+            <h3 className="font-display font-bold text-lg text-[#1F3A42]">Build Skills</h3>
+            <p className="text-xs leading-relaxed text-[#4B6169]">
+              Equipping students with the foundational skills necessary for future success in competitive STEM environments and academic pursuits.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* HISTORY & LEADERSHIP GRID */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* HISTORY & FOUNDATION */}
+        <div className="p-8 rounded-[28px] border-2 border-[#1F3A42]/10 bg-[#FBF7EC] space-y-4">
+          <div className="flex items-center gap-3 text-[#2E7D46]">
+            <History className="w-6 h-6 shrink-0" />
+            <h2 className="font-display font-bold text-2xl text-[#1F3A42]">History and Foundation</h2>
+          </div>
+          <p className="text-sm leading-relaxed text-[#4B6169]">
+            TRSC began as a gathering of a group of students interested in learning science. Since then, it has grown
+            to participate in competitions like Science Olympiad, as well as provide science workshops to explore different fields.
+          </p>
+        </div>
+
+        {/* TEACHING & LEADERSHIP */}
+        <div className="p-8 rounded-[28px] border-2 border-[#1F3A42]/10 bg-[#FBF7EC] space-y-4">
+          <div className="flex items-center gap-3 text-[#2E7D46]">
+            <GraduationCap className="w-6 h-6 shrink-0" />
+            <h2 className="font-display font-bold text-2xl text-[#1F3A42]">Teaching and Leadership</h2>
+          </div>
+          <p className="text-sm leading-relaxed text-[#4B6169]">
+            Our coaches are middle and high school students from University High School, Rancho San Joaquin Middle School,
+            and the Orange County School of the Arts (OCSA).
+          </p>
+        </div>
+      </div>
+
+      {/* PROGRAM STRUCTURE */}
+      <div className="space-y-6 pt-4 border-t-2 border-[#1F3A42]/10">
+        <div className="space-y-1">
+          <h2 className="font-display font-bold text-2xl sm:text-3xl text-[#1F3A42]">
+            Program Structure
+          </h2>
+          <p className="text-sm text-[#4B6169]">
+            How our meetings, subject rooms, and Science Olympiad season are organized throughout the year.
+          </p>
+        </div>
+
+        <div className="space-y-4">
+
+          {/* Phase 1 */}
+          <div className="p-6 rounded-[28px] border-2 border-[#1F3A42]/10 bg-white flex flex-col md:flex-row gap-6 items-start shadow-sm">
+            <div className="p-3 rounded-2xl bg-[#E4F5DA] text-[#2E7D46] shrink-0">
+              <Calendar className="w-6 h-6" />
+            </div>
+            <div className="space-y-2 flex-1">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="font-display font-bold text-lg text-[#1F3A42]">Weekly Science Sessions</h3>
+                <span className="text-xs font-bold px-3 py-1 rounded-full bg-[#E4F5DA] text-[#2E7D46]">
+                  Every Saturday, 7:00 – 8:30 PM (Until End of October)
+                </span>
+              </div>
+              <p className="text-xs leading-relaxed text-[#4B6169]">
+                Until the end of October, Turtle Rock Science Club meetings will occur every Saturday, from 7–8:30 PM,
+                at <strong>UCI’s Paul Merage School of Business (SB-117)</strong>. During each session, there will be 3 different rooms,
+                each with a different subject. Students can choose what subject they want to explore.
+              </p>
+              <div className="flex items-center gap-1.5 text-xs text-[#2E7D46] font-bold pt-1">
+                <MapPin className="w-3.5 h-3.5" />
+                <span>UCI Paul Merage School of Business — Room SB-117</span>
               </div>
             </div>
           </div>
+
+          {/* Phase 2 */}
+          <div className="p-6 rounded-[28px] border-2 border-[#1F3A42]/10 bg-white flex flex-col md:flex-row gap-6 items-start shadow-sm">
+            <div className="p-3 rounded-2xl bg-[#E4F5DA] text-[#2E7D46] shrink-0">
+              <Award className="w-6 h-6" />
+            </div>
+            <div className="space-y-2 flex-1">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="font-display font-bold text-lg text-[#1F3A42]">Science Olympiad Tryouts</h3>
+                <span className="text-xs font-bold px-3 py-1 rounded-full bg-[#1F3A42] text-white">
+                  Late October
+                </span>
+              </div>
+              <p className="text-xs leading-relaxed text-[#4B6169]">
+                Near the end of October, Science Olympiad tryouts will be held, and some students will be selected to represent
+                Turtle Rock in the Science Olympiad competition, attending competitions throughout the year.
+              </p>
+            </div>
+          </div>
+
+          {/* Phase 3 */}
+          <div className="p-6 rounded-[28px] border-2 border-[#1F3A42]/10 bg-white flex flex-col md:flex-row gap-6 items-start shadow-sm">
+            <div className="p-3 rounded-2xl bg-[#E4F5DA] text-[#2E7D46] shrink-0">
+              <Users className="w-6 h-6" />
+            </div>
+            <div className="space-y-2 flex-1">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="font-display font-bold text-lg text-[#1F3A42]">SciOly Team Training</h3>
+                <span className="text-xs font-bold px-3 py-1 rounded-full bg-[#E4F5DA] text-[#2E7D46]">
+                  November (Every Saturday, 7:00 – 8:30 PM)
+                </span>
+              </div>
+              <p className="text-xs leading-relaxed text-[#4B6169]">
+                In the month of November, students selected to be part of the SciOly team will meet for training every Saturday,
+                in person, from 7–8:30 PM.
+              </p>
+            </div>
+          </div>
+
+          {/* Phase 4 */}
+          <div className="p-6 rounded-[28px] border-2 border-[#1F3A42]/10 bg-white flex flex-col md:flex-row gap-6 items-start shadow-sm">
+            <div className="p-3 rounded-2xl bg-[#E4F5DA] text-[#2E7D46] shrink-0">
+              <Calendar className="w-6 h-6" />
+            </div>
+            <div className="space-y-2 flex-1">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="font-display font-bold text-lg text-[#1F3A42]">Monthly Training & Science Sessions</h3>
+                <span className="text-xs font-bold px-3 py-1 rounded-full bg-[#1F3A42] text-white">
+                  December through May
+                </span>
+              </div>
+              <p className="text-xs leading-relaxed text-[#4B6169]">
+                From December until May, SciOly team members will meet in person once a month on a Saturday, from 7–8:30 PM,
+                for further training. During this time, we will also be resuming our regular science sessions, happening once a month.
+              </p>
+            </div>
+          </div>
+
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto space-y-6 pt-6">
+      {/* FREQUENTLY ASKED QUESTIONS */}
+      <div className="max-w-3xl mx-auto space-y-6 pt-6 border-t-2 border-[#1F3A42]/10">
         <div className="text-center space-y-1">
-          <h4 className="font-display font-bold text-2xl tracking-tight text-[#1F3A42]">Frequently Asked Questions</h4>
-          <p className="text-xs text-[#4B6169]">Everything about sessions, materials, and safety.</p>
+          <h2 className="font-display font-bold text-2xl sm:text-3xl tracking-tight text-[#1F3A42]">
+            Frequently Asked Questions
+          </h2>
+          <p className="text-xs text-[#4B6169]">Everything about sessions, materials, and tryouts.</p>
         </div>
 
         <div className="space-y-3.5" id="faq-accordion-group">
@@ -123,6 +260,7 @@ export default function AboutUs() {
           })}
         </div>
       </div>
+
     </section>
   );
 }

@@ -33,8 +33,7 @@ export default function HeroSection({
           </h2>
 
           <p className="text-sm sm:text-base max-w-xl mx-auto leading-relaxed text-[#4B6169] font-sans">
-            Turtle Rock Science Club is a neighborhood crew of kids, parents, and mentors
-            exploring chemistry, robotics, and astronomy together — messy experiments included.
+            Turtle Rock Science Club is a group of students, parents, and mentors, all dedicated to exploring science.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
@@ -44,7 +43,7 @@ export default function HeroSection({
                 onClick={onOpenJoin}
                 className="w-full sm:w-auto px-6 py-3 rounded-full font-display font-bold text-sm transition-all duration-300 hover:scale-[1.02] active:scale-95 cursor-pointer flex items-center justify-center gap-2 bg-[#6CC24A] text-[#14351F] shadow-[0_4px_0_#4C9A3A]"
               >
-                <span>Join This Mission</span>
+                <span>Join</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             ) : (

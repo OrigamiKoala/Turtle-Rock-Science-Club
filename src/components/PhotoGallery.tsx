@@ -135,16 +135,9 @@ export default function PhotoGallery({ photos, sheetPhotos = [], eventPhotos = [
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b-2 border-[#1F3A42]/10 pb-6">
           <div>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-display font-bold bg-[#E4F5DA] text-[#2E7D46] mb-2">
-              <Camera className="w-3.5 h-3.5" />
-              Club Photos & Snapshots
-            </span>
             <h2 className="font-display font-bold text-3xl sm:text-4xl text-[#1F3A42] tracking-tight">
-              Science in Action
+              Photo Gallery
             </h2>
-            <p className="text-sm text-[#4B6169] mt-1 max-w-xl">
-              Photos added in the Google Sheet "Photos" tab and moments shared by our members.
-            </p>
           </div>
 
           {isJoined ? (
@@ -163,7 +156,7 @@ export default function PhotoGallery({ photos, sheetPhotos = [], eventPhotos = [
               className="px-5 py-2.5 rounded-full text-xs font-display font-bold transition flex items-center gap-2 cursor-pointer bg-[#1F3A42] text-white hover:bg-[#14282e]"
             >
               <Camera className="w-4 h-4 text-[#6CC24A]" />
-              <span>Join Club to Share Photos</span>
+              <span>Join to Share Photos</span>
             </button>
           )}
         </div>
@@ -263,11 +256,10 @@ export default function PhotoGallery({ photos, sheetPhotos = [], eventPhotos = [
                 id={`filter-btn-${cat.id}`}
                 key={cat.id}
                 onClick={() => setActiveFilter(cat.id as 'all' | 'experiments' | 'field-trips' | 'lab-meetings')}
-                className={`px-4 py-1.5 rounded-full text-xs font-sans font-bold transition whitespace-nowrap cursor-pointer border-2 ${
-                  isActive
-                    ? 'bg-[#1F3A42] text-white border-[#1F3A42]'
-                    : 'bg-white text-[#4B6169] border-[#1F3A42]/10 hover:border-[#1F3A42]/20'
-                }`}
+                className={`px-4 py-1.5 rounded-full text-xs font-sans font-bold transition whitespace-nowrap cursor-pointer border-2 ${isActive
+                  ? 'bg-[#1F3A42] text-white border-[#1F3A42]'
+                  : 'bg-white text-[#4B6169] border-[#1F3A42]/10 hover:border-[#1F3A42]/20'
+                  }`}
               >
                 {cat.label}
               </button>
@@ -311,16 +303,9 @@ export default function PhotoGallery({ photos, sheetPhotos = [], eventPhotos = [
       <div className="space-y-6 pt-6 border-t-2 border-[#1F3A42]/10">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b-2 border-[#1F3A42]/10 pb-6">
           <div>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-display font-bold bg-[#064e3b] text-white mb-2">
-              <FolderHeart className="w-3.5 h-3.5" />
-              Event Photo Albums
-            </span>
             <h3 className="font-display font-bold text-2xl sm:text-3xl text-[#1F3A42] tracking-tight">
-              Event Albums & Carousels
+              Past Events
             </h3>
-            <p className="text-sm text-[#4B6169] mt-1 max-w-xl">
-              Photo albums and interactive widgets published in the "Photos" column of the Events sheet.
-            </p>
           </div>
         </div>
 
