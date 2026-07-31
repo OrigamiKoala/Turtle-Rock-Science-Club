@@ -56,7 +56,7 @@ export default function Footer({ setCurrentTab }: FooterProps) {
             <div className="space-y-1.5 text-xs font-sans font-bold text-[#1F3A42]">
               <p className="flex items-center gap-1.5">
                 <Mail className="w-3.5 h-3.5 text-[#F2C94C]" />
-                hello@turtlerockscience.org
+                jiayou.carl.liu@gmail.com
               </p>
               <p className="opacity-60 text-[10px] uppercase tracking-wider">Response: Under 24 hours</p>
             </div>

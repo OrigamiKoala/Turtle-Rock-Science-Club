@@ -20,6 +20,7 @@ interface HeaderProps {
   setCurrentTab: (tab: string) => void;
   userProfile: UserProfile;
   onOpenJoin: () => void;
+  onOpenLogin: () => void;
   theme: Theme;
   onToggleTheme: () => void;
 }
@@ -29,6 +30,7 @@ export default function Header({
   setCurrentTab,
   userProfile,
   onOpenJoin,
+  onOpenLogin,
   theme,
   onToggleTheme
 }: HeaderProps) {
@@ -84,7 +86,7 @@ export default function Header({
             })}
           </nav>
 
-          <div className="hidden sm:flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-2.5">
             <button
               id="theme-toggle-btn"
               onClick={onToggleTheme}
@@ -112,13 +114,22 @@ export default function Header({
                 </div>
               </button>
             ) : (
-              <button
-                id="header-join-btn"
-                onClick={onOpenJoin}
-                className="px-4 py-2 rounded-full text-xs font-display font-bold transition-all duration-300 hover:scale-[1.02] active:scale-95 cursor-pointer bg-[#6CC24A] text-[#14351F] hover:brightness-105 shadow-[0_3px_0_#4C9A3A]"
-              >
-                Join
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  id="header-login-btn"
+                  onClick={onOpenLogin}
+                  className="px-3.5 py-1.5 rounded-full text-xs font-display font-bold transition-all border-2 border-[#1F3A42]/15 text-[#1F3A42] hover:bg-[#1F3A42]/5 cursor-pointer"
+                >
+                  Log In
+                </button>
+                <button
+                  id="header-join-btn"
+                  onClick={onOpenJoin}
+                  className="px-4 py-2 rounded-full text-xs font-display font-bold transition-all duration-300 hover:scale-[1.02] active:scale-95 cursor-pointer bg-[#6CC24A] text-[#14351F] hover:brightness-105 shadow-[0_3px_0_#4C9A3A]"
+                >
+                  Join
+                </button>
+              </div>
             )}
           </div>
 
@@ -179,7 +190,17 @@ export default function Header({
           })}
 
           {userProfile.level === 0 && (
-            <div className="pt-2 border-t-2 border-[#1F3A42]/10 mt-2">
+            <div className="pt-2 border-t-2 border-[#1F3A42]/10 mt-2 space-y-2">
+              <button
+                id="mobile-login-btn"
+                onClick={() => {
+                  onOpenLogin();
+                  setMenuOpen(false);
+                }}
+                className="w-full py-2.5 rounded-full text-center text-xs font-display font-bold cursor-pointer border-2 border-[#1F3A42]/15 text-[#1F3A42] hover:bg-[#1F3A42]/5"
+              >
+                Log In
+              </button>
               <button
                 id="mobile-join-btn"
                 onClick={() => {

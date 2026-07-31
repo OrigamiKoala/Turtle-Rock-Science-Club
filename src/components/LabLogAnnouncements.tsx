@@ -112,13 +112,6 @@ export default function LabLogAnnouncements({ logs, announcements, userProfile, 
 
         <div className="lg:col-span-5 flex flex-col justify-between gap-6">
           <div className="p-6 rounded-[28px] border-2 border-[#1F3A42]/8 bg-white flex flex-col justify-between space-y-4 shadow-[0_8px_24px_rgba(31,58,66,0.06)]">
-            <div className="space-y-2">
-              <div className="p-2 rounded-xl inline-block bg-[#6CC24A] text-[#14351F]"><Mail className="w-5 h-5" /></div>
-              <h5 className="font-display font-bold text-lg leading-tight text-[#1F3A42]">Get Our Newsletter</h5>
-              <p className="text-xs text-[#4B6169] leading-relaxed">
-                Bi-weekly dispatch with experiments, stargazing coordinates, and event reminders.
-              </p>
-            </div>
 
             {userProfile.newsletterSubscribed ? (
               <div className="p-3.5 rounded-xl bg-[#E4F5DA] text-xs font-bold flex items-center gap-2 text-[#2E7D46]">
@@ -143,21 +136,6 @@ export default function LabLogAnnouncements({ logs, announcements, userProfile, 
                 <p className="text-[10px] text-[#9AA6A6]">We never spam. Unsubscribe with one click.</p>
               </form>
             )}
-          </div>
-
-          <div className="space-y-4">
-            <h5 className="font-display font-bold text-[12px] flex items-center gap-2 text-[#4B6169]">
-              <Newspaper className="w-4 h-4" />In the News
-            </h5>
-            <div className="space-y-4">
-              {PRESS_MENTIONS.map((pr) => (
-                <div key={pr.id} className="space-y-1.5 pl-4 border-l-2 border-[#1F3A42]/10">
-                  <p className="text-[10px] text-[#9AA6A6] font-bold flex items-center gap-1.5"><span>{pr.source}</span><span>•</span><span>{pr.date}</span></p>
-                  <h6 className="font-bold text-xs leading-snug text-[#1F3A42]">{pr.title}</h6>
-                  <p className="text-xs leading-relaxed italic text-[#4B6169]">"{pr.snippet}"</p>
-                </div>
-              ))}
-            </div>
           </div>
         </div>
       </div>

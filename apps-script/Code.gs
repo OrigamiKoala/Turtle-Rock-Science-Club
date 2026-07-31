@@ -32,6 +32,8 @@
 var EVENTS_SHEET = 'Events';
 var ANNOUNCEMENTS_SHEET = 'Announcements';
 var LABLOG_SHEET = 'Lab Log';
+var PHOTOS_SHEET = 'Photos';
+var MEMBERS_SHEET = 'Members';
 var SIGNUPS_SHEET = 'Signups';
 var PUBLISHED_SHEET = '_Published';
 
@@ -44,7 +46,9 @@ var EVENT_HEADERS = [
   'Spots Total',
   'Spots Taken',
   'Image URL',
-  'Show on Site'
+  'Show on Site',
+  'Done',
+  'Photos'
 ];
 
 var ANNOUNCEMENT_HEADERS = ['Title', 'Date', 'Category', 'Content', 'Show on Site'];
@@ -61,9 +65,25 @@ var LABLOG_HEADERS = [
 ];
 
 var SIGNUP_HEADERS = ['Timestamp', 'Event', 'Student Name', 'School'];
+var MEMBER_HEADERS = [
+  'Timestamp',
+  'Scientist Name',
+  'School',
+  'Role',
+  'Guardian Name',
+  'Parent Email',
+  'Age',
+  'Level',
+  'XP',
+  'Unlocked Badges',
+  'Reserved Missions'
+];
+
+var PHOTO_HEADERS = ['Title', 'Image URL', 'Caption', 'Category', 'Submitted By', 'Show on Site'];
 
 var ANNOUNCEMENT_CATEGORIES = ['general', 'expansion', 'toolkit', 'volunteer'];
 var LABLOG_CATEGORIES = ['chemistry', 'robotics', 'astronomy', 'general'];
+var PHOTO_CATEGORIES = ['experiments', 'field-trips', 'lab-meetings'];
 
 var BRAND_DARK = '#064e3b';
 var SIGNUP_HEADER_COLOR = '#1e3a8a';
@@ -104,20 +124,16 @@ function setupSheets() {
   var events = ensureSheet_(ss, EVENTS_SHEET, EVENT_HEADERS, BRAND_DARK);
   var announcements = ensureSheet_(ss, ANNOUNCEMENTS_SHEET, ANNOUNCEMENT_HEADERS, BRAND_DARK);
   var labLog = ensureSheet_(ss, LABLOG_SHEET, LABLOG_HEADERS, BRAND_DARK);
+  var photos = ensureSheet_(ss, PHOTOS_SHEET, PHOTO_HEADERS, BRAND_DARK);
+  var members = ensureSheet_(ss, MEMBERS_SHEET, MEMBER_HEADERS, BRAND_DARK);
   var signups = ensureSheet_(ss, SIGNUPS_SHEET, SIGNUP_HEADERS, SIGNUP_HEADER_COLOR);
 
   styleEventsSheet_(events);
   styleAnnouncementsSheet_(announcements);
   styleLabLogSheet_(labLog);
+  stylePhotosSheet_(photos);
+  styleMembersSheet_(members);
   styleSignupsSheet_(signups);
-
-  // Seed examples only into genuinely empty sheets, so re-running setup never
-  // clobbers real content.
-  if (isSheetEmpty_(events, EVENT_HEADERS.length)) seedExampleEvent_(events);
-  if (isSheetEmpty_(announcements, ANNOUNCEMENT_HEADERS.length)) {
-    seedExampleAnnouncement_(announcements);
-  }
-  if (isSheetEmpty_(labLog, LABLOG_HEADERS.length)) seedExampleLabLog_(labLog);
 
   var stray = ss.getSheetByName('Sheet1');
   if (stray && stray.getLastRow() === 0 && ss.getSheets().length > 1) {
@@ -130,7 +146,7 @@ function setupSheets() {
   notify_(
     'Setup complete',
     'Your tabs are ready:\n\n' +
-      '  • Events\n  • Announcements\n  • Lab Log\n  • Signups (filled in automatically)\n\n' +
+      '  • Events\n  • Announcements\n  • Lab Log\n  • Photos\n  • Members (filled in automatically)\n  • Signups (filled in automatically)\n\n' +
       'Type your content, then click  🐢 Website ▸ Publish to Website.'
   );
 }
@@ -169,7 +185,7 @@ function ensureSheet_(ss, name, headers, headerColor) {
 }
 
 function styleEventsSheet_(sheet) {
-  setWidths_(sheet, [220, 130, 170, 220, 420, 90, 90, 300, 100]);
+  setWidths_(sheet, [220, 130, 170, 220, 420, 90, 90, 300, 100, 80, 250]);
   var body = sheet.getMaxRows() - 1;
   if (body <= 0) return;
 
@@ -183,6 +199,7 @@ function styleEventsSheet_(sheet) {
   sheet.getRange(2, EVENT_COL_SPOTS_TOTAL, body, 2).setDataValidation(wholeNumber);
 
   sheet.getRange(2, 9, body, 1).insertCheckboxes();
+  sheet.getRange(2, 10, body, 1).insertCheckboxes();
   sheet.getRange(2, 5, body, 1).setWrap(true);
   sheet.getRange(1, 1, sheet.getMaxRows(), EVENT_HEADERS.length).setVerticalAlignment('top');
 }
@@ -219,6 +236,25 @@ function styleSignupsSheet_(sheet) {
   sheet.getRange(1, 1, sheet.getMaxRows(), SIGNUP_HEADERS.length).setVerticalAlignment('top');
 }
 
+function styleMembersSheet_(sheet) {
+  setWidths_(sheet, [180, 200, 240, 180, 200, 240, 80, 80, 80, 260, 260]);
+  var body = sheet.getMaxRows() - 1;
+  if (body <= 0) return;
+  sheet.getRange(2, 1, body, 1).setNumberFormat('yyyy-mm-dd hh:mm:ss');
+  sheet.getRange(1, 1, sheet.getMaxRows(), MEMBER_HEADERS.length).setVerticalAlignment('top');
+}
+
+function stylePhotosSheet_(sheet) {
+  setWidths_(sheet, [220, 320, 400, 140, 180, 100]);
+  var body = sheet.getMaxRows() - 1;
+  if (body <= 0) return;
+
+  sheet.getRange(2, 4, body, 1).setDataValidation(categoryRule_(PHOTO_CATEGORIES));
+  sheet.getRange(2, 6, body, 1).insertCheckboxes();
+  sheet.getRange(2, 3, body, 1).setWrap(true);
+  sheet.getRange(1, 1, sheet.getMaxRows(), PHOTO_HEADERS.length).setVerticalAlignment('top');
+}
+
 function setWidths_(sheet, widths) {
   for (var i = 0; i < widths.length; i++) sheet.setColumnWidth(i + 1, widths[i]);
 }
@@ -229,48 +265,6 @@ function categoryRule_(values) {
     .setAllowInvalid(false)
     .setHelpText('Pick a category — it controls the badge shown on the site.')
     .build();
-}
-
-function seedExampleEvent_(sheet) {
-  sheet.appendRow([
-    'Lava Lamp Social',
-    'August 14, 2026',
-    '4:00 PM - 5:30 PM',
-    'Turtle Rock Clubhouse',
-    'Build a personalised lava lamp and explore density, oil-water polarity and ' +
-      'effervescent reactions. Bring a friend!',
-    25,
-    0,
-    'https://images.unsplash.com/photo-1544377193-33dcf4d68fb5?auto=format&fit=crop&q=80&w=800',
-    true
-  ]);
-}
-
-function seedExampleAnnouncement_(sheet) {
-  sheet.appendRow([
-    'Welcome to the new club website!',
-    'August 1, 2026',
-    'general',
-    'Our new site is live. Events and announcements posted here now update the ' +
-      'website automatically — no coding required.',
-    true
-  ]);
-}
-
-function seedExampleLabLog_(sheet) {
-  sheet.appendRow([
-    'The Great Chemistry Blast',
-    'June 18, 2026',
-    'chemistry',
-    'Our junior scientists investigated acid-base reactions by creating custom-tinted ' +
-      'effervescent volcanos.',
-    'We combined vinegar and baking soda inside 3D-printed volcanic cones. Adding dish ' +
-      'soap and liquid watercolour produced a thick, sustained foam eruption. Scientists ' +
-      'recorded reaction time, temperature shift, and how viscosity affects flow rate.',
-    'https://images.unsplash.com/photo-1532094349884-543bc11b234d?auto=format&fit=crop&q=80&w=800',
-    'Dr. Elena Vance',
-    true
-  ]);
 }
 
 function ensurePublishedSheet_(ss) {
@@ -297,6 +291,7 @@ function publishToWebsite() {
   var eventsSheet = ss.getSheetByName(EVENTS_SHEET);
   var announcementsSheet = ss.getSheetByName(ANNOUNCEMENTS_SHEET);
   var labLogSheet = ss.getSheetByName(LABLOG_SHEET);
+  var photosSheet = ss.getSheetByName(PHOTOS_SHEET);
 
   if (!eventsSheet || !announcementsSheet) {
     ui.alert(
@@ -309,9 +304,12 @@ function publishToWebsite() {
   }
 
   var problems = [];
-  var events = readEvents_(eventsSheet, problems);
+  var eventsData = readEvents_(eventsSheet, problems);
+  var events = eventsData.events;
+  var eventPhotos = eventsData.eventPhotos;
   var announcements = readAnnouncements_(announcementsSheet, problems);
   var labLogs = labLogSheet ? readLabLogs_(labLogSheet, problems) : [];
+  var photosList = photosSheet ? readPhotos_(photosSheet, problems) : [];
 
   if (problems.length) {
     var response = ui.alert(
@@ -328,6 +326,8 @@ function publishToWebsite() {
     events: events,
     announcements: announcements,
     labLogs: labLogs,
+    eventPhotos: eventPhotos,
+    photos: photosList,
     publishedAt: new Date().toISOString(),
     publishedBy: Session.getActiveUser().getEmail() || 'unknown'
   };
@@ -350,7 +350,9 @@ function publishToWebsite() {
   ui.alert(
     '🚀 Published!',
     'The website now shows:\n\n' +
-      '  • ' + events.length + ' event(s)\n' +
+      '  • ' + events.length + ' active event(s)\n' +
+      '  • ' + photosList.length + ' direct photo(s)\n' +
+      '  • ' + eventPhotos.length + ' photo album(s)\n' +
       '  • ' + announcements.length + ' announcement(s)\n' +
       '  • ' + labLogs.length + ' lab log entr(ies)\n\n' +
       (problems.length ? '  • ' + problems.length + ' row(s) skipped\n\n' : '') +
@@ -361,7 +363,8 @@ function publishToWebsite() {
 
 function readEvents_(sheet, problems) {
   var rows = bodyRows_(sheet, EVENT_HEADERS.length);
-  var out = [];
+  var events = [];
+  var eventPhotos = [];
 
   for (var i = 0; i < rows.length; i++) {
     var row = rows[i];
@@ -386,7 +389,23 @@ function readEvents_(sheet, problems) {
       continue;
     }
 
-    out.push({
+    var isDone = row[9] === true;
+    var photosUrl = String(row[10] || '').trim();
+
+    if (photosUrl) {
+      eventPhotos.push({
+        id: 'sheet-photo-' + rowNumber,
+        title: title,
+        date: formatDate_(row[1]),
+        description: String(row[4] || '').trim() || ('Photo album for ' + title),
+        albumUrl: photosUrl,
+        image: String(row[7] || '').trim()
+      });
+    }
+
+    if (isDone) continue;
+
+    events.push({
       id: 'sheet-event-' + rowNumber,
       title: title,
       date: formatDate_(row[1]),
@@ -395,7 +414,46 @@ function readEvents_(sheet, problems) {
       description: String(row[4] || '').trim(),
       spotsTotal: total,
       spotsReserved: taken,
-      image: String(row[7] || '').trim()
+      image: String(row[7] || '').trim(),
+      done: isDone,
+      photos: photosUrl
+    });
+  }
+
+  return {
+    events: events,
+    eventPhotos: eventPhotos
+  };
+}
+
+function readPhotos_(sheet, problems) {
+  var rows = bodyRows_(sheet, PHOTO_HEADERS.length);
+  var out = [];
+
+  for (var i = 0; i < rows.length; i++) {
+    var row = rows[i];
+    var rowNumber = i + 2;
+
+    if (isBlankRow_(row)) continue;
+    if (row[5] === false) continue;
+
+    var title = String(row[0]).trim();
+    var imageUrl = String(row[1] || '').trim();
+
+    if (!title && !imageUrl) {
+      problems.push('Photos row ' + rowNumber + ': missing Title or Image URL.');
+      continue;
+    }
+
+    out.push({
+      id: 'sheet-direct-photo-' + rowNumber,
+      title: title || 'Science Moment',
+      imageUrl: imageUrl,
+      caption: String(row[2] || '').trim(),
+      description: String(row[2] || '').trim(),
+      category: normaliseCategory_(row[3], PHOTO_CATEGORIES),
+      submittedBy: String(row[4] || '').trim() || 'Turtle Rock Science Club',
+      date: formatDate_(new Date())
     });
   }
 
@@ -479,22 +537,6 @@ function bodyRows_(sheet, width) {
   return sheet.getRange(2, 1, lastRow - 1, width).getValues();
 }
 
-/**
- * True when the sheet has headers but no real content.
- *
- * getLastRow() cannot answer this: insertCheckboxes() writes FALSE into every
- * cell of its column, so a freshly formatted sheet reports a last row in the
- * thousands. Only an actual scan of the values tells us whether anyone has
- * typed anything.
- */
-function isSheetEmpty_(sheet, width) {
-  var rows = bodyRows_(sheet, width);
-  for (var i = 0; i < rows.length; i++) {
-    if (!isBlankRow_(rows[i])) return false;
-  }
-  return true;
-}
-
 function isBlankRow_(row) {
   for (var i = 0; i < row.length; i++) {
     // Checkboxes read as false on an otherwise empty row, so they are not content.
@@ -533,6 +575,8 @@ function doGet(e) {
       events: [],
       announcements: [],
       labLogs: [],
+      eventPhotos: [],
+      photos: [],
       publishedAt: null,
       note: 'Nothing published yet. Open the spreadsheet and click 🐢 Website ▸ Publish to Website.'
     });
@@ -553,13 +597,136 @@ function doPost(e) {
 
   try {
     var body = e && e.postData ? JSON.parse(e.postData.contents) : {};
-    if (body.action !== 'signup') throw new Error('Unknown action.');
-    result = handleSignup_(body);
+    if (body.action === 'signup') {
+      result = handleSignup_(body);
+    } else if (body.action === 'join') {
+      result = handleJoin_(body);
+    } else if (body.action === 'login') {
+      result = handleLogin_(body);
+    } else if (body.action === 'syncProfile') {
+      result = handleSyncProfile_(body);
+    } else {
+      throw new Error('Unknown action.');
+    }
   } catch (err) {
-    result = { ok: false, error: err && err.message ? err.message : 'Signup failed.' };
+    result = { ok: false, error: err && err.message ? err.message : 'Action failed.' };
   }
 
   return serve_(JSON.stringify(result), e);
+}
+
+function handleJoin_(body) {
+  var name = String(body.name || body.childName || '').trim();
+  var school = String(body.school || '').trim();
+  var role = String(body.role || 'Rookie Researcher').trim();
+  var parentName = String(body.parentName || '').trim();
+  var email = String(body.email || '').trim();
+  var childAge = String(body.childAge || '').trim();
+
+  if (!name) return { ok: false, error: 'Please enter a name.' };
+  if (!school) return { ok: false, error: 'Please enter a school.' };
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var members = ss.getSheetByName(MEMBERS_SHEET);
+  if (!members) {
+    members = ensureSheet_(ss, MEMBERS_SHEET, MEMBER_HEADERS, BRAND_DARK);
+    styleMembersSheet_(members);
+  }
+
+  members.appendRow([new Date(), name, school, role, parentName, email, childAge, 1, 15, 'Foundation Member', '']);
+
+  return { ok: true, name: name };
+}
+
+function handleLogin_(body) {
+  var identifier = String(body.identifier || body.email || body.name || '').trim().toLowerCase();
+  if (!identifier) return { ok: false, error: 'Please enter your name or email address.' };
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var members = ss.getSheetByName(MEMBERS_SHEET);
+  if (!members) return { ok: false, error: 'No member records found in spreadsheet.' };
+
+  var rows = bodyRows_(members, MEMBER_HEADERS.length);
+  for (var i = 0; i < rows.length; i++) {
+    var row = rows[i];
+    var rName = String(row[1] || '').trim().toLowerCase();
+    var rEmail = String(row[5] || '').trim().toLowerCase();
+
+    if (rName === identifier || rEmail === identifier) {
+      var name = String(row[1] || '').trim();
+      var school = String(row[2] || '').trim();
+      var role = String(row[3] || 'Rookie Researcher').trim();
+      var level = toWholeNumber_(row[7], 1);
+      var xp = toWholeNumber_(row[8], 15);
+      var rawBadges = String(row[9] || '').trim();
+      var rawMissions = String(row[10] || '').trim();
+
+      var unlockedBadges = rawBadges ? rawBadges.split(',').map(function(s) { return s.trim(); }).filter(Boolean) : ['Foundation Member'];
+      var reservedMissionIds = rawMissions ? rawMissions.split(',').map(function(s) { return s.trim(); }).filter(Boolean) : [];
+
+      return {
+        ok: true,
+        profile: {
+          name: name,
+          school: school,
+          role: role,
+          joinedDate: formatDate_(row[0]) || 'Club Member',
+          level: level || 1,
+          xp: xp || 15,
+          unlockedBadges: unlockedBadges,
+          reservedMissionIds: reservedMissionIds,
+          newsletterSubscribed: false
+        }
+      };
+    }
+  }
+
+  return { ok: false, error: 'Member not found. Check spelling or click Join to sign up.' };
+}
+
+function handleSyncProfile_(body) {
+  var name = String(body.name || '').trim();
+  var email = String(body.email || '').trim();
+  var school = String(body.school || '').trim();
+  var role = String(body.role || 'Rookie Researcher').trim();
+  var level = toWholeNumber_(body.level, 1);
+  var xp = toWholeNumber_(body.xp, 0);
+  var unlockedBadges = Array.isArray(body.unlockedBadges) ? body.unlockedBadges.join(',') : String(body.unlockedBadges || '');
+  var reservedMissions = Array.isArray(body.reservedMissionIds) ? body.reservedMissionIds.join(',') : String(body.reservedMissions || '');
+
+  if (!name && !email) return { ok: false, error: 'Missing name or email for profile sync.' };
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var members = ss.getSheetByName(MEMBERS_SHEET);
+  if (!members) {
+    members = ensureSheet_(ss, MEMBERS_SHEET, MEMBER_HEADERS, BRAND_DARK);
+    styleMembersSheet_(members);
+  }
+
+  var rows = bodyRows_(members, MEMBER_HEADERS.length);
+  var targetRow = -1;
+  var nameLower = name.toLowerCase();
+  var emailLower = email.toLowerCase();
+
+  for (var i = 0; i < rows.length; i++) {
+    var rName = String(rows[i][1] || '').trim().toLowerCase();
+    var rEmail = String(rows[i][5] || '').trim().toLowerCase();
+    if ((nameLower && rName === nameLower) || (emailLower && rEmail === emailLower)) {
+      targetRow = i + 2;
+      break;
+    }
+  }
+
+  if (targetRow > 1) {
+    if (level) members.getRange(targetRow, 8).setValue(level);
+    members.getRange(targetRow, 9).setValue(xp);
+    members.getRange(targetRow, 10).setValue(unlockedBadges);
+    members.getRange(targetRow, 11).setValue(reservedMissions);
+  } else {
+    members.appendRow([new Date(), name, school, role, '', email, '', level, xp, unlockedBadges, reservedMissions]);
+  }
+
+  return { ok: true };
 }
 
 /**

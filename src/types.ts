@@ -22,6 +22,15 @@ export interface Mission {
   badgeRequired?: string;
 }
 
+export interface EventPhoto {
+  id: string;
+  title: string;
+  date: string;
+  description: string;
+  albumUrl: string;
+  image?: string;
+}
+
 export interface GalleryPhoto {
   id: string;
   title: string;
@@ -30,6 +39,7 @@ export interface GalleryPhoto {
   imageUrl: string;
   submittedBy: string;
   date: string;
+  albumUrl?: string;
 }
 
 export interface FAQItem {

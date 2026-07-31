@@ -34,9 +34,11 @@ You only do this once. It takes about five minutes.
    | **Events** | Upcoming events shown on the site |
    | **Announcements** | Club announcements shown on the site |
    | **Lab Log** | Write-ups shown under "Latest From the Lab Log" |
+   | **Photos** | Direct photos shown at top of Photo Gallery |
+   | **Members** | Filled in **automatically** when someone joins the club |
    | **Signups** | Filled in **automatically** when someone signs up online |
 
-   Do not type in **Signups** — the script writes to it.
+   Do not type in **Signups** or **Members** — the script writes to them.
 
 ## Step 3 — Deploy the web app
 
@@ -92,6 +94,8 @@ the sheet stays private.
 | Spots Taken | no | Must not exceed Spots Total, or the row is skipped. |
 | Image URL | no | Any public image link. Blank shows a themed placeholder. |
 | Show on Site | **tick it** | Unticked rows are ignored. |
+| Done | no | Check to hide completed events from "Upcoming Events" on the website. |
+| Photos | no | Link to a photo album. Non-blank links publish in the Photo Gallery under the event name. |
 
 ### Announcements tab columns
 
@@ -114,6 +118,17 @@ the sheet stays private.
 | Full Write-Up | no | Shown when the entry is opened. |
 | Image URL | no | Any public image link. |
 | Author | no | e.g. `Dr. Elena Vance` |
+| Show on Site | **tick it** | |
+
+### Photos tab columns
+
+| Column | Required | Notes |
+|---|---|---|
+| Title | yes | e.g. `Baking Soda Splash` |
+| Image URL | yes | Public image link to feature at the top of Photo Gallery. |
+| Caption | no | Brief photo description or story. |
+| Category | no | Dropdown: `experiments`, `field-trips`, `lab-meetings` |
+| Submitted By | no | e.g. `Mentor Marcus Chen` |
 | Show on Site | **tick it** | |
 
 ---

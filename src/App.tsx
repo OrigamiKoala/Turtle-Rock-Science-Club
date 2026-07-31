@@ -13,6 +13,7 @@ import AboutUs from './components/AboutUs';
 import LabLogAnnouncements from './components/LabLogAnnouncements';
 import Dashboard from './components/Dashboard';
 import JoinModal from './components/JoinModal';
+import LoginModal from './components/LoginModal';
 import SignupModal from './components/SignupModal';
 
 import { Trophy, Star } from 'lucide-react';
@@ -77,6 +78,7 @@ const INITIAL_GALLERY_PHOTOS: GalleryPhoto[] = [
 export default function App() {
   const [currentTab, setCurrentTab] = useState<string>('missions');
   const [showJoinModal, setShowJoinModal] = useState<boolean>(false);
+  const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
   const [showLevelUpAlert, setShowLevelUpAlert] = useState<boolean>(false);
   const [signupMission, setSignupMission] = useState<Mission | null>(null);
   const [signupNotice, setSignupNotice] = useState<{ mission: Mission; result: SignupResult } | null>(null);
@@ -108,7 +110,12 @@ export default function App() {
     return [];
   });
 
-  useEffect(() => { localStorage.setItem('tr_sc_user_profile', JSON.stringify(userProfile)); }, [userProfile]);
+  useEffect(() => {
+    localStorage.setItem('tr_sc_user_profile', JSON.stringify(userProfile));
+    if (userProfile.level > 0) {
+      void content.syncProfile(userProfile);
+    }
+  }, [userProfile, content]);
   useEffect(() => { localStorage.setItem('tr_sc_gallery_photos', JSON.stringify(photos)); }, [photos]);
   useEffect(() => { localStorage.setItem('tr_sc_signed_up_ids', JSON.stringify(signedUpIds)); }, [signedUpIds]);
 
@@ -133,6 +140,15 @@ export default function App() {
 
   const handleJoinSuccess = (newProfile: UserProfile) => {
     setUserProfile(newProfile);
+    setCurrentTab('dashboard');
+    void content.syncProfile(newProfile);
+  };
+
+  const handleLoginSuccess = (profile: UserProfile) => {
+    setUserProfile(profile);
+    if (Array.isArray(profile.reservedMissionIds)) {
+      setSignedUpIds(profile.reservedMissionIds);
+    }
     setCurrentTab('dashboard');
   };
 
@@ -172,7 +188,7 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col justify-between font-sans bg-[#FBF7EC] text-[#1F3A42] relative overflow-hidden bg-dot-pattern">
 
-      <Header currentTab={currentTab} setCurrentTab={setCurrentTab} userProfile={userProfile} onOpenJoin={() => setShowJoinModal(true)} theme={theme} onToggleTheme={toggleTheme} />
+      <Header currentTab={currentTab} setCurrentTab={setCurrentTab} userProfile={userProfile} onOpenJoin={() => setShowJoinModal(true)} onOpenLogin={() => setShowLoginModal(true)} theme={theme} onToggleTheme={toggleTheme} />
 
       <main className="flex-1 pb-10">
         {currentTab === 'missions' && (
@@ -189,7 +205,7 @@ export default function App() {
         )}
 
         {currentTab === 'gallery' && (
-          <PhotoGallery photos={photos} userProfile={userProfile} onAddPhoto={handleAddPhoto} onOpenJoin={() => setShowJoinModal(true)} />
+          <PhotoGallery photos={photos} sheetPhotos={content.photos} eventPhotos={content.eventPhotos} userProfile={userProfile} onAddPhoto={handleAddPhoto} onOpenJoin={() => setShowJoinModal(true)} />
         )}
 
         {currentTab === 'about' && <AboutUs />}
@@ -219,7 +235,16 @@ export default function App() {
         </div>
       )}
 
-      {showJoinModal && <JoinModal onClose={() => setShowJoinModal(false)} onJoinSuccess={handleJoinSuccess} />}
+      {showJoinModal && <JoinModal onClose={() => setShowJoinModal(false)} onJoinSuccess={handleJoinSuccess} onJoinSubmit={content.submitMemberJoin} />}
+
+      {showLoginModal && (
+        <LoginModal
+          onClose={() => setShowLoginModal(false)}
+          onLoginSubmit={content.loginMember}
+          onLoginSuccess={handleLoginSuccess}
+          onOpenJoin={() => setShowJoinModal(true)}
+        />
+      )}
 
       {showLevelUpAlert && (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-[#1F3A42]/50 backdrop-blur-sm flex items-center justify-center p-4">

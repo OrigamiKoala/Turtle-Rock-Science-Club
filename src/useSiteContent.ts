@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Announcement, LabLog, Mission } from './types';
+import { Announcement, EventPhoto, GalleryPhoto, LabLog, Mission, UserProfile } from './types';
 import { CONTENT_CACHE_KEY, CONTENT_CACHE_MS, SHEET_API_URL } from './config';
 
 export type ContentStatus = 'bundled' | 'loading' | 'live' | 'error';
@@ -19,22 +19,38 @@ export interface SignupResult {
   spotsLeft?: number;
 }
 
+export interface MemberJoinDetails {
+  name: string;
+  school: string;
+  role?: string;
+  parentName?: string;
+  email?: string;
+  childAge?: string;
+}
+
 export interface SiteContent {
   missions: Mission[];
   announcements: Announcement[];
   labLogs: LabLog[];
+  eventPhotos: EventPhoto[];
+  photos: GalleryPhoto[];
   status: ContentStatus;
   publishedAt: string | null;
   error: string | null;
   /** Re-fetches from the Sheet, skipping the cache. */
   refresh: () => Promise<void>;
   submitSignup: (details: SignupDetails) => Promise<SignupResult>;
+  submitMemberJoin: (details: MemberJoinDetails) => Promise<void>;
+  loginMember: (identifier: string) => Promise<{ ok: boolean; profile?: UserProfile; error?: string }>;
+  syncProfile: (profile: UserProfile) => Promise<void>;
 }
 
 interface SheetPayload {
   events?: unknown;
   announcements?: unknown;
   labLogs?: unknown;
+  eventPhotos?: unknown;
+  photos?: unknown;
   publishedAt?: string | null;
 }
 
@@ -54,6 +70,7 @@ const ANNOUNCEMENT_CATEGORIES: Announcement['category'][] = [
 ];
 
 const LABLOG_CATEGORIES: LabLog['category'][] = ['chemistry', 'robotics', 'astronomy', 'general'];
+const PHOTO_CATEGORIES: GalleryPhoto['category'][] = ['experiments', 'field-trips', 'lab-meetings'];
 
 function asString(value: unknown, fallback = ''): string {
   return typeof value === 'string' ? value.trim() : fallback;
@@ -79,6 +96,8 @@ function toMissions(raw: unknown): Mission[] {
   return raw.flatMap((entry, index): Mission[] => {
     if (!entry || typeof entry !== 'object') return [];
     const row = entry as Record<string, unknown>;
+
+    if (row.done === true) return [];
 
     const title = asString(row.title);
     if (!title) return [];
@@ -144,6 +163,54 @@ function toLabLogs(raw: unknown): LabLog[] {
         content: asString(row.content),
         image: asString(row.image) || PLACEHOLDER_IMAGE,
         author: asString(row.author, 'Turtle Rock Science Club')
+      }
+    ];
+  });
+}
+
+function toEventPhotos(raw: unknown): EventPhoto[] {
+  if (!Array.isArray(raw)) return [];
+
+  return raw.flatMap((entry, index): EventPhoto[] => {
+    if (!entry || typeof entry !== 'object') return [];
+    const row = entry as Record<string, unknown>;
+
+    const title = asString(row.title);
+    const albumUrl = asString(row.albumUrl || row.photos);
+    if (!title || !albumUrl) return [];
+
+    return [
+      {
+        id: asString(row.id) || `sheet-photo-${index}`,
+        title,
+        date: asString(row.date, 'Date to be announced'),
+        description: asString(row.description, `Photo album for ${title}`),
+        albumUrl,
+        image: asString(row.image) || PLACEHOLDER_IMAGE
+      }
+    ];
+  });
+}
+
+function toGalleryPhotos(raw: unknown): GalleryPhoto[] {
+  if (!Array.isArray(raw)) return [];
+
+  return raw.flatMap((entry, index): GalleryPhoto[] => {
+    if (!entry || typeof entry !== 'object') return [];
+    const row = entry as Record<string, unknown>;
+
+    const imageUrl = asString(row.imageUrl || row.image);
+    if (!imageUrl) return [];
+
+    return [
+      {
+        id: asString(row.id) || `sheet-direct-photo-${index}`,
+        title: asString(row.title, 'Science Moment'),
+        description: asString(row.caption || row.description),
+        category: pickCategory(row.category, PHOTO_CATEGORIES, 'experiments'),
+        imageUrl,
+        submittedBy: asString(row.submittedBy, 'Turtle Rock Science Club'),
+        date: asString(row.date, 'Club Moment')
       }
     ];
   });
@@ -280,18 +347,89 @@ export function useSiteContent(): SiteContent {
     [refresh]
   );
 
+  const submitMemberJoin = useCallback(async (details: MemberJoinDetails): Promise<void> => {
+    if (!SHEET_API_URL) return;
+
+    try {
+      await fetch(SHEET_API_URL, {
+        method: 'POST',
+        redirect: 'follow',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'join', ...details })
+      });
+    } catch {
+      // Silently swallow errors logging join details so user onboarding flow never blocks
+    }
+  }, []);
+
+  const loginMember = useCallback(
+    async (identifier: string): Promise<{ ok: boolean; profile?: UserProfile; error?: string }> => {
+      if (!SHEET_API_URL) {
+        return { ok: false, error: 'Spreadsheet connection not configured.' };
+      }
+
+      try {
+        const response = await fetch(SHEET_API_URL, {
+          method: 'POST',
+          redirect: 'follow',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'login', identifier })
+        });
+
+        if (!response.ok) return { ok: false, error: `Server error HTTP ${response.status}` };
+
+        const result = JSON.parse(await response.text()) as { ok: boolean; profile?: UserProfile; error?: string };
+        return result;
+      } catch {
+        return { ok: false, error: 'Could not connect to member database. Please try again.' };
+      }
+    },
+    []
+  );
+
+  const syncProfile = useCallback(async (profile: UserProfile): Promise<void> => {
+    if (!SHEET_API_URL || profile.level <= 0) return;
+
+    try {
+      await fetch(SHEET_API_URL, {
+        method: 'POST',
+        redirect: 'follow',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          action: 'syncProfile',
+          name: profile.name,
+          school: profile.school,
+          role: profile.role,
+          level: profile.level,
+          xp: profile.xp,
+          unlockedBadges: profile.unlockedBadges,
+          reservedMissionIds: profile.reservedMissionIds
+        })
+      });
+    } catch {
+      // Ignore network failures on profile sync
+    }
+  }, []);
+
   const sheetMissions = toMissions(payload?.events);
   const sheetAnnouncements = toAnnouncements(payload?.announcements);
   const sheetLabLogs = toLabLogs(payload?.labLogs);
+  const sheetEventPhotos = toEventPhotos(payload?.eventPhotos);
+  const sheetPhotos = toGalleryPhotos(payload?.photos);
 
   return {
     missions: payload ? sheetMissions : [],
     announcements: payload ? sheetAnnouncements : [],
     labLogs: payload && Array.isArray(payload.labLogs) ? sheetLabLogs : [],
+    eventPhotos: payload && Array.isArray(payload.eventPhotos) ? sheetEventPhotos : [],
+    photos: payload && Array.isArray(payload.photos) ? sheetPhotos : [],
     status,
     publishedAt: typeof payload?.publishedAt === 'string' ? payload.publishedAt : null,
     error,
     refresh,
-    submitSignup
+    submitSignup,
+    submitMemberJoin,
+    loginMember,
+    syncProfile
   };
 }

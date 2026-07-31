@@ -5,9 +5,10 @@ import { X, ShieldAlert, Smile, CheckSquare, Square, CheckCircle } from 'lucide-
 interface JoinModalProps {
   onClose: () => void;
   onJoinSuccess: (profile: UserProfile) => void;
+  onJoinSubmit?: (details: { name: string; school: string; role: string; parentName: string; email: string; childAge: string }) => void;
 }
 
-export default function JoinModal({ onClose, onJoinSuccess }: JoinModalProps) {
+export default function JoinModal({ onClose, onJoinSuccess, onJoinSubmit }: JoinModalProps) {
   const [childName, setChildName] = useState('');
   const [school, setSchool] = useState('');
   const [parentName, setParentName] = useState('');
@@ -33,6 +34,17 @@ export default function JoinModal({ onClose, onJoinSuccess }: JoinModalProps) {
 
     setErrorMsg('');
     setJoinedDone(true);
+
+    if (onJoinSubmit) {
+      onJoinSubmit({
+        name: childName,
+        school,
+        role: 'Rookie Researcher',
+        parentName,
+        email,
+        childAge
+      });
+    }
 
     const initialProfile: UserProfile = {
       name: childName,
