@@ -176,8 +176,10 @@ function toEventPhotos(raw: unknown): EventPhoto[] {
     const row = entry as Record<string, unknown>;
 
     const title = asString(row.title);
-    const albumUrl = asString(row.albumUrl || row.photos);
-    if (!title || !albumUrl) return [];
+    const photosRaw = asString(row.albumEmbed || row.photos || row.albumUrl);
+    if (!title || !photosRaw) return [];
+
+    const isHtml = photosRaw.includes('<');
 
     return [
       {
@@ -185,7 +187,8 @@ function toEventPhotos(raw: unknown): EventPhoto[] {
         title,
         date: asString(row.date, 'Date to be announced'),
         description: asString(row.description, `Photo album for ${title}`),
-        albumUrl,
+        albumUrl: isHtml ? asString(row.albumUrl) : photosRaw,
+        albumEmbed: photosRaw,
         image: asString(row.image) || PLACEHOLDER_IMAGE
       }
     ];

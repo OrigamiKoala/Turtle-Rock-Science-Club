@@ -24,6 +24,16 @@ export default function PhotoGallery({ photos, sheetPhotos = [], eventPhotos = [
 
   const isJoined = userProfile.level > 0;
 
+  const isHtmlEmbed = (str?: string) =>
+    typeof str === 'string' && (str.trim().startsWith('<') || str.toLowerCase().includes('<iframe'));
+
+  const cleanEmbedHtml = (html: string) => {
+    if (!html) return '';
+    return html
+      .replace(/width=["']\d+["']/gi, 'width="100%"')
+      .replace(/height=["']\d+["']/gi, 'height="100%"');
+  };
+
   // Convert event photo albums from sheet into gallery items
   const sheetAlbumPhotos: GalleryPhoto[] = eventPhotos.map((ep) => ({
     id: ep.id,
@@ -33,7 +43,8 @@ export default function PhotoGallery({ photos, sheetPhotos = [], eventPhotos = [
     imageUrl: ep.image || 'https://images.unsplash.com/photo-1532094349884-543bc11b234d?auto=format&fit=crop&q=80&w=800',
     submittedBy: 'Turtle Rock Science Club',
     date: ep.date,
-    albumUrl: ep.albumUrl
+    albumUrl: ep.albumUrl,
+    albumEmbed: ep.albumEmbed
   }));
 
   // Direct photos from the "Photos" tab appear at the top, followed by event photo album links, then user photos
@@ -186,8 +197,8 @@ export default function PhotoGallery({ photos, sheetPhotos = [], eventPhotos = [
           <div id={`gallery-card-${photo.id}`} key={photo.id} className="rounded-[28px] overflow-hidden border-2 border-[#1F3A42]/8 bg-white transition-all duration-300 flex flex-col justify-between hover:border-[#1F3A42]/15 shadow-[0_8px_24px_rgba(31,58,66,0.06)]">
             <div className="relative h-56 overflow-hidden border-b-2 border-[#1F3A42]/5">
               <img src={photo.imageUrl} alt={photo.title} className="w-full h-full object-cover transition-transform duration-500 hover:scale-[1.03]" referrerPolicy="no-referrer" />
-              <span className={`absolute bottom-3 left-3 px-2.5 py-1 rounded-full text-[10px] font-display font-bold ${photo.albumUrl ? 'bg-[#064e3b] text-white' : 'bg-white/95 text-[#1F3A42]'}`}>
-                {photo.albumUrl ? 'Event Album' : photo.category.replace('-', ' ')}
+              <span className={`absolute bottom-3 left-3 px-2.5 py-1 rounded-full text-[10px] font-display font-bold ${photo.albumEmbed || photo.albumUrl ? 'bg-[#064e3b] text-white' : 'bg-white/95 text-[#1F3A42]'}`}>
+                {photo.albumEmbed || photo.albumUrl ? 'Event Album' : photo.category.replace('-', ' ')}
               </span>
             </div>
             <div className="p-5 space-y-3 flex-1 flex flex-col justify-between">
@@ -195,11 +206,15 @@ export default function PhotoGallery({ photos, sheetPhotos = [], eventPhotos = [
                 <h4 className="font-display font-bold text-base leading-snug text-[#1F3A42]">{photo.title}</h4>
                 <p className="text-xs leading-relaxed text-[#4B6169]">{photo.description}</p>
               </div>
-              <div className="pt-3 border-t-2 border-[#1F3A42]/8 text-[11px] font-bold flex items-center justify-between text-[#4B6169]">
-                <span>By: {photo.submittedBy}</span>
-                <span>{photo.date}</span>
-              </div>
-              {photo.albumUrl && (
+
+              {photo.albumEmbed && isHtmlEmbed(photo.albumEmbed) ? (
+                <div className="mt-2 w-full h-64 rounded-2xl overflow-hidden border-2 border-[#1F3A42]/10 bg-black/5 flex items-center justify-center [&_iframe]:w-full [&_iframe]:h-full [&_iframe]:border-0 shadow-inner">
+                  <div
+                    className="w-full h-full"
+                    dangerouslySetInnerHTML={{ __html: cleanEmbedHtml(photo.albumEmbed) }}
+                  />
+                </div>
+              ) : photo.albumUrl ? (
                 <a
                   href={photo.albumUrl}
                   target="_blank"
@@ -209,7 +224,12 @@ export default function PhotoGallery({ photos, sheetPhotos = [], eventPhotos = [
                   <span>View Event Photo Album</span>
                   <ExternalLink className="w-3.5 h-3.5" />
                 </a>
-              )}
+              ) : null}
+
+              <div className="pt-3 border-t-2 border-[#1F3A42]/8 text-[11px] font-bold flex items-center justify-between text-[#4B6169]">
+                <span>By: {photo.submittedBy}</span>
+                <span>{photo.date}</span>
+              </div>
             </div>
           </div>
         ))}

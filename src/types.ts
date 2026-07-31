@@ -27,7 +27,8 @@ export interface EventPhoto {
   title: string;
   date: string;
   description: string;
-  albumUrl: string;
+  albumUrl?: string;
+  albumEmbed?: string;
   image?: string;
 }
 
@@ -40,6 +41,7 @@ export interface GalleryPhoto {
   submittedBy: string;
   date: string;
   albumUrl?: string;
+  albumEmbed?: string;
 }
 
 export interface FAQItem {

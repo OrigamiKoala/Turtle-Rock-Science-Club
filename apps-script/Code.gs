@@ -390,15 +390,17 @@ function readEvents_(sheet, problems) {
     }
 
     var isDone = row[9] === true;
-    var photosUrl = String(row[10] || '').trim();
+    var photosValue = String(row[10] || '').trim();
 
-    if (photosUrl) {
+    if (photosValue) {
+      var isHtml = photosValue.indexOf('<') !== -1;
       eventPhotos.push({
         id: 'sheet-photo-' + rowNumber,
         title: title,
         date: formatDate_(row[1]),
         description: String(row[4] || '').trim() || ('Photo album for ' + title),
-        albumUrl: photosUrl,
+        albumUrl: isHtml ? '' : photosValue,
+        albumEmbed: photosValue,
         image: String(row[7] || '').trim()
       });
     }
@@ -416,7 +418,8 @@ function readEvents_(sheet, problems) {
       spotsReserved: taken,
       image: String(row[7] || '').trim(),
       done: isDone,
-      photos: photosUrl
+      photos: photosValue,
+      albumEmbed: photosValue
     });
   }
 
