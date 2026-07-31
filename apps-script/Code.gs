@@ -186,7 +186,7 @@ function ensureSheet_(ss, name, headers, headerColor) {
 
 function styleEventsSheet_(sheet) {
   setWidths_(sheet, [220, 130, 170, 220, 420, 90, 90, 300, 100, 80, 250]);
-  var body = sheet.getMaxRows() - 1;
+  var body = Math.min(100, Math.max(20, sheet.getLastRow() - 1));
   if (body <= 0) return;
 
   sheet.getRange(2, 2, body, 1).setNumberFormat('mmmm d, yyyy');
@@ -201,58 +201,58 @@ function styleEventsSheet_(sheet) {
   sheet.getRange(2, 9, body, 1).insertCheckboxes();
   sheet.getRange(2, 10, body, 1).insertCheckboxes();
   sheet.getRange(2, 5, body, 1).setWrap(true);
-  sheet.getRange(1, 1, sheet.getMaxRows(), EVENT_HEADERS.length).setVerticalAlignment('top');
+  sheet.getRange(1, 1, body + 1, EVENT_HEADERS.length).setVerticalAlignment('top');
 }
 
 function styleAnnouncementsSheet_(sheet) {
   setWidths_(sheet, [260, 130, 130, 560, 100]);
-  var body = sheet.getMaxRows() - 1;
+  var body = Math.min(100, Math.max(20, sheet.getLastRow() - 1));
   if (body <= 0) return;
 
   sheet.getRange(2, 2, body, 1).setNumberFormat('mmmm d, yyyy');
   sheet.getRange(2, 3, body, 1).setDataValidation(categoryRule_(ANNOUNCEMENT_CATEGORIES));
   sheet.getRange(2, 5, body, 1).insertCheckboxes();
   sheet.getRange(2, 4, body, 1).setWrap(true);
-  sheet.getRange(1, 1, sheet.getMaxRows(), ANNOUNCEMENT_HEADERS.length).setVerticalAlignment('top');
+  sheet.getRange(1, 1, body + 1, ANNOUNCEMENT_HEADERS.length).setVerticalAlignment('top');
 }
 
 function styleLabLogSheet_(sheet) {
   setWidths_(sheet, [240, 130, 130, 380, 460, 300, 180, 100]);
-  var body = sheet.getMaxRows() - 1;
+  var body = Math.min(100, Math.max(20, sheet.getLastRow() - 1));
   if (body <= 0) return;
 
   sheet.getRange(2, 2, body, 1).setNumberFormat('mmmm d, yyyy');
   sheet.getRange(2, 3, body, 1).setDataValidation(categoryRule_(LABLOG_CATEGORIES));
   sheet.getRange(2, 8, body, 1).insertCheckboxes();
   sheet.getRange(2, 4, body, 2).setWrap(true);
-  sheet.getRange(1, 1, sheet.getMaxRows(), LABLOG_HEADERS.length).setVerticalAlignment('top');
+  sheet.getRange(1, 1, body + 1, LABLOG_HEADERS.length).setVerticalAlignment('top');
 }
 
 function styleSignupsSheet_(sheet) {
   setWidths_(sheet, [180, 260, 220, 260]);
-  var body = sheet.getMaxRows() - 1;
+  var body = Math.min(100, Math.max(20, sheet.getLastRow() - 1));
   if (body <= 0) return;
   sheet.getRange(2, 1, body, 1).setNumberFormat('yyyy-mm-dd hh:mm:ss');
-  sheet.getRange(1, 1, sheet.getMaxRows(), SIGNUP_HEADERS.length).setVerticalAlignment('top');
+  sheet.getRange(1, 1, body + 1, SIGNUP_HEADERS.length).setVerticalAlignment('top');
 }
 
 function styleMembersSheet_(sheet) {
   setWidths_(sheet, [180, 200, 240, 180, 200, 240, 80, 80, 80, 260, 260]);
-  var body = sheet.getMaxRows() - 1;
+  var body = Math.min(100, Math.max(20, sheet.getLastRow() - 1));
   if (body <= 0) return;
   sheet.getRange(2, 1, body, 1).setNumberFormat('yyyy-mm-dd hh:mm:ss');
-  sheet.getRange(1, 1, sheet.getMaxRows(), MEMBER_HEADERS.length).setVerticalAlignment('top');
+  sheet.getRange(1, 1, body + 1, MEMBER_HEADERS.length).setVerticalAlignment('top');
 }
 
 function stylePhotosSheet_(sheet) {
   setWidths_(sheet, [220, 320, 400, 140, 180, 100]);
-  var body = sheet.getMaxRows() - 1;
+  var body = Math.min(100, Math.max(20, sheet.getLastRow() - 1));
   if (body <= 0) return;
 
   sheet.getRange(2, 4, body, 1).setDataValidation(categoryRule_(PHOTO_CATEGORIES));
   sheet.getRange(2, 6, body, 1).insertCheckboxes();
   sheet.getRange(2, 3, body, 1).setWrap(true);
-  sheet.getRange(1, 1, sheet.getMaxRows(), PHOTO_HEADERS.length).setVerticalAlignment('top');
+  sheet.getRange(1, 1, body + 1, PHOTO_HEADERS.length).setVerticalAlignment('top');
 }
 
 function setWidths_(sheet, widths) {
