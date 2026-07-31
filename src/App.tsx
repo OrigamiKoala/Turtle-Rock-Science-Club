@@ -1,13 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { ClubIdentity, UserProfile, GalleryPhoto, Mission } from './types';
-import {
-  initialLabLogs,
-  missionsData,
-  initialGalleryPhotos,
-  faqItems,
-  announcements,
-  pressMentions
-} from './data';
+import React, { useEffect, useState } from 'react';
+import { UserProfile, GalleryPhoto, Mission } from './types';
+import { initialGalleryPhotos, faqItems, pressMentions } from './data';
+import { useSiteContent } from './useSiteContent';
 
 // Components
 import Header from './components/Header';
@@ -20,17 +14,21 @@ import AboutUs from './components/AboutUs';
 import LabLogAnnouncements from './components/LabLogAnnouncements';
 import Dashboard from './components/Dashboard';
 import JoinModal from './components/JoinModal';
+import SignupModal from './components/SignupModal';
 
 // Lucide Icons
-import { Trophy, Sparkles, X, ArrowRight, Star } from 'lucide-react';
+import { Trophy, Star } from 'lucide-react';
 
 export default function App() {
   // Global States
-  const [identity, setIdentity] = useState<ClubIdentity>('turtlerock');
   const [currentTab, setCurrentTab] = useState<string>('missions');
   const [showJoinModal, setShowJoinModal] = useState<boolean>(false);
   const [showLevelUpAlert, setShowLevelUpAlert] = useState<boolean>(false);
-  const [prevLevel, setPrevLevel] = useState<number>(0);
+  const [signupMission, setSignupMission] = useState<Mission | null>(null);
+
+  // Events and announcements published from the Google Sheet. Falls back to the
+  // bundled content in data.ts when the Sheet is unreachable or unconfigured.
+  const content = useSiteContent();
 
   // Load state from localStorage on mount
   const [userProfile, setUserProfile] = useState<UserProfile>(() => {
@@ -67,16 +65,19 @@ export default function App() {
     return initialGalleryPhotos;
   });
 
-  const [activeMissions, setActiveMissions] = useState<Record<ClubIdentity, Mission[]>>(() => {
+  /**
+   * Events this browser has signed up for. Only used to change the button to a
+   * confirmation — the authoritative spot count lives in the Sheet, which the
+   * script increments on every signup.
+   */
+  const [signedUpIds, setSignedUpIds] = useState<string[]>(() => {
     try {
-      const saved = localStorage.getItem('tr_sc_active_missions');
-      if (saved) {
-        return JSON.parse(saved);
-      }
+      const saved = localStorage.getItem('tr_sc_signed_up_ids');
+      if (saved) return JSON.parse(saved);
     } catch (e) {
-      console.error('Failed reading missions from storage', e);
+      console.error('Failed reading signups from storage', e);
     }
-    return missionsData;
+    return [];
   });
 
   // Sync to localStorage
@@ -89,8 +90,8 @@ export default function App() {
   }, [photos]);
 
   useEffect(() => {
-    localStorage.setItem('tr_sc_active_missions', JSON.stringify(activeMissions));
-  }, [activeMissions]);
+    localStorage.setItem('tr_sc_signed_up_ids', JSON.stringify(signedUpIds));
+  }, [signedUpIds]);
 
   // Handle XP Updates & level ups
   const handleUpdateXp = (xpToAdd: number, badgeToUnlock?: string) => {
@@ -107,7 +108,6 @@ export default function App() {
       }
 
       if (newLevel > prev.level) {
-        setPrevLevel(prev.level);
         setShowLevelUpAlert(true);
       }
 
@@ -126,62 +126,11 @@ export default function App() {
     setCurrentTab('dashboard'); // take them straight to dashboard to view their Scientist card
   };
 
-  // Handle Mission Booking Reservation
-  const handleReserveMission = (missionId: string) => {
-    if (userProfile.level === 0) {
-      setShowJoinModal(true);
-      return;
-    }
-
-    if (userProfile.reservedMissionIds.includes(missionId)) return;
-
-    // Update active missions count
-    setActiveMissions((prev) => {
-      const updatedList = prev[identity].map((m) => {
-        if (m.id === missionId) {
-          return { ...m, spotsReserved: Math.min(m.spotsTotal, m.spotsReserved + 1) };
-        }
-        return m;
-      });
-      return {
-        ...prev,
-        [identity]: updatedList
-      };
-    });
-
-    // Update user reserved IDs and award XP (+15 XP for committing to a science event!)
-    setUserProfile((prev) => ({
-      ...prev,
-      reservedMissionIds: [...prev.reservedMissionIds, missionId]
-    }));
-
+  /** Called once the Sheet has confirmed and recorded a signup. */
+  const handleSignupSuccess = (missionId: string) => {
+    setSignedUpIds((prev) => (prev.includes(missionId) ? prev : [...prev, missionId]));
+    // +15 XP for committing to a science event (members only)
     handleUpdateXp(15);
-  };
-
-  // Handle Canceling a reservation
-  const handleCancelReservation = (missionId: string) => {
-    if (!userProfile.reservedMissionIds.includes(missionId)) return;
-
-    // Determine which identity owns this mission
-    const missionIdentity: ClubIdentity = missionId.endsWith('-k') ? 'kinetic' : 'turtlerock';
-
-    setActiveMissions((prev) => {
-      const updatedList = prev[missionIdentity].map((m) => {
-        if (m.id === missionId) {
-          return { ...m, spotsReserved: Math.max(0, m.spotsReserved - 1) };
-        }
-        return m;
-      });
-      return {
-        ...prev,
-        [missionIdentity]: updatedList
-      };
-    });
-
-    setUserProfile((prev) => ({
-      ...prev,
-      reservedMissionIds: prev.reservedMissionIds.filter((id) => id !== missionId)
-    }));
   };
 
   // Handle Newsletter Signups
@@ -209,27 +158,19 @@ export default function App() {
     }));
   };
 
-  const isTurtle = identity === 'turtlerock';
-
   return (
     <div className="min-h-screen flex flex-col justify-between font-sans bg-[#0A0A0A] text-white selection:bg-blue-500/30 relative overflow-hidden bg-dot-pattern">
 
-      {/* Dynamic Background Glow corresponding to the active club identity */}
+      {/* Ambient brand glow */}
       <div
-        className="absolute top-0 right-0 w-[500px] h-[500px] rounded-full blur-[120px] opacity-15 pointer-events-none transition-all duration-700"
-        style={{
-          background: isTurtle
-            ? 'radial-gradient(circle, #10b981 0%, transparent 70%)'
-            : 'radial-gradient(circle, #3b82f6 0%, transparent 70%)'
-        }}
+        className="absolute top-0 right-0 w-[500px] h-[500px] rounded-full blur-[120px] opacity-15 pointer-events-none"
+        style={{ background: 'radial-gradient(circle, #10b981 0%, transparent 70%)' }}
       />
 
       {/* Header Layout */}
       <Header
         currentTab={currentTab}
         setCurrentTab={setCurrentTab}
-        identity={identity}
-        setIdentity={setIdentity}
         userProfile={userProfile}
         onOpenJoin={() => setShowJoinModal(true)}
       />
@@ -237,31 +178,27 @@ export default function App() {
       {/* Main Content Router */}
       <main className="flex-1 pb-16">
 
-        {/* Tab 1: Home / Missions (default landing page layout) */}
+        {/* Tab 1: Home / Events */}
         {currentTab === 'missions' && (
           <div className="space-y-4">
             <HeroSection
-              identity={identity}
               userProfile={userProfile}
               onOpenJoin={() => setShowJoinModal(true)}
               setCurrentTab={setCurrentTab}
             />
 
             <UpcomingMissions
-              identity={identity}
-              missions={activeMissions[identity]}
-              userProfile={userProfile}
-              onReserve={handleReserveMission}
-              onCancelReserve={handleCancelReservation}
-              onOpenJoin={() => setShowJoinModal(true)}
+              missions={content.missions}
+              contentStatus={content.status}
+              signedUpIds={signedUpIds}
+              onSignUp={setSignupMission}
             />
           </div>
         )}
 
-        {/* Tab 2: Virtual Labs & Simulators */}
+        {/* Tab 2: Virtual Lab & Minigames */}
         {currentTab === 'lab' && (
           <VirtualLab
-            identity={identity}
             userProfile={userProfile}
             onUpdateXp={handleUpdateXp}
           />
@@ -270,9 +207,8 @@ export default function App() {
         {/* Tab 3: Announcements */}
         {currentTab === 'logs' && (
           <LabLogAnnouncements
-            identity={identity}
-            logs={initialLabLogs}
-            announcements={announcements}
+            logs={content.labLogs}
+            announcements={content.announcements}
             press={pressMentions}
             userProfile={userProfile}
             onSubscribeNewsletter={handleSubscribeNewsletter}
@@ -282,7 +218,6 @@ export default function App() {
         {/* Tab 4: Our Photo Gallery */}
         {currentTab === 'gallery' && (
           <PhotoGallery
-            identity={identity}
             photos={photos}
             userProfile={userProfile}
             onAddPhoto={handleAddPhoto}
@@ -291,20 +226,14 @@ export default function App() {
         )}
 
         {/* Tab 5: About Us & FAQs */}
-        {currentTab === 'about' && (
-          <AboutUs
-            identity={identity}
-            faqs={faqItems}
-          />
-        )}
+        {currentTab === 'about' && <AboutUs faqs={faqItems} />}
 
         {/* Tab 6: Scientist Profile Dashboard */}
         {currentTab === 'dashboard' && (
           <Dashboard
-            identity={identity}
             userProfile={userProfile}
-            missions={[...activeMissions.turtlerock, ...activeMissions.kinetic]}
-            onCancelReserve={handleCancelReservation}
+            missions={content.missions}
+            signedUpIds={signedUpIds}
             onUpdateProfileName={handleUpdateProfileName}
             setCurrentTab={setCurrentTab}
           />
@@ -313,15 +242,21 @@ export default function App() {
       </main>
 
       {/* Footer Layout */}
-      <Footer
-        identity={identity}
-        setCurrentTab={setCurrentTab}
-      />
+      <Footer setCurrentTab={setCurrentTab} />
+
+      {/* EVENT SIGN-UP MODAL */}
+      {signupMission && (
+        <SignupModal
+          mission={signupMission}
+          onClose={() => setSignupMission(null)}
+          onSubmit={content.submitSignup}
+          onSuccess={handleSignupSuccess}
+        />
+      )}
 
       {/* JOIN / SIGN UP FORM MODAL */}
       {showJoinModal && (
         <JoinModal
-          identity={identity}
           onClose={() => setShowJoinModal(false)}
           onJoinSuccess={handleJoinSuccess}
         />

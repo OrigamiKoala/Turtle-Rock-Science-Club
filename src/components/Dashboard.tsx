@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ClubIdentity, Mission, UserProfile } from '../types';
+import { Mission, UserProfile } from '../types';
 import { 
   Trophy, 
   Award, 
@@ -18,29 +18,27 @@ import {
 } from 'lucide-react';
 
 interface DashboardProps {
-  identity: ClubIdentity;
   userProfile: UserProfile;
   missions: Mission[];
-  onCancelReserve: (missionId: string) => void;
+  /** Events this browser has signed up for. */
+  signedUpIds: string[];
   onUpdateProfileName: (newName: string) => void;
   setCurrentTab: (tab: string) => void;
 }
 
 export default function Dashboard({
-  identity,
   userProfile,
   missions,
-  onCancelReserve,
+  signedUpIds,
   onUpdateProfileName,
   setCurrentTab
 }: DashboardProps) {
-  const isTurtle = identity === 'turtlerock';
 
   const [editName, setEditName] = useState(userProfile.name);
   const [showEditMsg, setShowEditMsg] = useState(false);
 
-  // Filter reserved missions
-  const reservedMissions = missions.filter((m) => userProfile.reservedMissionIds.includes(m.id));
+  // Events this browser has signed up for
+  const reservedMissions = missions.filter((m) => signedUpIds.includes(m.id));
 
   // Determine professional scientist title based on unlocked badges
   const getScientistTitle = () => {
@@ -64,7 +62,7 @@ export default function Dashboard({
 
   // Badges catalog
   const badgeCatalog = [
-    { name: 'Foundation Member', desc: 'Successfully registered and joined the Turtle Rock/Kinetic science network.', icon: ShieldCheck, color: 'text-emerald-500 bg-emerald-100' },
+    { name: 'Foundation Member', desc: 'Successfully registered and joined the Turtle Rock science network.', icon: ShieldCheck, color: 'text-emerald-500 bg-emerald-100' },
     { name: 'Lava Lamp Alchemist', desc: 'Calibrated temperature and dropped 3 effervescent tablets in the Lava cylinder.', icon: Award, color: 'text-amber-500 bg-amber-100' },
     { name: 'Volcano Catalyst', desc: 'Triggered a high-intensity chemical reaction peak exceeding 80% eruption force.', icon: FlameIcon, color: 'text-red-500 bg-red-100' },
     { name: 'Stargazing Scout', desc: 'Successfully mapped constellation coordinates using the Schmidt-Cassegrain simulation.', icon: Sparkles, color: 'text-indigo-500 bg-indigo-100' }
@@ -114,9 +112,7 @@ export default function Dashboard({
               </div>
               <div className="text-left">
                 <h4 className="font-display font-bold text-lg leading-tight text-white tracking-tighter">{userProfile.name}</h4>
-                <p className={`text-xs font-bold mt-1 font-mono uppercase tracking-widest ${
-                  isTurtle ? 'text-emerald-400' : 'text-blue-400'
-                }`}>{getScientistTitle()}</p>
+                <p className="text-xs font-bold mt-1 font-mono uppercase tracking-widest text-emerald-400">{getScientistTitle()}</p>
                 <p className="text-[10px] text-zinc-500 font-mono mt-0.5">Joined: {userProfile.joinedDate}</p>
               </div>
             </div>
@@ -132,11 +128,7 @@ export default function Dashboard({
               </div>
               <div className="w-full bg-zinc-950 h-2.5 rounded-full overflow-hidden border border-white/5">
                 <div 
-                  className={`h-full rounded-full transition-all duration-500 shadow-md ${
-                    isTurtle 
-                      ? 'bg-emerald-500 shadow-emerald-500/20' 
-                      : 'bg-blue-500 shadow-blue-500/20'
-                  }`}
+                  className="h-full rounded-full transition-all duration-500 shadow-md bg-emerald-500 shadow-emerald-500/20"
                   style={{ width: `${xpPercent}%` }}
                 />
               </div>
@@ -233,14 +225,14 @@ export default function Dashboard({
 
       </div>
 
-      {/* Bench Reservations list (Bottom) */}
+      {/* Sign-ups list (Bottom) */}
       <div className="space-y-6 pt-6 border-t border-white/5">
         <div>
           <h4 className="font-display font-bold text-xl tracking-tighter flex items-center gap-2 text-white">
             <Ticket className="w-5.5 h-5.5 text-amber-500" />
-            Your Reserved Stations & Benches
+            Your Event Sign-Ups
           </h4>
-          <p className="text-xs text-zinc-400 mt-1">Manage physical hardware slots reserved in our local sessions.</p>
+          <p className="text-xs text-zinc-400 mt-1">Events you have signed up for from this device.</p>
         </div>
 
         {reservedMissions.length > 0 ? (
@@ -262,31 +254,26 @@ export default function Dashboard({
                   </div>
                 </div>
 
-                <button
-                  id={`cancel-reservation-btn-${mission.id}`}
-                  onClick={() => onCancelReserve(mission.id)}
-                  className="px-3 py-1.5 rounded-full text-[9px] font-mono font-bold uppercase tracking-widest text-red-400 border border-red-500/10 hover:bg-red-500/10 hover:border-red-500/20 transition shrink-0 cursor-pointer"
-                >
-                  Release Station
-                </button>
+                <span className="px-3 py-1.5 rounded-full text-[9px] font-mono font-bold uppercase tracking-widest text-emerald-400 border border-emerald-500/20 bg-emerald-500/10 shrink-0 flex items-center gap-1">
+                  <CheckCircle className="w-3 h-3" />
+                  Signed up
+                </span>
               </div>
             ))}
           </div>
         ) : (
           <div className="py-12 text-center border border-dashed border-white/10 rounded-[2rem] bg-zinc-900/20 text-white">
             <Calendar className="w-10 h-10 text-zinc-600 mx-auto mb-2" />
-            <p className="font-mono font-bold text-xs uppercase tracking-widest text-zinc-400">No benches reserved yet</p>
+            <p className="font-mono font-bold text-xs uppercase tracking-widest text-zinc-400">No sign-ups yet</p>
             <p className="text-xs text-zinc-500 max-w-sm mx-auto mt-1 leading-relaxed">
-              Benches fill up fast! Explore upcoming workshops and book a station for your child.
+              Spots fill up fast! Explore upcoming events and sign your child up.
             </p>
             <button
               id="dashboard-explore-btn"
               onClick={() => setCurrentTab('missions')}
-              className={`px-5 py-2.5 text-[10px] font-mono font-bold uppercase tracking-widest rounded-full shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer mt-4 ${
-                isTurtle ? 'bg-emerald-500 hover:bg-emerald-400 text-stone-950' : 'bg-blue-500 hover:bg-blue-400 text-stone-950'
-              }`}
+              className="px-5 py-2.5 text-[10px] font-mono font-bold uppercase tracking-widest rounded-full shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer mt-4 bg-emerald-500 hover:bg-emerald-400 text-stone-950"
             >
-              Browse Active Missions
+              Browse Upcoming Events
             </button>
           </div>
         )}

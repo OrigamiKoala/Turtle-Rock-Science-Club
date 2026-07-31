@@ -1,14 +1,12 @@
 import React, { useState } from 'react';
-import { ClubIdentity, FAQItem } from '../types';
+import { FAQItem } from '../types';
 import { ShieldCheck, Heart, Sparkles, BookOpen, Quote, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface AboutUsProps {
-  identity: ClubIdentity;
   faqs: FAQItem[];
 }
 
-export default function AboutUs({ identity, faqs }: AboutUsProps) {
-  const isTurtle = identity === 'turtlerock';
+export default function AboutUs({ faqs }: AboutUsProps) {
 
   // Accordion state
   const [openFaqId, setOpenFaqId] = useState<string | null>(null);
@@ -26,9 +24,8 @@ export default function AboutUs({ identity, faqs }: AboutUsProps) {
           Nurturing the Next Generation of Naturalists
         </h3>
         <p className="text-xs max-w-2xl mx-auto leading-relaxed text-zinc-400 font-sans">
-          {isTurtle 
-            ? 'We are an organic, neighborhood collective designed to make real chemistry, electronics, and astronomy accessible, highly educational, and deeply memorable.'
-            : 'A methodical scientific infrastructure bringing advanced hands-on workshops into the community.'}
+          We are an organic, neighborhood collective designed to make real chemistry, electronics,
+          and astronomy accessible, highly educational, and deeply memorable.
         </p>
       </div>
 
@@ -41,7 +38,7 @@ export default function AboutUs({ identity, faqs }: AboutUsProps) {
             <h4 className="font-display font-bold text-xl sm:text-2xl tracking-tighter text-white">
               Our Story
             </h4>
-            <div className={`h-1 w-12 rounded-full ${isTurtle ? 'bg-emerald-500' : 'bg-blue-500'}`} />
+            <div className="h-1 w-12 rounded-full bg-emerald-500" />
           </div>
 
           <div className="space-y-4 text-xs leading-relaxed font-sans text-zinc-400">
@@ -52,7 +49,7 @@ export default function AboutUs({ identity, faqs }: AboutUsProps) {
               What started as a single afternoon eclipse project quickly exploded into weekly driveway workshops. Neighbors donated compound optical microscopes, local high-school teachers volunteered to solder custom circuit boards, and local families pooled funds to acquire advanced astronomy gear.
             </p>
             <p>
-              Today, the {isTurtle ? 'Turtle Rock Science Club' : 'Kinetic Lab'} has trained over 400 junior scientists in safe laboratory procedures, autonomous robot coordination, and star mapping. We remain 100% community-driven, prioritizing tactile exploration over test sheets, and safety over speed.
+              Today, the Turtle Rock Science Club has trained over 400 junior scientists in safe laboratory procedures, autonomous robot coordination, and star mapping. We remain 100% community-driven, prioritizing tactile exploration over test sheets, and safety over speed.
             </p>
           </div>
 
@@ -97,16 +94,14 @@ export default function AboutUs({ identity, faqs }: AboutUsProps) {
             
             <div className="relative z-10 space-y-4 pt-4">
               <blockquote className="font-display font-medium text-sm sm:text-base leading-relaxed italic text-zinc-200">
-                {isTurtle 
-                  ? '"Where friendships meet discoveries. Science is not just about beaker ratios—it is about gasping in wonder alongside a peer as a fluorescent catalyst blazes in the dark."'
-                  : '"Where curiosity meets methodology. Science is a disciplined, rigorous blueprint of observation, hypothesis formation, and analytical safety."'}
+                "Where friendships meet discoveries. Science is not just about beaker ratios—it is
+                about gasping in wonder alongside a peer as a fluorescent catalyst blazes in the
+                dark."
               </blockquote>
             </div>
 
             <div className="flex items-center gap-3.5 border-t border-white/10 pt-4 mt-4 relative z-10">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs ${
-                isTurtle ? 'bg-emerald-500 text-stone-950' : 'bg-blue-500 text-stone-950'
-              }`}>
+              <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs bg-emerald-500 text-stone-950">
                 EV
               </div>
               <div className="text-left font-mono">

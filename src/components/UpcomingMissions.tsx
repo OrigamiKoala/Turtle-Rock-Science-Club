@@ -1,54 +1,58 @@
 import React from 'react';
-import { ClubIdentity, Mission, UserProfile } from '../types';
-import { Calendar, Clock, MapPin, Users, CheckCircle, Ticket, LogIn } from 'lucide-react';
+import { Mission } from '../types';
+import { ContentStatus } from '../useSiteContent';
+import { Calendar, Clock, MapPin, Users, CheckCircle, Ticket, CalendarOff } from 'lucide-react';
 
 interface UpcomingMissionsProps {
-  identity: ClubIdentity;
   missions: Mission[];
-  userProfile: UserProfile;
-  onReserve: (missionId: string) => void;
-  onCancelReserve: (missionId: string) => void;
-  onOpenJoin: () => void;
+  /** Where the event list came from, so we can explain an empty page. */
+  contentStatus: ContentStatus;
+  /** Events this browser has already signed up for. */
+  signedUpIds: string[];
+  onSignUp: (mission: Mission) => void;
 }
 
 export default function UpcomingMissions({
-  identity,
   missions,
-  userProfile,
-  onReserve,
-  onCancelReserve,
-  onOpenJoin
+  contentStatus,
+  signedUpIds,
+  onSignUp
 }: UpcomingMissionsProps) {
-  const isTurtle = identity === 'turtlerock';
-
-  const isJoined = userProfile.level > 0;
 
   return (
     <section className="py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto relative z-10">
       <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
         <div>
           <h3 className="font-display font-bold text-2xl sm:text-3xl tracking-tighter text-white">
-            Upcoming Missions
+            Upcoming Events
           </h3>
-          <p className="text-xs text-zinc-400 mt-1 font-sans">
-            {isTurtle
-              ? 'Join our local sessions!'
-              : 'Secure a spot.'}
-          </p>
+          <p className="text-xs text-zinc-400 mt-1 font-sans">Join our local sessions!</p>
         </div>
 
         {/* Quick status badge */}
-        {isJoined && (
+        {signedUpIds.length > 0 && (
           <div className="text-[10px] px-3.5 py-1.5 rounded-full border border-white/10 bg-white/5 font-mono font-bold tracking-widest uppercase flex items-center gap-1.5 text-zinc-300">
             <Ticket className="w-3.5 h-3.5 text-amber-500" />
-            <span>Reserved {userProfile.reservedMissionIds.length} of {missions.length} events</span>
+            <span>Signed up for {signedUpIds.length} of {missions.length} events</span>
           </div>
         )}
       </div>
 
+      {missions.length === 0 && (
+        <div className="rounded-[2rem] border border-white/10 bg-zinc-900/40 px-8 py-14 text-center space-y-3">
+          <CalendarOff className="w-8 h-8 text-zinc-600 mx-auto" />
+          <p className="font-display font-bold text-lg text-white">No events scheduled right now</p>
+          <p className="text-xs text-zinc-500 font-sans max-w-sm mx-auto leading-relaxed">
+            {contentStatus === 'loading'
+              ? 'Loading the latest schedule…'
+              : 'Check back soon — new sessions are added regularly.'}
+          </p>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {missions.map((mission) => {
-          const isReserved = userProfile.reservedMissionIds.includes(mission.id);
+          const isReserved = signedUpIds.includes(mission.id);
           const spotsLeft = mission.spotsTotal - mission.spotsReserved;
           const isSoldOut = spotsLeft <= 0;
 
@@ -73,11 +77,9 @@ export default function UpcomingMissions({
                     ? 'bg-red-500 text-white'
                     : spotsLeft < 5
                       ? 'bg-amber-500 text-stone-900'
-                      : isTurtle
-                        ? 'bg-emerald-500/90 text-stone-950'
-                        : 'bg-blue-500/90 text-stone-950'
+                      : 'bg-emerald-500/90 text-stone-950'
                     }`}>
-                    {isSoldOut ? 'Sold Out' : `${spotsLeft} benches left`}
+                    {isSoldOut ? 'Sold Out' : `${spotsLeft} spots left`}
                   </span>
                 </div>
               </div>
@@ -109,42 +111,31 @@ export default function UpcomingMissions({
                   </div>
                 </div>
 
-                {/* RSVP Controls */}
+                {/* Sign-up control */}
                 <div className="pt-2">
-                  {!isJoined ? (
-                    <button
-                      id={`mission-join-btn-${mission.id}`}
-                      onClick={onOpenJoin}
-                      className="w-full py-2 px-4 rounded-full text-[10px] font-mono font-bold uppercase tracking-widest flex items-center justify-center gap-1.5 border border-white/10 bg-white/5 hover:bg-white/10 text-zinc-300 cursor-pointer"
-                    >
-                      <LogIn className="w-3.5 h-3.5 text-amber-500" />
-                      <span>Join club to Reserve Spot</span>
-                    </button>
-                  ) : isReserved ? (
+                  {isReserved ? (
                     <div className="space-y-2">
                       <div className="flex items-center justify-center gap-1.5 py-1 text-[10px] font-mono font-bold uppercase tracking-widest text-emerald-400">
                         <CheckCircle className="w-3.5 h-3.5 text-emerald-500 fill-emerald-950" />
-                        <span>Registered Scientist ✔</span>
+                        <span>You're signed up ✔</span>
                       </div>
                       <button
-                        id={`mission-cancel-btn-${mission.id}`}
-                        onClick={() => onCancelReserve(mission.id)}
-                        className="w-full py-1 text-center text-[10px] font-mono text-red-400 hover:text-red-300 uppercase tracking-widest cursor-pointer hover:underline"
+                        id={`mission-signup-again-btn-${mission.id}`}
+                        onClick={() => onSignUp(mission)}
+                        disabled={isSoldOut}
+                        className="w-full py-1 text-center text-[10px] font-mono text-zinc-400 hover:text-white uppercase tracking-widest cursor-pointer hover:underline disabled:opacity-30 disabled:cursor-not-allowed disabled:no-underline"
                       >
-                        Cancel Reservation
+                        Sign up another student
                       </button>
                     </div>
                   ) : (
                     <button
                       id={`mission-reserve-btn-${mission.id}`}
-                      onClick={() => onReserve(mission.id)}
+                      onClick={() => onSignUp(mission)}
                       disabled={isSoldOut}
-                      className={`w-full py-2 px-4 rounded-full text-[10px] font-bold uppercase tracking-widest shadow-xs transition-all duration-200 hover:scale-[1.01] active:scale-95 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed ${isTurtle
-                        ? 'bg-emerald-500 text-stone-950 hover:bg-emerald-400'
-                        : 'bg-blue-500 text-stone-950 hover:bg-blue-400'
-                        }`}
+                      className="w-full py-2 px-4 rounded-full text-[10px] font-bold uppercase tracking-widest shadow-xs transition-all duration-200 hover:scale-[1.01] active:scale-95 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed bg-emerald-500 text-stone-950 hover:bg-emerald-400"
                     >
-                      {isSoldOut ? 'No Stations Remaining' : isTurtle ? 'Join This Mission' : 'Reserve Bench'}
+                      {isSoldOut ? 'No Spots Remaining' : 'Sign Up for This Event'}
                     </button>
                   )}
                 </div>

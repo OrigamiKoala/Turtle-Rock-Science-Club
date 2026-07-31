@@ -1,5 +1,3 @@
-export type ClubIdentity = 'turtlerock' | 'kinetic';
-
 export interface LabLog {
   id: string;
   title: string;
