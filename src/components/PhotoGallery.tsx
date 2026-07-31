@@ -11,23 +11,6 @@ interface PhotoGalleryProps {
   onOpenJoin: () => void;
 }
 
-const TEST_PUBLIC_ALBUM: EventPhoto = {
-  id: 'test-public-album',
-  title: "Ovo's Adventures in Europe 📸",
-  date: 'Jun 8 – 17',
-  description: 'Shared Google Photos album embedded with PublicAlbum widget.',
-  albumEmbed: `<script src="https://cdn.jsdelivr.net/npm/publicalbum@latest/embed-ui.min.js" async></script>
-<div class="pa-carousel-widget" style="width:640px; height:480px; display:none;"
-  data-link="https://photos.app.goo.gl/E9gTCfxfWdicEBWy5"
-  data-title="Ovo&#39;s Adventures in Europe · Jun 8 – 17 📸"
-  data-description="Shared album · Tap to view!"
-  data-background-color="#ffffff">
-  <object data="https://lh3.googleusercontent.com/pw/AP1GczONCB0nSWhBATwwITCffVs-5W9u3TdrNtcKWbqtsv7m-xm3IBUWXthEK2kw4S_01V2w5NPs4K0_n8foOopX3LS5xNuKR0HCJ6BKXR9nWCAfAyD9DPA=w1920-h1080"></object>
-  <object data="https://lh3.googleusercontent.com/pw/AP1GczP8L_RbXwZ7h0_Sud1n42fwwtqTtf4ccRL4GUKt-HIlLaJCMwTYOMpSGQ2U_sOR9ESCgabYWFS4cS4Oo0DeaXPpqckCSXcHLc4a071hgvyKxAOTszo=w1920-h1080"></object>
-  <object data="https://lh3.googleusercontent.com/pw/AP1GczMPjcpN_cEZJxjanYaIuNxHlgsFOrZlVB6dVoC5Wt-ADC97dRTsM8gErQQX66Xa6c8bVtoV80VWsBYJRjesE_CtRupnVc54l_PI1QTXzx3BfcyIJWY=w1920-h1080"></object>
-</div>`
-};
-
 function HtmlEmbedCard({ embedHtml }: { embedHtml: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -90,10 +73,8 @@ export default function PhotoGallery({ photos, sheetPhotos = [], eventPhotos = [
   const isHtmlEmbed = (str?: string) =>
     typeof str === 'string' && (str.trim().startsWith('<') || str.toLowerCase().includes('<iframe') || str.toLowerCase().includes('<div'));
 
-  const displayEventPhotos = eventPhotos.length > 0 ? eventPhotos : [TEST_PUBLIC_ALBUM];
-
   // Convert event photo albums into gallery items
-  const sheetAlbumPhotos: GalleryPhoto[] = displayEventPhotos.map((ep) => ({
+  const sheetAlbumPhotos: GalleryPhoto[] = eventPhotos.map((ep) => ({
     id: ep.id,
     title: ep.title,
     description: ep.description || `Photo album for ${ep.title}`,

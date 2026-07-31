@@ -40,7 +40,12 @@ export default function App() {
   const [photos, setPhotos] = useState<GalleryPhoto[]>(() => {
     try {
       const saved = localStorage.getItem('tr_sc_gallery_photos');
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.filter((p: GalleryPhoto) => p.id && !p.id.startsWith('photo-') && !p.id.startsWith('demo-'));
+        }
+      }
     } catch (e) { console.error('Failed reading gallery photos from storage', e); }
     return [];
   });
