@@ -10,7 +10,7 @@ import { CheckCircle2, ExternalLink, ScrollText } from 'lucide-react';
  * click is both the win condition and the only badge this game has.
  */
 
-const ADVENTURE_URL = 'https://origamikoala.github.io/chem-text-adventure/';
+const ADVENTURE_URL = 'https://chem.trscienceclub.org';
 
 interface ChemTextAdventureProps {
   /** Level indices already solved. Only index 0 (the link click) exists. */
