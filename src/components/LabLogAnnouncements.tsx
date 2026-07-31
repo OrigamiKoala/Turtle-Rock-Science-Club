@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import { ClubIdentity, LabLog, Announcement, PressMention, UserProfile } from '../types';
+import { LabLog, Announcement, PressMention, UserProfile } from '../types';
 import { BookOpen, Newspaper, Send, CheckCircle, Mail, Quote, Clock, User, X, MessageSquare, AlertCircle } from 'lucide-react';
 
 interface LabLogAnnouncementsProps {
-  identity: ClubIdentity;
   logs: LabLog[];
   announcements: Announcement[];
   press: PressMention[];
@@ -12,14 +11,12 @@ interface LabLogAnnouncementsProps {
 }
 
 export default function LabLogAnnouncements({
-  identity,
   logs,
   announcements,
   press,
   userProfile,
   onSubscribeNewsletter
 }: LabLogAnnouncementsProps) {
-  const isTurtle = identity === 'turtlerock';
 
   // Modal / overlay detail state
   const [activeLogId, setActiveLogId] = useState<string | null>(null);
@@ -119,9 +116,7 @@ export default function LabLogAnnouncements({
 
                 <div className="pt-3 border-t border-white/10 flex items-center justify-between text-[10px] font-mono uppercase tracking-wide text-zinc-400">
                   <span>By: {log.author}</span>
-                  <span className={`font-bold font-mono text-[9px] uppercase tracking-widest ${
-                    isTurtle ? 'text-emerald-400 hover:text-emerald-300' : 'text-blue-400 hover:text-blue-300'
-                  }`}>Read Entry →</span>
+                  <span className="font-bold font-mono text-[9px] uppercase tracking-widest text-emerald-400 hover:text-emerald-300">Read Entry →</span>
                 </div>
               </div>
             </div>
@@ -179,7 +174,7 @@ export default function LabLogAnnouncements({
           {/* Newsletter Box */}
           <div className="p-6 rounded-[2rem] border border-white/10 bg-zinc-900/40 backdrop-blur-md flex flex-col justify-between space-y-4 text-white shadow-2xl">
             <div className="space-y-2">
-              <div className={`p-2 rounded-xl inline-block ${isTurtle ? 'bg-emerald-500 text-stone-950 animate-pulse' : 'bg-blue-500 text-stone-950'}`}>
+              <div className="p-2 rounded-xl inline-block bg-emerald-500 text-stone-950 animate-pulse">
                 <Mail className="w-5 h-5" />
               </div>
               <h5 className="font-display font-bold text-lg leading-tight text-zinc-100 tracking-tighter">
@@ -215,11 +210,7 @@ export default function LabLogAnnouncements({
                   <button
                     id="newsletter-submit-btn"
                     type="submit"
-                    className={`px-4 py-2.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-widest transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                      isTurtle
-                        ? 'bg-emerald-500 hover:bg-emerald-400 text-stone-950'
-                        : 'bg-blue-500 hover:bg-blue-400 text-stone-950'
-                    }`}
+                    className="px-4 py-2.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-widest transition flex items-center justify-center gap-1.5 cursor-pointer bg-emerald-500 hover:bg-emerald-400 text-stone-950"
                   >
                     <span>Join</span>
                     <Send className="w-3 h-3" />
@@ -363,9 +354,7 @@ export default function LabLogAnnouncements({
                     <button
                       id="comment-submit-btn"
                       type="submit"
-                      className={`px-4 py-2 rounded-full text-[10px] font-mono font-bold uppercase tracking-widest cursor-pointer ${
-                        isTurtle ? 'bg-emerald-500 hover:bg-emerald-400 text-stone-950' : 'bg-blue-500 hover:bg-blue-400 text-stone-950'
-                      }`}
+                      className="px-4 py-2 rounded-full text-[10px] font-mono font-bold uppercase tracking-widest cursor-pointer bg-emerald-500 hover:bg-emerald-400 text-stone-950"
                     >
                       Comment
                     </button>

@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import { ClubIdentity, GalleryPhoto, UserProfile } from '../types';
+import { GalleryPhoto, UserProfile } from '../types';
 import { Camera, Image as ImageIcon, Plus, Filter, CheckCircle, Upload, AlertCircle } from 'lucide-react';
 
 interface PhotoGalleryProps {
-  identity: ClubIdentity;
   photos: GalleryPhoto[];
   userProfile: UserProfile;
   onAddPhoto: (newPhoto: GalleryPhoto) => void;
@@ -11,13 +10,11 @@ interface PhotoGalleryProps {
 }
 
 export default function PhotoGallery({
-  identity,
   photos,
   userProfile,
   onAddPhoto,
   onOpenJoin
 }: PhotoGalleryProps) {
-  const isTurtle = identity === 'turtlerock';
 
   const [activeFilter, setActiveFilter] = useState<'all' | 'experiments' | 'field-trips' | 'lab-meetings'>('all');
   const [showSubmitForm, setShowSubmitForm] = useState(false);
@@ -222,11 +219,7 @@ export default function PhotoGallery({
               <button
                 id="photo-submit-btn"
                 type="submit"
-                className={`w-full py-2.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition cursor-pointer ${
-                  isTurtle
-                    ? 'bg-emerald-500 hover:bg-emerald-400 text-stone-950'
-                    : 'bg-blue-500 hover:bg-blue-400 text-stone-950'
-                }`}
+                className="w-full py-2.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition cursor-pointer bg-emerald-500 hover:bg-emerald-400 text-stone-950"
               >
                 Publish Photo
               </button>

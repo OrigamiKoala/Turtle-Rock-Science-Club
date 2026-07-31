@@ -33,8 +33,7 @@ export const initialLabLogs: LabLog[] = [
   }
 ];
 
-export const missionsData = {
-  turtlerock: [
+export const initialMissions: Mission[] = [
     {
       id: 'mission-1',
       title: 'Lava Lamp Social',
@@ -68,43 +67,7 @@ export const missionsData = {
       spotsReserved: 11,
       image: 'https://images.unsplash.com/photo-1531747118685-ca8fa6e08806?auto=format&fit=crop&q=80&w=800'
     }
-  ] as Mission[],
-  kinetic: [
-    {
-      id: 'mission-1-k',
-      title: 'Lava Lamp Density Workshop',
-      date: 'July 15, 2026',
-      time: '2:00 PM - 4:00 PM',
-      location: 'Kinetic Main Lab, Bench C',
-      description: 'A formal laboratory session where we scientifically investigate oil-and-water polarity, calculate specific density differences, and engineer a pressurized liquid reaction chamber. We will analyze how temperature affects gas release rates.',
-      spotsTotal: 16,
-      spotsReserved: 12,
-      image: 'https://images.unsplash.com/photo-1544377193-33dcf4d68fb5?auto=format&fit=crop&q=80&w=800'
-    },
-    {
-      id: 'mission-2-k',
-      title: 'Telescope Star-Charting Night',
-      date: 'July 22, 2026',
-      time: '9:00 PM - 11:30 PM',
-      location: 'Kinetic Astronomy Dome (Roof Level)',
-      description: 'A focused astronomical observation session. Scientists will calibrate optical gear, use Right Ascension and Declination coordinates to target the Ring Nebula, and record magnitude readings of variable stars.',
-      spotsTotal: 12,
-      spotsReserved: 10,
-      image: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&q=80&w=800'
-    },
-    {
-      id: 'mission-3-k',
-      title: 'Autonomous Navigation Lab',
-      date: 'August 5, 2026',
-      time: '10:00 AM - 1:00 PM',
-      location: 'Kinetic Engineering Hub',
-      description: 'A deep-dive into PID controller feedback loops. Learn to program autonomous mobile robots to compute error correction values in real-time to maintain perfect tracking on irregular lines and steep ramps.',
-      spotsTotal: 10,
-      spotsReserved: 7,
-      image: 'https://images.unsplash.com/photo-1531747118685-ca8fa6e08806?auto=format&fit=crop&q=80&w=800'
-    }
-  ] as Mission[]
-};
+  ];
 
 export const initialGalleryPhotos: GalleryPhoto[] = [
   {

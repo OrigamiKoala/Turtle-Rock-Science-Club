@@ -5,20 +5,24 @@
  * https://docs.google.com/spreadsheets/d/1F-4w57Cehlh-55I8fmAzeYY0DUFYS2I6FpOfjjqUhV0/edit
  *
  * WHAT THIS DOES
- *   You type events into the "Events" tab and announcements into the
- *   "Announcements" tab. When you click  🐢 Website ▸ Publish to Website,
- *   this script snapshots both tabs into JSON and serves it from a web app
- *   URL. The website fetches that URL and shows your content.
+ *   Four tabs drive the website:
  *
- *   Nothing you type appears on the site until you hit Publish. That means
- *   you can draft a half-finished event without it going live.
+ *     Events         — what shows under "Upcoming Events"
+ *     Announcements  — what shows under "Club Announcements"
+ *     Lab Log        — the write-ups under "Latest From the Lab Log"
+ *     Signups        — filled in automatically when someone signs up online
  *
- * FIRST-TIME SETUP (see SETUP.md for the click-by-click version)
- *   1. Extensions ▸ Apps Script, paste this file, save.
- *   2. Run  setupSheets  once (authorize when prompted).
- *   3. Deploy ▸ New deployment ▸ Web app ▸ Execute as: Me,
- *      Who has access: Anyone. Copy the /exec URL.
- *   4. Paste that URL into src/config.ts on the website.
+ *   Click  🐢 Website ▸ Publish to Website  and the site picks up your changes.
+ *   Nothing you type goes live until you press Publish, so a half-finished
+ *   event can sit in the sheet without appearing publicly.
+ *
+ *   Signups are the deliberate exception and are live: when a student signs up
+ *   on the site, this script appends a row to Signups, adds 1 to that event's
+ *   "Spots Taken", and nudges the published copy so the "spots left" counter on
+ *   the site stays honest — without publishing anything you may still be
+ *   drafting.
+ *
+ * SETUP — see SETUP.md for the click-by-click version.
  */
 
 // ---------------------------------------------------------------------------
@@ -27,6 +31,8 @@
 
 var EVENTS_SHEET = 'Events';
 var ANNOUNCEMENTS_SHEET = 'Announcements';
+var LABLOG_SHEET = 'Lab Log';
+var SIGNUPS_SHEET = 'Signups';
 var PUBLISHED_SHEET = '_Published';
 
 var EVENT_HEADERS = [
@@ -41,27 +47,37 @@ var EVENT_HEADERS = [
   'Show on Site'
 ];
 
-var ANNOUNCEMENT_HEADERS = [
+var ANNOUNCEMENT_HEADERS = ['Title', 'Date', 'Category', 'Content', 'Show on Site'];
+
+var LABLOG_HEADERS = [
   'Title',
   'Date',
   'Category',
-  'Content',
+  'Summary',
+  'Full Write-Up',
+  'Image URL',
+  'Author',
   'Show on Site'
 ];
 
+var SIGNUP_HEADERS = ['Timestamp', 'Event', 'Student Name', 'School'];
+
 var ANNOUNCEMENT_CATEGORIES = ['general', 'expansion', 'toolkit', 'volunteer'];
+var LABLOG_CATEGORIES = ['chemistry', 'robotics', 'astronomy', 'general'];
 
-var BRAND_GREEN = '#10b981';
 var BRAND_DARK = '#064e3b';
+var SIGNUP_HEADER_COLOR = '#1e3a8a';
+
+// Column positions in the Events sheet (1-based), used by the signup handler.
+var EVENT_COL_TITLE = 1;
+var EVENT_COL_SPOTS_TOTAL = 6;
+var EVENT_COL_SPOTS_TAKEN = 7;
 
 // ---------------------------------------------------------------------------
-// Menu — this is the "Publish" button in the menu bar
+// Menu
 // ---------------------------------------------------------------------------
 
-/**
- * Simple trigger: runs automatically every time the spreadsheet is opened.
- * Builds the custom "🐢 Website" menu.
- */
+/** Simple trigger: builds the custom menu every time the sheet is opened. */
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('🐢 Website')
@@ -75,28 +91,34 @@ function onOpen() {
 }
 
 // ---------------------------------------------------------------------------
-// Setup — builds the two tabs with headers, formatting and validation
+// Setup
 // ---------------------------------------------------------------------------
 
 /**
- * Creates (or repairs) the Events and Announcements tabs.
+ * Creates (or repairs) every tab the website needs.
  * Safe to re-run: it never deletes rows you have typed.
  */
 function setupSheets() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
 
-  var events = ensureSheet_(ss, EVENTS_SHEET, EVENT_HEADERS);
-  var announcements = ensureSheet_(ss, ANNOUNCEMENTS_SHEET, ANNOUNCEMENT_HEADERS);
+  var events = ensureSheet_(ss, EVENTS_SHEET, EVENT_HEADERS, BRAND_DARK);
+  var announcements = ensureSheet_(ss, ANNOUNCEMENTS_SHEET, ANNOUNCEMENT_HEADERS, BRAND_DARK);
+  var labLog = ensureSheet_(ss, LABLOG_SHEET, LABLOG_HEADERS, BRAND_DARK);
+  var signups = ensureSheet_(ss, SIGNUPS_SHEET, SIGNUP_HEADERS, SIGNUP_HEADER_COLOR);
 
   styleEventsSheet_(events);
   styleAnnouncementsSheet_(announcements);
+  styleLabLogSheet_(labLog);
+  styleSignupsSheet_(signups);
 
-  // Seed one example row each, but only on a genuinely empty sheet, so
-  // re-running setup never clobbers real content.
-  if (events.getLastRow() < 2) seedExampleEvent_(events);
-  if (announcements.getLastRow() < 2) seedExampleAnnouncement_(announcements);
+  // Seed examples only into genuinely empty sheets, so re-running setup never
+  // clobbers real content.
+  if (isSheetEmpty_(events, EVENT_HEADERS.length)) seedExampleEvent_(events);
+  if (isSheetEmpty_(announcements, ANNOUNCEMENT_HEADERS.length)) {
+    seedExampleAnnouncement_(announcements);
+  }
+  if (isSheetEmpty_(labLog, LABLOG_HEADERS.length)) seedExampleLabLog_(labLog);
 
-  // The default "Sheet1" is noise once the real tabs exist.
   var stray = ss.getSheetByName('Sheet1');
   if (stray && stray.getLastRow() === 0 && ss.getSheets().length > 1) {
     ss.deleteSheet(stray);
@@ -105,78 +127,108 @@ function setupSheets() {
   ensurePublishedSheet_(ss);
   ss.setActiveSheet(events);
 
-  SpreadsheetApp.getUi().alert(
+  notify_(
     'Setup complete',
-    'Your "Events" and "Announcements" tabs are ready.\n\n' +
-      'Type your content, then click  🐢 Website ▸ Publish to Website.',
-    SpreadsheetApp.getUi().ButtonSet.OK
+    'Your tabs are ready:\n\n' +
+      '  • Events\n  • Announcements\n  • Lab Log\n  • Signups (filled in automatically)\n\n' +
+      'Type your content, then click  🐢 Website ▸ Publish to Website.'
   );
 }
 
-function ensureSheet_(ss, name, headers) {
+/**
+ * Shows a dialog when there is a UI to show it in.
+ *
+ * setupSheets is meant to be run straight from the Apps Script editor the first
+ * time, and there is no spreadsheet UI attached to that context — calling
+ * getUi() there throws. The setup work itself is already done by this point, so
+ * a missing dialog must not surface as a failure.
+ */
+function notify_(title, message) {
+  try {
+    var ui = SpreadsheetApp.getUi();
+    ui.alert(title, message, ui.ButtonSet.OK);
+  } catch (err) {
+    Logger.log(title + '\n' + message);
+  }
+}
+
+function ensureSheet_(ss, name, headers, headerColor) {
   var sheet = ss.getSheetByName(name);
   if (!sheet) sheet = ss.insertSheet(name);
 
   sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
   sheet.setFrozenRows(1);
-
   sheet
     .getRange(1, 1, 1, headers.length)
-    .setBackground(BRAND_DARK)
+    .setBackground(headerColor)
     .setFontColor('#ffffff')
     .setFontWeight('bold')
     .setVerticalAlignment('middle');
-
   sheet.setRowHeight(1, 34);
   return sheet;
 }
 
 function styleEventsSheet_(sheet) {
-  var widths = [220, 130, 170, 220, 420, 90, 90, 300, 100];
-  for (var i = 0; i < widths.length; i++) sheet.setColumnWidth(i + 1, widths[i]);
-
-  var maxRows = sheet.getMaxRows();
-  var body = maxRows - 1;
+  setWidths_(sheet, [220, 130, 170, 220, 420, 90, 90, 300, 100]);
+  var body = sheet.getMaxRows() - 1;
   if (body <= 0) return;
 
-  // Date column accepts either a real date or free text like "August 14, 2026".
   sheet.getRange(2, 2, body, 1).setNumberFormat('mmmm d, yyyy');
 
-  // Spot counts must be whole numbers — a decimal here would be a typo.
   var wholeNumber = SpreadsheetApp.newDataValidation()
     .requireNumberGreaterThanOrEqualTo(0)
     .setAllowInvalid(false)
     .setHelpText('Enter a whole number of spots (0 or more).')
     .build();
-  sheet.getRange(2, 6, body, 2).setDataValidation(wholeNumber);
+  sheet.getRange(2, EVENT_COL_SPOTS_TOTAL, body, 2).setDataValidation(wholeNumber);
 
-  // "Show on Site" is a checkbox so it is obvious at a glance.
   sheet.getRange(2, 9, body, 1).insertCheckboxes();
-
   sheet.getRange(2, 5, body, 1).setWrap(true);
-  sheet.getRange(1, 1, maxRows, EVENT_HEADERS.length).setVerticalAlignment('top');
+  sheet.getRange(1, 1, sheet.getMaxRows(), EVENT_HEADERS.length).setVerticalAlignment('top');
 }
 
 function styleAnnouncementsSheet_(sheet) {
-  var widths = [260, 130, 130, 560, 100];
-  for (var i = 0; i < widths.length; i++) sheet.setColumnWidth(i + 1, widths[i]);
-
-  var maxRows = sheet.getMaxRows();
-  var body = maxRows - 1;
+  setWidths_(sheet, [260, 130, 130, 560, 100]);
+  var body = sheet.getMaxRows() - 1;
   if (body <= 0) return;
 
   sheet.getRange(2, 2, body, 1).setNumberFormat('mmmm d, yyyy');
-
-  var categoryRule = SpreadsheetApp.newDataValidation()
-    .requireValueInList(ANNOUNCEMENT_CATEGORIES, true)
-    .setAllowInvalid(false)
-    .setHelpText('Pick a category — it controls the colour of the badge on the site.')
-    .build();
-  sheet.getRange(2, 3, body, 1).setDataValidation(categoryRule);
-
+  sheet.getRange(2, 3, body, 1).setDataValidation(categoryRule_(ANNOUNCEMENT_CATEGORIES));
   sheet.getRange(2, 5, body, 1).insertCheckboxes();
   sheet.getRange(2, 4, body, 1).setWrap(true);
-  sheet.getRange(1, 1, maxRows, ANNOUNCEMENT_HEADERS.length).setVerticalAlignment('top');
+  sheet.getRange(1, 1, sheet.getMaxRows(), ANNOUNCEMENT_HEADERS.length).setVerticalAlignment('top');
+}
+
+function styleLabLogSheet_(sheet) {
+  setWidths_(sheet, [240, 130, 130, 380, 460, 300, 180, 100]);
+  var body = sheet.getMaxRows() - 1;
+  if (body <= 0) return;
+
+  sheet.getRange(2, 2, body, 1).setNumberFormat('mmmm d, yyyy');
+  sheet.getRange(2, 3, body, 1).setDataValidation(categoryRule_(LABLOG_CATEGORIES));
+  sheet.getRange(2, 8, body, 1).insertCheckboxes();
+  sheet.getRange(2, 4, body, 2).setWrap(true);
+  sheet.getRange(1, 1, sheet.getMaxRows(), LABLOG_HEADERS.length).setVerticalAlignment('top');
+}
+
+function styleSignupsSheet_(sheet) {
+  setWidths_(sheet, [180, 260, 220, 260]);
+  var body = sheet.getMaxRows() - 1;
+  if (body <= 0) return;
+  sheet.getRange(2, 1, body, 1).setNumberFormat('yyyy-mm-dd hh:mm:ss');
+  sheet.getRange(1, 1, sheet.getMaxRows(), SIGNUP_HEADERS.length).setVerticalAlignment('top');
+}
+
+function setWidths_(sheet, widths) {
+  for (var i = 0; i < widths.length; i++) sheet.setColumnWidth(i + 1, widths[i]);
+}
+
+function categoryRule_(values) {
+  return SpreadsheetApp.newDataValidation()
+    .requireValueInList(values, true)
+    .setAllowInvalid(false)
+    .setHelpText('Pick a category — it controls the badge shown on the site.')
+    .build();
 }
 
 function seedExampleEvent_(sheet) {
@@ -188,7 +240,7 @@ function seedExampleEvent_(sheet) {
     'Build a personalised lava lamp and explore density, oil-water polarity and ' +
       'effervescent reactions. Bring a friend!',
     25,
-    18,
+    0,
     'https://images.unsplash.com/photo-1544377193-33dcf4d68fb5?auto=format&fit=crop&q=80&w=800',
     true
   ]);
@@ -205,6 +257,22 @@ function seedExampleAnnouncement_(sheet) {
   ]);
 }
 
+function seedExampleLabLog_(sheet) {
+  sheet.appendRow([
+    'The Great Chemistry Blast',
+    'June 18, 2026',
+    'chemistry',
+    'Our junior scientists investigated acid-base reactions by creating custom-tinted ' +
+      'effervescent volcanos.',
+    'We combined vinegar and baking soda inside 3D-printed volcanic cones. Adding dish ' +
+      'soap and liquid watercolour produced a thick, sustained foam eruption. Scientists ' +
+      'recorded reaction time, temperature shift, and how viscosity affects flow rate.',
+    'https://images.unsplash.com/photo-1532094349884-543bc11b234d?auto=format&fit=crop&q=80&w=800',
+    'Dr. Elena Vance',
+    true
+  ]);
+}
+
 function ensurePublishedSheet_(ss) {
   var sheet = ss.getSheetByName(PUBLISHED_SHEET);
   if (!sheet) {
@@ -212,27 +280,23 @@ function ensurePublishedSheet_(ss) {
     sheet.getRange('A1').setValue('');
     sheet
       .getRange('C1')
-      .setValue(
-        'This tab is written automatically when you click Publish. Do not edit it by hand.'
-      );
+      .setValue('Written automatically when you click Publish. Do not edit by hand.');
     sheet.hideSheet();
   }
   return sheet;
 }
 
 // ---------------------------------------------------------------------------
-// Publish — snapshot the tabs into the JSON the website reads
+// Publish
 // ---------------------------------------------------------------------------
 
-/**
- * Reads both tabs, validates them, and stores a JSON snapshot that doGet serves.
- */
 function publishToWebsite() {
   var ui = SpreadsheetApp.getUi();
   var ss = SpreadsheetApp.getActiveSpreadsheet();
 
   var eventsSheet = ss.getSheetByName(EVENTS_SHEET);
   var announcementsSheet = ss.getSheetByName(ANNOUNCEMENTS_SHEET);
+  var labLogSheet = ss.getSheetByName(LABLOG_SHEET);
 
   if (!eventsSheet || !announcementsSheet) {
     ui.alert(
@@ -247,6 +311,7 @@ function publishToWebsite() {
   var problems = [];
   var events = readEvents_(eventsSheet, problems);
   var announcements = readAnnouncements_(announcementsSheet, problems);
+  var labLogs = labLogSheet ? readLabLogs_(labLogSheet, problems) : [];
 
   if (problems.length) {
     var response = ui.alert(
@@ -262,20 +327,19 @@ function publishToWebsite() {
   var payload = {
     events: events,
     announcements: announcements,
+    labLogs: labLogs,
     publishedAt: new Date().toISOString(),
     publishedBy: Session.getActiveUser().getEmail() || 'unknown'
   };
 
   var json = JSON.stringify(payload);
 
-  // A single cell holds up to 50,000 characters — far more than a club needs,
-  // but fail loudly rather than silently truncating.
   if (json.length > 45000) {
     ui.alert(
       'Too much content',
-      'The published data is ' + json.length + ' characters, which is close to the ' +
-        '50,000 character limit of a single cell.\n\nTrim some old events or ' +
-        'announcements (untick "Show on Site") and publish again.',
+      'The published data is ' + json.length + ' characters, close to the 50,000 ' +
+        'character limit of a single cell.\n\nUntick "Show on Site" on some older ' +
+        'rows and publish again.',
       ui.ButtonSet.OK
     );
     return;
@@ -287,7 +351,8 @@ function publishToWebsite() {
     '🚀 Published!',
     'The website now shows:\n\n' +
       '  • ' + events.length + ' event(s)\n' +
-      '  • ' + announcements.length + ' announcement(s)\n\n' +
+      '  • ' + announcements.length + ' announcement(s)\n' +
+      '  • ' + labLogs.length + ' lab log entr(ies)\n\n' +
       (problems.length ? '  • ' + problems.length + ' row(s) skipped\n\n' : '') +
       'Refresh the website to see the change.',
     ui.ButtonSet.OK
@@ -303,7 +368,7 @@ function readEvents_(sheet, problems) {
     var rowNumber = i + 2;
 
     if (isBlankRow_(row)) continue;
-    if (row[8] === false) continue; // "Show on Site" unticked
+    if (row[8] === false) continue;
 
     var title = String(row[0]).trim();
     if (!title) {
@@ -354,19 +419,58 @@ function readAnnouncements_(sheet, problems) {
       continue;
     }
 
-    var category = String(row[2] || 'general').trim().toLowerCase();
-    if (ANNOUNCEMENT_CATEGORIES.indexOf(category) === -1) category = 'general';
-
     out.push({
       id: 'sheet-ann-' + rowNumber,
       title: title,
       date: formatDate_(row[1]),
-      category: category,
+      category: normaliseCategory_(row[2], ANNOUNCEMENT_CATEGORIES),
       content: String(row[3] || '').trim()
     });
   }
 
   return out;
+}
+
+function readLabLogs_(sheet, problems) {
+  var rows = bodyRows_(sheet, LABLOG_HEADERS.length);
+  var out = [];
+
+  for (var i = 0; i < rows.length; i++) {
+    var row = rows[i];
+    var rowNumber = i + 2;
+
+    if (isBlankRow_(row)) continue;
+    if (row[7] === false) continue;
+
+    var title = String(row[0]).trim();
+    if (!title) {
+      problems.push('Lab Log row ' + rowNumber + ': missing a Title.');
+      continue;
+    }
+
+    var summary = String(row[3] || '').trim();
+    var content = String(row[4] || '').trim();
+
+    out.push({
+      id: 'sheet-log-' + rowNumber,
+      title: title,
+      date: formatDate_(row[1]),
+      category: normaliseCategory_(row[2], LABLOG_CATEGORIES),
+      // The card shows the summary and the expanded view shows the write-up, so
+      // fall back between them rather than rendering an empty card.
+      summary: summary || content,
+      content: content || summary,
+      image: String(row[5] || '').trim(),
+      author: String(row[6] || '').trim()
+    });
+  }
+
+  return out;
+}
+
+function normaliseCategory_(value, allowed) {
+  var category = String(value || '').trim().toLowerCase();
+  return allowed.indexOf(category) === -1 ? allowed[allowed.length - 1] : category;
 }
 
 function bodyRows_(sheet, width) {
@@ -375,10 +479,25 @@ function bodyRows_(sheet, width) {
   return sheet.getRange(2, 1, lastRow - 1, width).getValues();
 }
 
+/**
+ * True when the sheet has headers but no real content.
+ *
+ * getLastRow() cannot answer this: insertCheckboxes() writes FALSE into every
+ * cell of its column, so a freshly formatted sheet reports a last row in the
+ * thousands. Only an actual scan of the values tells us whether anyone has
+ * typed anything.
+ */
+function isSheetEmpty_(sheet, width) {
+  var rows = bodyRows_(sheet, width);
+  for (var i = 0; i < rows.length; i++) {
+    if (!isBlankRow_(rows[i])) return false;
+  }
+  return true;
+}
+
 function isBlankRow_(row) {
   for (var i = 0; i < row.length; i++) {
-    // Checkboxes read as false on an otherwise empty row, so they do not count
-    // as content.
+    // Checkboxes read as false on an otherwise empty row, so they are not content.
     if (row[i] !== '' && row[i] !== null && row[i] !== false) return false;
   }
   return true;
@@ -390,10 +509,7 @@ function toWholeNumber_(value, fallback) {
   return Math.round(n);
 }
 
-/**
- * Sheets hands back a Date object for date-formatted cells and a raw string for
- * anything typed as text. Normalise both into "August 14, 2026".
- */
+/** Sheets returns a Date for date-formatted cells and a string otherwise. */
 function formatDate_(value) {
   if (value instanceof Date && !isNaN(value.getTime())) {
     return Utilities.formatDate(
@@ -406,43 +522,182 @@ function formatDate_(value) {
 }
 
 // ---------------------------------------------------------------------------
-// Web app — the URL the website fetches
+// Web app
 // ---------------------------------------------------------------------------
 
-/**
- * Serves the last published snapshot.
- * Supports ?callback=fn for JSONP, as a fallback if CORS ever misbehaves.
- */
 function doGet(e) {
-  var json;
-  try {
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(PUBLISHED_SHEET);
-    json = sheet ? String(sheet.getRange('A1').getValue() || '') : '';
-  } catch (err) {
-    json = '';
-  }
+  var json = readPublishedJson_();
 
   if (!json) {
     json = JSON.stringify({
       events: [],
       announcements: [],
+      labLogs: [],
       publishedAt: null,
       note: 'Nothing published yet. Open the spreadsheet and click 🐢 Website ▸ Publish to Website.'
     });
   }
 
+  return serve_(json, e);
+}
+
+/**
+ * Signups arrive here.
+ *
+ * The website sends `text/plain` on purpose: it is a CORS-safelisted content
+ * type, so the browser skips the preflight OPTIONS request that Apps Script web
+ * apps cannot answer.
+ */
+function doPost(e) {
+  var result;
+
+  try {
+    var body = e && e.postData ? JSON.parse(e.postData.contents) : {};
+    if (body.action !== 'signup') throw new Error('Unknown action.');
+    result = handleSignup_(body);
+  } catch (err) {
+    result = { ok: false, error: err && err.message ? err.message : 'Signup failed.' };
+  }
+
+  return serve_(JSON.stringify(result), e);
+}
+
+/**
+ * Records one signup: a row in Signups, +1 on that event's Spots Taken, and a
+ * matching bump inside the published snapshot so the site's counter stays
+ * current without republishing anything still being drafted.
+ */
+function handleSignup_(body) {
+  var studentName = String(body.studentName || '').trim();
+  var school = String(body.school || '').trim();
+  var eventId = String(body.eventId || '').trim();
+
+  if (!studentName) return { ok: false, error: 'Please enter the student’s name.' };
+  if (!school) return { ok: false, error: 'Please enter the school.' };
+  if (!eventId) return { ok: false, error: 'Missing which event this is for.' };
+
+  // Two families submitting at once must not both read the same "Spots Taken".
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(15000);
+  } catch (err) {
+    return { ok: false, error: 'The server is busy. Please try again in a moment.' };
+  }
+
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var eventsSheet = ss.getSheetByName(EVENTS_SHEET);
+    if (!eventsSheet) return { ok: false, error: 'The Events tab is missing.' };
+
+    var rowNumber = resolveEventRow_(eventsSheet, eventId, body.eventTitle);
+    if (!rowNumber) return { ok: false, error: 'That event is no longer listed.' };
+
+    var title = String(eventsSheet.getRange(rowNumber, EVENT_COL_TITLE).getValue()).trim();
+    var total = toWholeNumber_(eventsSheet.getRange(rowNumber, EVENT_COL_SPOTS_TOTAL).getValue(), 0);
+    var taken = toWholeNumber_(eventsSheet.getRange(rowNumber, EVENT_COL_SPOTS_TAKEN).getValue(), 0);
+
+    if (total > 0 && taken >= total) {
+      return { ok: false, error: 'Sorry — this event is now full.' };
+    }
+
+    var signups = ss.getSheetByName(SIGNUPS_SHEET);
+    if (!signups) {
+      signups = ensureSheet_(ss, SIGNUPS_SHEET, SIGNUP_HEADERS, SIGNUP_HEADER_COLOR);
+      styleSignupsSheet_(signups);
+    }
+    signups.appendRow([new Date(), title, studentName, school]);
+
+    var updatedTaken = taken + 1;
+    eventsSheet.getRange(rowNumber, EVENT_COL_SPOTS_TAKEN).setValue(updatedTaken);
+    bumpPublishedSpots_(ss, eventId, updatedTaken);
+
+    return {
+      ok: true,
+      eventTitle: title,
+      spotsTotal: total,
+      spotsReserved: updatedTaken,
+      spotsLeft: Math.max(0, total - updatedTaken)
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * Finds the Events row for an id like "sheet-event-7". The id carries the row
+ * number, but rows move when you insert or delete above them, so the title is
+ * verified too and a search is used as a fallback.
+ */
+function resolveEventRow_(sheet, eventId, expectedTitle) {
+  var match = /^sheet-event-(\d+)$/.exec(eventId);
+  var lastRow = sheet.getLastRow();
+  var wanted = String(expectedTitle || '').trim();
+
+  if (match) {
+    var rowNumber = Number(match[1]);
+    if (rowNumber >= 2 && rowNumber <= lastRow) {
+      var title = String(sheet.getRange(rowNumber, EVENT_COL_TITLE).getValue()).trim();
+      if (title && (!wanted || title === wanted)) return rowNumber;
+    }
+  }
+
+  if (!wanted || lastRow < 2) return null;
+
+  var titles = sheet.getRange(2, EVENT_COL_TITLE, lastRow - 1, 1).getValues();
+  for (var i = 0; i < titles.length; i++) {
+    if (String(titles[i][0]).trim() === wanted) return i + 2;
+  }
+  return null;
+}
+
+/** Updates one event's spotsReserved inside the published snapshot. */
+function bumpPublishedSpots_(ss, eventId, spotsReserved) {
+  var sheet = ss.getSheetByName(PUBLISHED_SHEET);
+  if (!sheet) return;
+
+  var raw = String(sheet.getRange('A1').getValue() || '');
+  if (!raw) return;
+
+  var payload;
+  try {
+    payload = JSON.parse(raw);
+  } catch (err) {
+    return; // A corrupt snapshot is fixed by publishing again, not by guessing.
+  }
+
+  var events = payload.events || [];
+  for (var i = 0; i < events.length; i++) {
+    if (events[i].id === eventId) {
+      events[i].spotsReserved = spotsReserved;
+      sheet.getRange('A1').setValue(JSON.stringify(payload));
+      return;
+    }
+  }
+}
+
+function readPublishedJson_() {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss ? ss.getSheetByName(PUBLISHED_SHEET) : null;
+    return sheet ? String(sheet.getRange('A1').getValue() || '') : '';
+  } catch (err) {
+    return '';
+  }
+}
+
+/** Returns JSON, or JSONP when a ?callback= is supplied. */
+function serve_(json, e) {
   var callback = e && e.parameter && e.parameter.callback;
   if (callback && /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(callback)) {
     return ContentService.createTextOutput(callback + '(' + json + ');').setMimeType(
       ContentService.MimeType.JAVASCRIPT
     );
   }
-
   return ContentService.createTextOutput(json).setMimeType(ContentService.MimeType.JSON);
 }
 
 // ---------------------------------------------------------------------------
-// Helpers exposed on the menu
+// Menu helpers
 // ---------------------------------------------------------------------------
 
 function showWebAppUrl() {
@@ -457,28 +712,19 @@ function showWebAppUrl() {
   if (!url) {
     ui.alert(
       'Not deployed yet',
-      'Deploy the web app first:\n\n' +
-        'Deploy ▸ New deployment ▸ Web app\n' +
-        '  Execute as: Me\n' +
-        '  Who has access: Anyone\n\n' +
-        'Then copy the /exec URL it gives you.',
+      'Deploy the web app first:\n\nDeploy ▸ New deployment ▸ Web app\n' +
+        '  Execute as: Me\n  Who has access: Anyone\n\nThen copy the /exec URL.',
       ui.ButtonSet.OK
     );
     return;
   }
 
-  ui.alert(
-    'Web app URL',
-    url + '\n\nPaste this into src/config.ts on the website as SHEET_API_URL.',
-    ui.ButtonSet.OK
-  );
+  ui.alert('Web app URL', url + '\n\nPaste this into src/config.ts as SHEET_API_URL.', ui.ButtonSet.OK);
 }
 
 function previewPublishedJson() {
   var ui = SpreadsheetApp.getUi();
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(PUBLISHED_SHEET);
-  var json = sheet ? String(sheet.getRange('A1').getValue() || '') : '';
-
+  var json = readPublishedJson_();
   ui.alert(
     'Currently published',
     json ? json.substring(0, 1500) + (json.length > 1500 ? '\n\n…truncated' : '') : 'Nothing published yet.',

@@ -1,19 +1,16 @@
 import React, { useState } from 'react';
-import { ClubIdentity, UserProfile } from '../types';
+import { UserProfile } from '../types';
 import { X, ShieldAlert, Award, Smile, CheckSquare, Square, CheckCircle } from 'lucide-react';
 
 interface JoinModalProps {
-  identity: ClubIdentity;
   onClose: () => void;
   onJoinSuccess: (profile: UserProfile) => void;
 }
 
 export default function JoinModal({
-  identity,
   onClose,
   onJoinSuccess
 }: JoinModalProps) {
-  const isTurtle = identity === 'turtlerock';
 
   // Form states
   const [childName, setChildName] = useState('');
@@ -70,7 +67,7 @@ export default function JoinModal({
         <div className="p-5 border-b border-white/10 flex items-center justify-between bg-zinc-950/40">
           <div className="text-left">
             <h4 className="font-display font-bold text-lg leading-tight text-white tracking-tighter">
-              {isTurtle ? 'Join the Turtle Rock Science Club' : 'Register at Kinetic Lab'}
+              Join the Turtle Rock Science Club
             </h4>
             <p className="text-[9px] text-zinc-500 mt-0.5 font-mono uppercase tracking-widest">Create your official Scientist Profile ID</p>
           </div>
@@ -164,7 +161,7 @@ export default function JoinModal({
                   onClick={() => setGoggleAgreement(!goggleAgreement)}
                   className="flex items-start gap-2.5 text-left text-xs cursor-pointer select-none"
                 >
-                  <div className={`mt-0.5 shrink-0 p-0.5 rounded ${isTurtle ? 'text-emerald-400' : 'text-blue-400'}`}>
+                  <div className="mt-0.5 shrink-0 p-0.5 rounded text-emerald-400">
                     {goggleAgreement ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
                   </div>
                   <span className="opacity-95 text-xs text-zinc-400 leading-relaxed font-sans">
@@ -178,7 +175,7 @@ export default function JoinModal({
                   onClick={() => setCuriosityAgreement(!curiosityAgreement)}
                   className="flex items-start gap-2.5 text-left text-xs cursor-pointer select-none"
                 >
-                  <div className={`mt-0.5 shrink-0 p-0.5 rounded ${isTurtle ? 'text-emerald-400' : 'text-blue-400'}`}>
+                  <div className="mt-0.5 shrink-0 p-0.5 rounded text-emerald-400">
                     {curiosityAgreement ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
                   </div>
                   <span className="opacity-95 text-xs text-zinc-400 leading-relaxed font-sans">
@@ -198,11 +195,7 @@ export default function JoinModal({
               <button
                 id="submit-join-form"
                 type="submit"
-                className={`w-full py-3 rounded-full font-bold text-xs uppercase tracking-widest transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                  isTurtle
-                    ? 'bg-emerald-500 hover:bg-emerald-400 text-stone-950'
-                    : 'bg-blue-500 hover:bg-blue-400 text-stone-950'
-                }`}
+                className="w-full py-3 rounded-full font-bold text-xs uppercase tracking-widest transition flex items-center justify-center gap-1.5 cursor-pointer bg-emerald-500 hover:bg-emerald-400 text-stone-950"
               >
                 <Smile className="w-4 h-4" />
                 <span>Verify Scientist Records</span>
