@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { UserProfile, GalleryPhoto, Mission } from './types';
 import { initialGalleryPhotos, faqItems, pressMentions } from './data';
 import { useSiteContent, SignupResult } from './useSiteContent';
+import { useTheme } from './useTheme';
 
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -25,6 +26,7 @@ export default function App() {
   const [signupNotice, setSignupNotice] = useState<{ mission: Mission; result: SignupResult } | null>(null);
 
   const content = useSiteContent();
+  const { theme, toggleTheme } = useTheme();
 
   const [userProfile, setUserProfile] = useState<UserProfile>(() => {
     try {
@@ -114,7 +116,7 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col justify-between font-sans bg-[#FBF7EC] text-[#1F3A42] relative overflow-hidden bg-dot-pattern">
 
-      <Header currentTab={currentTab} setCurrentTab={setCurrentTab} userProfile={userProfile} onOpenJoin={() => setShowJoinModal(true)} />
+      <Header currentTab={currentTab} setCurrentTab={setCurrentTab} userProfile={userProfile} onOpenJoin={() => setShowJoinModal(true)} theme={theme} onToggleTheme={toggleTheme} />
 
       <main className="flex-1 pb-10">
         {currentTab === 'missions' && (

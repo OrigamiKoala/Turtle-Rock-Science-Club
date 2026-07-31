@@ -80,83 +80,85 @@ textarea:focus {
   animation: fade-in 0.25s ease;
 }
 
-/* ---------- Dark mode: whole site, follows OS setting ---------- */
-@media (prefers-color-scheme: dark) {
+/* ---------- Dark mode: whole site ----------
+   `.dark` is applied to <html> by src/useTheme.ts. It defaults to following
+   the OS setting (prefers-color-scheme) but can be overridden manually via
+   the half-moon toggle in the header, which is why this is a plain class
+   selector rather than a @media query. */
 
-  .bg-\[\#FBF7EC\],
-  .bg-\[\#FBF7EC\]\/90 {
-    background-color: #12181A !important;
-  }
+:root.dark .bg-\[\#FBF7EC\],
+:root.dark .bg-\[\#FBF7EC\]\/90 {
+  background-color: #12181A !important;
+}
 
-  .bg-\[\#F3F0E4\] {
-    background-color: #0D1213 !important;
-  }
+:root.dark .bg-\[\#F3F0E4\] {
+  background-color: #0D1213 !important;
+}
 
-  .bg-white {
-    background-color: #1B2426 !important;
-  }
+:root.dark .bg-white {
+  background-color: #1B2426 !important;
+}
 
-  .bg-\[\#E4F5DA\] {
-    background-color: rgba(108, 194, 74, 0.18) !important;
-  }
+:root.dark .bg-\[\#E4F5DA\] {
+  background-color: rgba(108, 194, 74, 0.18) !important;
+}
 
-  .text-\[\#1F3A42\] {
-    color: #E7EDE9 !important;
-  }
+:root.dark .text-\[\#1F3A42\] {
+  color: #E7EDE9 !important;
+}
 
-  .text-\[\#4B6169\] {
-    color: #93A6A0 !important;
-  }
+:root.dark .text-\[\#4B6169\] {
+  color: #93A6A0 !important;
+}
 
-  .text-\[\#9AA6A6\] {
-    color: #67807A !important;
-  }
+:root.dark .text-\[\#9AA6A6\] {
+  color: #67807A !important;
+}
 
-  .text-\[\#2E7D46\] {
-    color: #8FE07A !important;
-  }
+:root.dark .text-\[\#2E7D46\] {
+  color: #8FE07A !important;
+}
 
-  .text-\[\#14351F\] {
-    color: #14351F !important;
-  }
+:root.dark .text-\[\#14351F\] {
+  color: #14351F !important;
+}
 
-  /* button label stays dark-on-green */
+/* button label stays dark-on-green */
 
-  .border-\[\#1F3A42\]\/10,
-  .border-\[\#1F3A42\]\/8 {
-    border-color: rgba(255, 255, 255, 0.09) !important;
-  }
+:root.dark .border-\[\#1F3A42\]\/10,
+:root.dark .border-\[\#1F3A42\]\/8 {
+  border-color: rgba(255, 255, 255, 0.09) !important;
+}
 
-  /* Orbital Slingshot is space-themed and stays dark in every mode — no rule needed. */
+/* Orbital Slingshot is space-themed and stays dark in every mode — no rule needed. */
 
-  /* Molecule Builder / Robot Programmer / Chem Text Adventure: dark chrome in dark mode */
-  .game-molecule .bg-\[\#0d0d12\],
-  .game-robot .bg-\[\#0d0d12\] {
-    background-color: #0d0d12 !important;
-  }
+/* Molecule Builder / Robot Programmer / Chem Text Adventure: dark chrome in dark mode */
+:root.dark .game-molecule .bg-\[\#0d0d12\],
+:root.dark .game-robot .bg-\[\#0d0d12\] {
+  background-color: #0d0d12 !important;
+}
 
-  .game-molecule .bg-white,
-  .game-robot .bg-white,
-  .game-adventure .bg-white {
-    background-color: #1B2426 !important;
-  }
+:root.dark .game-molecule .bg-white,
+:root.dark .game-robot .bg-white,
+:root.dark .game-adventure .bg-white {
+  background-color: #1B2426 !important;
+}
 
-  .game-molecule .text-\[\#1F3A42\],
-  .game-robot .text-\[\#1F3A42\],
-  .game-adventure .text-\[\#1F3A42\] {
-    color: #ffffff !important;
-  }
+:root.dark .game-molecule .text-\[\#1F3A42\],
+:root.dark .game-robot .text-\[\#1F3A42\],
+:root.dark .game-adventure .text-\[\#1F3A42\] {
+  color: #ffffff !important;
+}
 
-  .game-molecule .text-\[\#4B6169\],
-  .game-robot .text-\[\#4B6169\],
-  .game-adventure .text-\[\#4B6169\] {
-    color: #a1a1aa !important;
-  }
+:root.dark .game-molecule .text-\[\#4B6169\],
+:root.dark .game-robot .text-\[\#4B6169\],
+:root.dark .game-adventure .text-\[\#4B6169\] {
+  color: #a1a1aa !important;
+}
 
-  .game-molecule .border-\[\#1F3A42\]\/10,
-  .game-robot .border-\[\#1F3A42\]\/10 {
-    border-color: rgba(255, 255, 255, 0.1) !important;
-  }
+:root.dark .game-molecule .border-\[\#1F3A42\]\/10,
+:root.dark .game-robot .border-\[\#1F3A42\]\/10 {
+  border-color: rgba(255, 255, 255, 0.1) !important;
 }
 
 /* ---------- Light mode: force Molecule/Robot/Adventure light even though their

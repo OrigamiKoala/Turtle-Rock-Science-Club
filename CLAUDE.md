@@ -102,7 +102,8 @@ anything still being drafted. If you change how events are published, keep
 
 - Everything the visitor "owns" is `localStorage`, keyed `tr_sc_*`:
   `tr_sc_user_profile`, `tr_sc_gallery_photos`, `tr_sc_signed_up_ids`,
-  `tr_sc_sheet_content_v1` (5-minute content cache), `tr_sc_last_school`.
+  `tr_sc_sheet_content_v1` (5-minute content cache), `tr_sc_last_school`,
+  `tr_sc_theme` (manual light/dark override — see "Theming" below).
   Clear `tr_sc_sheet_content_v1` when testing a fresh publish.
 - The event list is deliberately **not** cached as app state — an earlier
   version stored missions in `localStorage` and returning visitors never saw
@@ -114,6 +115,33 @@ anything still being drafted. If you change how events are published, keep
 - **There is no second club.** The template shipped a "Kinetic Lab" identity
   toggle — a fictional company — which was removed. If you see `identity`,
   `isTurtle`, or `ClubIdentity` reappear, it is a regression.
+
+## Theming (light/dark)
+
+The site defaults to the OS color-scheme setting and can be overridden
+manually via the half-moon/sun button in the header, next to the profile/Join
+button.
+
+- `src/useTheme.ts` resolves the effective theme (`localStorage['tr_sc_theme']`
+  if set, else `prefers-color-scheme`) and toggles a `dark` class on
+  `document.documentElement`. It only writes to storage once the user
+  actually toggles — until then it keeps tracking OS changes live.
+- An inline script in `index.html`'s `<head>` applies that same class
+  synchronously on load, before React mounts, so there's no flash of the
+  wrong theme.
+- `src/index.css` implements dark mode as `:root.dark <selector>` overrides
+  (`!important`) on the site's hardcoded `bg-[#hex]` / `text-[#hex]` classes,
+  scoped under a plain class rather than `@media (prefers-color-scheme)` so
+  the manual toggle can drive it independent of the OS setting.
+- Known gap: those dark-mode rules include scoped variants meant to flip
+  `MoleculeBuilder`/`RobotProgrammer`/the chem adventure link-out between
+  their own dark chrome and a light-mode look, gated on `.game-molecule` /
+  `.game-robot` / `.game-adventure` wrapper classes — but nothing in
+  `src/components/games/` or `VirtualLab.tsx` actually applies those classes,
+  so the rules never fire. In practice those three currently render with
+  their own dark styling regardless of site theme, same as
+  `OrbitalSlingshot.tsx` (which is intentionally always-dark). Wiring up the
+  wrapper classes is unfinished work, not a regression.
 
 ## Minigames
 
