@@ -15,7 +15,7 @@ export default function TurtleRockLogo({ className = '', size = 120, hideText = 
         id="turtle-rock-cropped-logo"
       >
         <img
-          src="/Logo.png"
+          src={`${import.meta.env.BASE_URL}Logo.png`}
           alt="Turtle Rock Science Club Icon"
           className="absolute max-w-none select-none pointer-events-none"
           referrerPolicy="no-referrer"
@@ -31,7 +31,7 @@ export default function TurtleRockLogo({ className = '', size = 120, hideText = 
 
   return (
     <img
-      src="/Logo.png"
+      src={`${import.meta.env.BASE_URL}Logo.png`}
       alt="Turtle Rock Science Club Logo"
       width={size}
       height={size}
