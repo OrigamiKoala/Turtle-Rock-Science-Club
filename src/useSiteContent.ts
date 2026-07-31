@@ -25,6 +25,7 @@ export interface MemberJoinDetails {
   role?: string;
   parentName?: string;
   email?: string;
+  studentEmail?: string;
   childAge?: string;
 }
 

@@ -5,7 +5,7 @@ import { X, ShieldAlert, Smile, CheckSquare, Square, CheckCircle } from 'lucide-
 interface JoinModalProps {
   onClose: () => void;
   onJoinSuccess: (profile: UserProfile) => void;
-  onJoinSubmit?: (details: { name: string; school: string; role: string; parentName: string; email: string; childAge: string }) => void;
+  onJoinSubmit?: (details: { name: string; school: string; role: string; parentName: string; email: string; studentEmail?: string; childAge: string }) => void;
 }
 
 export default function JoinModal({ onClose, onJoinSuccess, onJoinSubmit }: JoinModalProps) {
@@ -14,6 +14,7 @@ export default function JoinModal({ onClose, onJoinSuccess, onJoinSubmit }: Join
   const [parentName, setParentName] = useState('');
   const [childAge, setChildAge] = useState('');
   const [email, setEmail] = useState('');
+  const [studentEmail, setStudentEmail] = useState('');
 
   const [goggleAgreement, setGoggleAgreement] = useState(false);
   const [curiosityAgreement, setCuriosityAgreement] = useState(false);
@@ -42,6 +43,7 @@ export default function JoinModal({ onClose, onJoinSuccess, onJoinSubmit }: Join
         role: 'Rookie Researcher',
         parentName,
         email,
+        studentEmail,
         childAge
       });
     }
@@ -124,8 +126,14 @@ export default function JoinModal({ onClose, onJoinSuccess, onJoinSubmit }: Join
 
               <div className="space-y-1">
                 <label className="text-[11px] font-extrabold text-[#4B6169]">Parent Email</label>
-                <input id="join-email" type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)}
+                <input id="join-email" type="email" placeholder="parent@example.com" value={email} onChange={(e) => setEmail(e.target.value)}
                   className="w-full p-2.5 rounded-xl text-sm border-2 border-[#1F3A42]/12 bg-white text-[#1F3A42] focus:outline-none" required />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[11px] font-extrabold text-[#4B6169]">Student Email (Optional)</label>
+                <input id="join-student-email" type="email" placeholder="student@example.com" value={studentEmail} onChange={(e) => setStudentEmail(e.target.value)}
+                  className="w-full p-2.5 rounded-xl text-sm border-2 border-[#1F3A42]/12 bg-white text-[#1F3A42] focus:outline-none" />
               </div>
 
               <div className="space-y-2.5 pt-2">

@@ -76,7 +76,8 @@ var MEMBER_HEADERS = [
   'Level',
   'XP',
   'Unlocked Badges',
-  'Reserved Missions'
+  'Reserved Missions',
+  'Student Email'
 ];
 
 var PHOTO_HEADERS = ['Title', 'Image URL', 'Caption', 'Category', 'Submitted By', 'Show on Site'];
@@ -623,7 +624,8 @@ function handleJoin_(body) {
   var school = String(body.school || '').trim();
   var role = String(body.role || 'Rookie Researcher').trim();
   var parentName = String(body.parentName || '').trim();
-  var email = String(body.email || '').trim();
+  var email = String(body.email || body.parentEmail || '').trim();
+  var studentEmail = String(body.studentEmail || '').trim();
   var childAge = String(body.childAge || '').trim();
 
   if (!name) return { ok: false, error: 'Please enter a name.' };
@@ -636,7 +638,7 @@ function handleJoin_(body) {
     styleMembersSheet_(members);
   }
 
-  members.appendRow([new Date(), name, school, role, parentName, email, childAge, 1, 15, 'Foundation Member', '']);
+  members.appendRow([new Date(), name, school, role, parentName, email, childAge, 1, 15, 'Foundation Member', '', studentEmail]);
 
   return { ok: true, name: name };
 }

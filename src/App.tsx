@@ -127,10 +127,6 @@ export default function App() {
     setSignupNotice({ mission, result });
   };
 
-  const handleSubscribeNewsletter = () => {
-    setUserProfile((prev) => ({ ...prev, newsletterSubscribed: true }));
-    handleUpdateXp(20);
-  };
 
   const handleAddPhoto = (newPhoto: GalleryPhoto) => {
     setPhotos((prev) => [newPhoto, ...prev]);
@@ -157,7 +153,7 @@ export default function App() {
         {currentTab === 'lab' && <VirtualLab userProfile={userProfile} onUpdateXp={handleUpdateXp} />}
 
         {currentTab === 'logs' && (
-          <LabLogAnnouncements logs={content.labLogs} announcements={content.announcements} userProfile={userProfile} onSubscribeNewsletter={handleSubscribeNewsletter} />
+          <LabLogAnnouncements logs={content.labLogs} announcements={content.announcements} />
         )}
 
         {currentTab === 'gallery' && (

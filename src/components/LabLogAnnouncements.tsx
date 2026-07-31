@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { LabLog, Announcement, PressMention, UserProfile } from '../types';
-import { Newspaper, Send, CheckCircle, Mail, Clock, User, X, MessageSquare, AlertCircle } from 'lucide-react';
+import { LabLog, Announcement, PressMention } from '../types';
+import { Newspaper, Clock, User, X, MessageSquare } from 'lucide-react';
 
 const PRESS_MENTIONS: PressMention[] = [
   {
@@ -22,15 +22,10 @@ const PRESS_MENTIONS: PressMention[] = [
 interface LabLogAnnouncementsProps {
   logs: LabLog[];
   announcements: Announcement[];
-  userProfile: UserProfile;
-  onSubscribeNewsletter: () => void;
 }
 
-export default function LabLogAnnouncements({ logs, announcements, userProfile, onSubscribeNewsletter }: LabLogAnnouncementsProps) {
+export default function LabLogAnnouncements({ logs, announcements }: LabLogAnnouncementsProps) {
   const [activeLogId, setActiveLogId] = useState<string | null>(null);
-  const [newsletterEmail, setNewsletterEmail] = useState('');
-  const [emailSuccess, setEmailSuccess] = useState(false);
-  const [emailError, setEmailError] = useState('');
 
   const [comments, setComments] = useState<Record<string, Array<{ name: string; text: string; date: string }>>>({
     'log-1': [{ name: 'Parent David L.', text: 'My daughter can not stop talking about the volcano eruption!', date: 'June 19, 2026' }]
@@ -39,16 +34,6 @@ export default function LabLogAnnouncements({ logs, announcements, userProfile, 
   const [newCommentText, setNewCommentText] = useState('');
 
   const activeLog = logs.find((l) => l.id === activeLogId);
-
-  const handleSubscribe = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newsletterEmail || !newsletterEmail.includes('@')) { setEmailError('Please enter a valid email address.'); return; }
-    setEmailError('');
-    onSubscribeNewsletter();
-    setEmailSuccess(true);
-    setNewsletterEmail('');
-    setTimeout(() => setEmailSuccess(false), 4000);
-  };
 
   const handleAddComment = (e: React.FormEvent, logId: string) => {
     e.preventDefault();
@@ -66,27 +51,34 @@ export default function LabLogAnnouncements({ logs, announcements, userProfile, 
           <p className="text-xs mt-1 text-[#4B6169] max-w-2xl">Journal entries from our lead mentors and junior experimenters.</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {logs.map((log) => (
-            <div id={`log-card-${log.id}`} key={log.id} className="rounded-[28px] border-2 border-[#1F3A42]/8 bg-white overflow-hidden flex flex-col justify-between transition hover:border-[#1F3A42]/15 hover:shadow-lg cursor-pointer" onClick={() => setActiveLogId(log.id)}>
-              <div className="relative h-44 overflow-hidden border-b-2 border-[#1F3A42]/5">
-                <img src={log.image} alt={log.title} className="w-full h-full object-cover transition-transform duration-500 hover:scale-105" referrerPolicy="no-referrer" />
-                <span className="absolute top-3 right-3 bg-white/95 text-[#1F3A42] text-[10px] font-display font-bold px-2.5 py-1 rounded-full">{log.category}</span>
-              </div>
-              <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
-                <div className="space-y-1.5">
-                  <div className="flex items-center gap-2 text-[11px] font-bold text-[#9AA6A6]"><Clock className="w-3.5 h-3.5" /><span>{log.date}</span></div>
-                  <h4 className="font-display font-bold text-base leading-snug text-[#1F3A42]">{log.title}</h4>
-                  <p className="text-xs leading-relaxed line-clamp-2 text-[#4B6169]">{log.summary}</p>
+        {logs.length === 0 ? (
+          <div className="p-8 rounded-[28px] border-2 border-[#1F3A42]/8 bg-white text-center space-y-2">
+            <p className="font-display font-bold text-base text-[#1F3A42]">No lab log entries yet.</p>
+            <p className="text-xs text-[#4B6169]">Check back soon for new journal entries from our mentors!</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {logs.map((log) => (
+              <div id={`log-card-${log.id}`} key={log.id} className="rounded-[28px] border-2 border-[#1F3A42]/8 bg-white overflow-hidden flex flex-col justify-between transition hover:border-[#1F3A42]/15 hover:shadow-lg cursor-pointer" onClick={() => setActiveLogId(log.id)}>
+                <div className="relative h-44 overflow-hidden border-b-2 border-[#1F3A42]/5">
+                  <img src={log.image} alt={log.title} className="w-full h-full object-cover transition-transform duration-500 hover:scale-105" referrerPolicy="no-referrer" />
+                  <span className="absolute top-3 right-3 bg-white/95 text-[#1F3A42] text-[10px] font-display font-bold px-2.5 py-1 rounded-full">{log.category}</span>
                 </div>
-                <div className="pt-3 border-t-2 border-[#1F3A42]/8 flex items-center justify-between text-[11px] font-bold text-[#4B6169]">
-                  <span>By: {log.author}</span>
-                  <span className="font-bold text-[#4C9A3A]">Read Entry →</span>
+                <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2 text-[11px] font-bold text-[#9AA6A6]"><Clock className="w-3.5 h-3.5" /><span>{log.date}</span></div>
+                    <h4 className="font-display font-bold text-base leading-snug text-[#1F3A42]">{log.title}</h4>
+                    <p className="text-xs leading-relaxed line-clamp-2 text-[#4B6169]">{log.summary}</p>
+                  </div>
+                  <div className="pt-3 border-t-2 border-[#1F3A42]/8 flex items-center justify-between text-[11px] font-bold text-[#4B6169]">
+                    <span>By: {log.author}</span>
+                    <span className="font-bold text-[#4C9A3A]">Read Entry →</span>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch pt-6 border-t-2 border-[#1F3A42]/8">
@@ -97,45 +89,45 @@ export default function LabLogAnnouncements({ logs, announcements, userProfile, 
           </div>
 
           <div className="space-y-4">
-            {announcements.map((ann) => (
-              <div id={`announcement-${ann.id}`} key={ann.id} className="p-5 rounded-2xl border-2 border-[#1F3A42]/8 bg-white space-y-2.5 hover:border-[#1F3A42]/15 transition-all">
-                <div className="flex items-center justify-between gap-4">
-                  <span className="px-2.5 py-1 rounded-full text-[10px] font-display font-bold bg-[#E4F5DA] text-[#2E7D46]">{ann.category}</span>
-                  <span className="text-[10px] text-[#9AA6A6] font-bold">{ann.date}</span>
-                </div>
-                <h5 className="font-display font-bold text-sm tracking-tight leading-snug text-[#1F3A42]">{ann.title}</h5>
-                <p className="text-xs leading-relaxed text-[#4B6169]">{ann.content}</p>
+            {announcements.length === 0 ? (
+              <div className="p-6 rounded-2xl border-2 border-[#1F3A42]/8 bg-white text-center space-y-1">
+                <p className="font-display font-bold text-sm text-[#1F3A42]">No club announcements right now.</p>
+                <p className="text-xs text-[#4B6169]">Check back soon for updates!</p>
               </div>
-            ))}
+            ) : (
+              announcements.map((ann) => (
+                <div id={`announcement-${ann.id}`} key={ann.id} className="p-5 rounded-2xl border-2 border-[#1F3A42]/8 bg-white space-y-2.5 hover:border-[#1F3A42]/15 transition-all">
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-display font-bold bg-[#E4F5DA] text-[#2E7D46]">{ann.category}</span>
+                    <span className="text-[10px] text-[#9AA6A6] font-bold">{ann.date}</span>
+                  </div>
+                  <h5 className="font-display font-bold text-sm tracking-tight leading-snug text-[#1F3A42]">{ann.title}</h5>
+                  <p className="text-xs leading-relaxed text-[#4B6169]">{ann.content}</p>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
-        <div className="lg:col-span-5 flex flex-col justify-between gap-6">
-          <div className="p-6 rounded-[28px] border-2 border-[#1F3A42]/8 bg-white flex flex-col justify-between space-y-4 shadow-[0_8px_24px_rgba(31,58,66,0.06)]">
+        <div className="lg:col-span-5 space-y-6">
+          <div className="space-y-1">
+            <h4 className="font-display font-bold text-xl sm:text-2xl tracking-tight text-[#1F3A42] flex items-center gap-2">
+              <Newspaper className="w-5 h-5 text-[#4C9A3A]" /> In the News
+            </h4>
+            <p className="text-xs text-[#4B6169]">Media coverage and community press features.</p>
+          </div>
 
-            {userProfile.newsletterSubscribed ? (
-              <div className="p-3.5 rounded-xl bg-[#E4F5DA] text-xs font-bold flex items-center gap-2 text-[#2E7D46]">
-                <CheckCircle className="w-5 h-5 shrink-0" />
-                <span>Subscribed! (+20 XP)</span>
-              </div>
-            ) : emailSuccess ? (
-              <div className="p-3.5 rounded-xl bg-[#E4F5DA] text-xs font-bold flex items-center gap-2 text-[#2E7D46]">
-                <CheckCircle className="w-5 h-5 shrink-0" />
-                <span>Subscription success!</span>
-              </div>
-            ) : (
-              <form onSubmit={handleSubscribe} className="space-y-2">
-                <div className="flex gap-2">
-                  <input id="newsletter-email-input" type="email" placeholder="you@example.com" value={newsletterEmail} onChange={(e) => setNewsletterEmail(e.target.value)}
-                    className="flex-1 px-3 py-2.5 rounded-xl text-xs border-2 border-[#1F3A42]/12 bg-[#FBF7EC] text-[#1F3A42] focus:outline-none" required />
-                  <button id="newsletter-submit-btn" type="submit" className="px-4 py-2.5 rounded-full text-[11px] font-display font-bold transition flex items-center justify-center gap-1.5 cursor-pointer bg-[#6CC24A] text-[#14351F]">
-                    <span>Join</span><Send className="w-3 h-3" />
-                  </button>
+          <div className="space-y-4">
+            {PRESS_MENTIONS.map((item) => (
+              <div key={item.id} className="p-5 rounded-2xl border-2 border-[#1F3A42]/8 bg-white space-y-2 hover:border-[#1F3A42]/15 transition-all">
+                <div className="flex items-center justify-between text-[10px] font-bold text-[#9AA6A6]">
+                  <span className="text-[#4C9A3A] font-display">{item.source}</span>
+                  <span>{item.date}</span>
                 </div>
-                {emailError && <p className="text-[11px] text-red-500 font-bold flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" />{emailError}</p>}
-                <p className="text-[10px] text-[#9AA6A6]">We never spam. Unsubscribe with one click.</p>
-              </form>
-            )}
+                <h5 className="font-display font-bold text-sm tracking-tight leading-snug text-[#1F3A42]">{item.title}</h5>
+                <p className="text-xs leading-relaxed text-[#4B6169]">{item.snippet}</p>
+              </div>
+            ))}
           </div>
         </div>
       </div>
