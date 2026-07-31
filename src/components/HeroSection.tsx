@@ -29,7 +29,7 @@ export default function HeroSection({
 
           <h2 className="font-display font-bold text-4xl sm:text-5xl lg:text-6xl tracking-tight leading-[1.05] text-[#1F3A42]">
             Curiosity is welcome here.<br />
-            <span className="text-[#4C9A3A]">Come do science with us.</span>
+            <span className="text-[#4C9A3A]">Come explore science with us.</span>
           </h2>
 
           <p className="text-sm sm:text-base max-w-xl mx-auto leading-relaxed text-[#4B6169] font-sans">
