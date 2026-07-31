@@ -31,12 +31,20 @@ publishes `dist/` via `actions/deploy-pages`. It replaced a stock
 never ran Vite, so `index.html`'s `<script src="/src/main.tsx">` shipped as-is
 and the browser 404'd trying to fetch uncompiled TypeScript as a module.
 
-This is a project page (`OrigamiKoala.github.io/Turtle-Rock-Science-Club/`),
-not a user/org root page, so `vite.config.ts` sets
-`base: '/Turtle-Rock-Science-Club/'`. If the repo is ever renamed, or the site
-moves to a custom domain or a `<user>.github.io` root, update or remove that
-`base` to match — a stale value reproduces the same 404 pattern for built
-assets that switching away from Jekyll fixed.
+The site is served at the custom domain **trscienceclub.org** (configured via
+the repo's GitHub Pages settings — `gh api repos/:owner/:repo/pages` — not a
+checked-in `CNAME` file, since Pages uses the Actions/`workflow` build type
+here rather than legacy branch deployment). Because that's a domain root, not
+a subpath, `vite.config.ts` sets `base: '/'`. It was previously
+`/Turtle-Rock-Science-Club/` back when the site lived at the project-page URL
+`OrigamiKoala.github.io/Turtle-Rock-Science-Club/`; moving to the custom
+domain without updating `base` reproduced the exact 404-on-built-assets
+pattern that switching away from Jekyll originally fixed (browser requests
+`trscienceclub.org/Turtle-Rock-Science-Club/assets/...`, which doesn't exist).
+If the site ever moves again — back to the project-page URL, to a
+`<user>.github.io` root, or to a different custom domain — update `base` to
+match: `'/'` for any domain-root deploy (custom domain or user/org root page),
+`'/<repo-name>/'` for a project page with no custom domain.
 
 Static assets referenced at runtime (not imported as modules) live in
 `public/` (`Logo.png`, `favicon.ico`) and must be addressed with

@@ -5,9 +5,10 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   return {
-    // GitHub Pages serves this project at /Turtle-Rock-Science-Club/, not
-    // domain root, so built asset URLs must be rooted at that subpath too.
-    base: '/Turtle-Rock-Science-Club/',
+    // Served from the custom domain trscienceclub.org (configured in the repo's
+    // GitHub Pages settings, not a checked-in CNAME file) at the domain root, not
+    // a /Turtle-Rock-Science-Club/ subpath, so built asset URLs must be root-relative.
+    base: '/',
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
