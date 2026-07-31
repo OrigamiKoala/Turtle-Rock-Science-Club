@@ -294,7 +294,7 @@ export default function PhotoGallery({ photos, sheetPhotos = [], eventPhotos = [
           <div className="text-center py-12 border-2 border-dashed border-[#1F3A42]/12 rounded-[28px] bg-white">
             <ImageIcon className="w-9 h-9 text-[#9AA6A6] mx-auto mb-2" />
             <p className="font-bold text-xs text-[#4B6169]">No photo snapshots yet</p>
-            <p className="text-xs text-[#9AA6A6] mt-1">Add rows in the "Photos" Google Sheet tab or upload your first snapshot above!</p>
+            <p className="text-xs text-[#9AA6A6] mt-1">Check back soon!</p>
           </div>
         )}
       </div>
@@ -352,7 +352,7 @@ export default function PhotoGallery({ photos, sheetPhotos = [], eventPhotos = [
           <div className="text-center py-12 border-2 border-dashed border-[#1F3A42]/12 rounded-[28px] bg-white">
             <FolderHeart className="w-9 h-9 text-[#9AA6A6] mx-auto mb-2" />
             <p className="font-bold text-xs text-[#4B6169]">No event albums published yet</p>
-            <p className="text-xs text-[#9AA6A6] mt-1">Put an album link or HTML embed in the "Photos" column of your Events Google Sheet tab!</p>
+            <p className="text-xs text-[#9AA6A6] mt-1">Check back soon!</p>
           </div>
         )}
       </div>
