@@ -34,10 +34,6 @@ export default function AboutUs() {
 
       {/* HEADER & OVERVIEW */}
       <div className="space-y-4 border-b-2 border-[#1F3A42]/10 pb-10">
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-display font-bold bg-[#E4F5DA] text-[#2E7D46]">
-          <Compass className="w-3.5 h-3.5" />
-          About Our Club
-        </span>
         <h1 className="font-display font-bold text-4xl sm:text-5xl lg:text-6xl tracking-tight text-[#1F3A42]">
           Turtle Rock Science Club
         </h1>
@@ -160,9 +156,6 @@ export default function AboutUs() {
             <div className="space-y-2 flex-1">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h3 className="font-display font-bold text-lg text-[#1F3A42]">Weekly Science Sessions</h3>
-                <span className="text-xs font-bold px-3 py-1 rounded-full bg-[#E4F5DA] text-[#2E7D46]">
-                  Every Saturday, 7:00 – 8:30 PM (Until End of October)
-                </span>
               </div>
               <p className="text-xs leading-relaxed text-[#4B6169]">
                 Until the end of October, Turtle Rock Science Club meetings will occur every Saturday, from 7–8:30 PM,
@@ -184,9 +177,6 @@ export default function AboutUs() {
             <div className="space-y-2 flex-1">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h3 className="font-display font-bold text-lg text-[#1F3A42]">Science Olympiad Tryouts</h3>
-                <span className="text-xs font-bold px-3 py-1 rounded-full bg-[#1F3A42] text-white">
-                  Late October
-                </span>
               </div>
               <p className="text-xs leading-relaxed text-[#4B6169]">
                 Near the end of October, Science Olympiad tryouts will be held, and some students will be selected to represent
@@ -203,9 +193,6 @@ export default function AboutUs() {
             <div className="space-y-2 flex-1">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h3 className="font-display font-bold text-lg text-[#1F3A42]">SciOly Team Training</h3>
-                <span className="text-xs font-bold px-3 py-1 rounded-full bg-[#E4F5DA] text-[#2E7D46]">
-                  November (Every Saturday, 7:00 – 8:30 PM)
-                </span>
               </div>
               <p className="text-xs leading-relaxed text-[#4B6169]">
                 In the month of November, students selected to be part of the SciOly team will meet for training every Saturday,
@@ -222,9 +209,6 @@ export default function AboutUs() {
             <div className="space-y-2 flex-1">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h3 className="font-display font-bold text-lg text-[#1F3A42]">Monthly Training & Science Sessions</h3>
-                <span className="text-xs font-bold px-3 py-1 rounded-full bg-[#1F3A42] text-white">
-                  December through May
-                </span>
               </div>
               <p className="text-xs leading-relaxed text-[#4B6169]">
                 From December until May, SciOly team members will meet in person once a month on a Saturday, from 7–8:30 PM,
@@ -242,7 +226,6 @@ export default function AboutUs() {
           <h2 className="font-display font-bold text-2xl sm:text-3xl tracking-tight text-[#1F3A42]">
             Frequently Asked Questions
           </h2>
-          <p className="text-xs text-[#4B6169]">Everything about sessions, materials, and tryouts.</p>
         </div>
 
         <div className="space-y-3.5" id="faq-accordion-group">
