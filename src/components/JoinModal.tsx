@@ -95,6 +95,14 @@ export default function JoinModal({ onClose, onJoinSuccess, onJoinSubmit }: Join
               <p className="text-xs text-[#4B6169] max-w-xs leading-relaxed font-sans">
                 We've logged 15 welcome XP and unlocked your Foundation Member badge!
               </p>
+              {newsletterOptIn && (
+                <p className="text-[11px] text-[#4B6169] max-w-xs leading-relaxed font-sans pt-1">
+                  Check your email for a message from{' '}
+                  <span className="font-bold text-[#2E7D46]">contact@trscienceclub.org</span> and
+                  click the confirm button. If it's not in your inbox, look in your spam folder and
+                  mark it "Not spam" so you don't miss future updates.
+                </p>
+              )}
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4 font-sans">

@@ -119,11 +119,18 @@ export default function Footer({ setCurrentTab, onSubscribe }: FooterProps) {
                     <p className="font-display font-bold text-sm text-[#2E7D46]">
                       {state === 'already' ? "You're already on the list!" : "You're on the list!"}
                     </p>
-                    <p className="text-[11px] text-[#4B6169] font-sans mt-0.5">
-                      {state === 'already'
-                        ? 'That address is already subscribed — no need to sign up twice.'
-                        : 'Watch your inbox for the next issue.'}
-                    </p>
+                    {state === 'already' ? (
+                      <p className="text-[11px] text-[#4B6169] font-sans mt-0.5">
+                        That address is already subscribed — no need to sign up twice.
+                      </p>
+                    ) : (
+                      <p className="text-[11px] text-[#4B6169] font-sans mt-0.5 leading-relaxed">
+                        Check your email for a message from{' '}
+                        <span className="font-bold text-[#2E7D46]">contact@trscienceclub.org</span>{' '}
+                        and click the confirm button. If it's not in your inbox, look in your spam
+                        folder and mark it "Not spam" so you don't miss future updates.
+                      </p>
+                    )}
                   </div>
                 </div>
               ) : (
