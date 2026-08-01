@@ -63,7 +63,7 @@ export default function ConfirmEmailModal({ onClose }: ConfirmEmailModalProps) {
               <p className="font-display font-bold text-lg sm:text-xl text-[#1F3A42]">
                 Can't find it? Check your spam folder.
               </p>
-              <p className="font-sans text-sm sm:text-base leading-relaxed text-[#3D5259]">
+              <p className="font-sans text-sm sm:text-base leading-relaxed text-[#4B6169]">
                 If it landed there, please mark it{' '}
                 <strong className="text-[#1F3A42]">"Not spam"</strong> so you don't miss future
                 updates about sessions and sign-ups.

@@ -14,6 +14,7 @@ import LabLogAnnouncements from './components/LabLogAnnouncements';
 import Dashboard from './components/Dashboard';
 import CuratedResources from './components/CuratedResources';
 import JoinModal from './components/JoinModal';
+import ConfirmEmailModal from './components/ConfirmEmailModal';
 import LoginModal from './components/LoginModal';
 import SignupModal from './components/SignupModal';
 
@@ -32,6 +33,11 @@ export default function App() {
   // happened. The query string is stripped afterwards so a refresh or a shared
   // link doesn't show the banner again.
   const [showConfirmedBanner, setShowConfirmedBanner] = useState<boolean>(false);
+
+  // Lives here rather than inside JoinModal: JoinModal calls onClose() 1600ms
+  // after a successful join, which unmounts it — and would take a modal
+  // rendered inside it along too, so the reminder only flashed on screen.
+  const [showConfirmEmailModal, setShowConfirmEmailModal] = useState<boolean>(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -234,7 +240,20 @@ export default function App() {
         </div>
       )}
 
-      {showJoinModal && <JoinModal onClose={() => setShowJoinModal(false)} onJoinSuccess={handleJoinSuccess} onJoinSubmit={content.submitMemberJoin} />}
+      {showJoinModal && (
+        <JoinModal
+          onClose={() => setShowJoinModal(false)}
+          onJoinSuccess={handleJoinSuccess}
+          onJoinSubmit={(details) => {
+            // Only opt-ins are pushed to Sender, so only they get a confirmation
+            // email to go looking for.
+            if (details.newsletterOptIn) setShowConfirmEmailModal(true);
+            content.submitMemberJoin(details);
+          }}
+        />
+      )}
+
+      {showConfirmEmailModal && <ConfirmEmailModal onClose={() => setShowConfirmEmailModal(false)} />}
 
       {showLoginModal && (
         <LoginModal

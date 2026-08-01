@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { UserProfile } from '../types';
 import { X, ShieldAlert, Smile, CheckSquare, Square, CheckCircle } from 'lucide-react';
-import ConfirmEmailModal from './ConfirmEmailModal';
 
 interface JoinModalProps {
   onClose: () => void;
@@ -21,7 +20,6 @@ export default function JoinModal({ onClose, onJoinSuccess, onJoinSubmit }: Join
   const [newsletterOptIn, setNewsletterOptIn] = useState(false);
 
   const [errorMsg, setErrorMsg] = useState('');
-  const [confirmDismissed, setConfirmDismissed] = useState(false);
   const [joinedDone, setJoinedDone] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -69,9 +67,6 @@ export default function JoinModal({ onClose, onJoinSuccess, onJoinSubmit }: Join
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-[#1F3A42]/45 backdrop-blur-sm flex items-center justify-center p-4">
-      {joinedDone && newsletterOptIn && !confirmDismissed && (
-        <ConfirmEmailModal onClose={() => setConfirmDismissed(true)} />
-      )}
       <div
         id="join-club-modal"
         className="w-full max-w-md rounded-[28px] overflow-hidden shadow-2xl bg-[#FBF7EC] flex flex-col justify-between max-h-[90vh] animate-fade-in"
@@ -101,12 +96,9 @@ export default function JoinModal({ onClose, onJoinSuccess, onJoinSubmit }: Join
                 We've logged 15 welcome XP and unlocked your Foundation Member badge!
               </p>
               {newsletterOptIn && (
-                <button
-                  onClick={() => setConfirmDismissed(false)}
-                  className="text-[11px] font-bold text-[#2E7D46] underline underline-offset-2 cursor-pointer pt-1"
-                >
-                  Don't forget to confirm your email
-                </button>
+                <p className="text-[11px] font-bold text-[#2E7D46] font-sans pt-1">
+                  Check your email to confirm your subscription.
+                </p>
               )}
             </div>
           ) : (

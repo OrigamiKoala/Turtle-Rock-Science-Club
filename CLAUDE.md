@@ -253,6 +253,14 @@ button.
   (`!important`) on the site's hardcoded `bg-[#hex]` / `text-[#hex]` classes,
   scoped under a plain class rather than `@media (prefers-color-scheme)` so
   the manual toggle can drive it independent of the OS setting.
+- **Only use hex values that already have an override.** The dark rules are
+  enumerated per hex, so a new `text-[#hex]` that isn't in that list renders
+  identically in both themes — which usually means dark text on a dark
+  background. `ConfirmEmailModal` shipped unreadable this way with
+  `text-[#3D5259]`. Reuse `text-[#1F3A42]` / `text-[#4B6169]` /
+  `text-[#2E7D46]` and `bg-[#FBF7EC]` / `bg-white` / `bg-[#E4F5DA]`, or add the
+  override alongside the new colour. `text-[#14351F]` is deliberately *not*
+  flipped — it is the dark label on `bg-[#6CC24A]` buttons.
 - Known gap: those dark-mode rules include scoped variants meant to flip
   `MoleculeBuilder`/`RobotProgrammer`/the chem adventure link-out between
   their own dark chrome and a light-mode look, gated on `.game-molecule` /
