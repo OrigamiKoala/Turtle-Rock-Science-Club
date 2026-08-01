@@ -6,17 +6,17 @@ const FAQ_ITEMS: FAQItem[] = [
   {
     id: 'faq-1',
     question: 'What age groups can participate in the club?',
-    answer: 'Our programs are open to elementary and middle school students seeking hands-on STEM exploration, with high-schoolers serving as coaches and mentors!'
+    answer: 'Our programs are open to elementary school students seeking hands-on STEM exploration, with middle and high-schoolers serving as coaches and mentors!'
   },
   {
     id: 'faq-2',
     question: 'Where do weekly meetings take place?',
-    answer: 'Meetings take place at UCI’s Paul Merage School of Business (Room SB-117) every Saturday from 7:00 to 8:30 PM until the end of October.'
+    answer: 'Meetings take place at UCI’s Paul Merage School of Business (Room SB-117) every Saturday from 7:00 to 8:30 PM throughout the school year.'
   },
   {
     id: 'faq-3',
     question: 'What materials do students need to bring?',
-    answer: 'We provide all lab equipment, project materials, and guide sheets. Students just need curiosity, an eagerness to learn, and closed-toe shoes for safety!'
+    answer: 'A device, pencil and paper, and curiosity!'
   },
   {
     id: 'faq-4',

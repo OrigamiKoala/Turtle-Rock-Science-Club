@@ -19,7 +19,7 @@ export default function LoginModal({ onClose, onLoginSubmit, onLoginSuccess, onO
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!identifier.trim()) {
-      setErrorMsg('Please enter your scientist name or parent email address.');
+      setErrorMsg('Please enter your child\'s name or guardian\'s email address.');
       return;
     }
 
@@ -50,11 +50,8 @@ export default function LoginModal({ onClose, onLoginSubmit, onLoginSuccess, onO
         <div className="p-5 flex items-center justify-between bg-white border-b-2 border-[#1F3A42]/8">
           <div className="text-left">
             <h4 className="font-display font-bold text-lg leading-tight text-[#1F3A42]">
-              Log In to Basecamp
+              Log In
             </h4>
-            <p className="text-[11px] text-[#4B6169] mt-0.5 font-sans">
-              Enter your scientist name or parent email to sync your data.
-            </p>
           </div>
           <button
             id="close-login-modal"
@@ -70,14 +67,11 @@ export default function LoginModal({ onClose, onLoginSubmit, onLoginSuccess, onO
             <div className="py-8 flex flex-col items-center justify-center text-center space-y-3">
               <CheckCircle className="w-16 h-16 text-[#6CC24A]" />
               <h5 className="font-display font-bold text-lg text-[#2E7D46]">Welcome back, {loggedInName}!</h5>
-              <p className="text-xs text-[#4B6169] max-w-xs leading-relaxed">
-                Your badges, level, and XP have been restored from your account.
-              </p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-1">
-                <label className="text-[11px] font-extrabold text-[#4B6169]">Scientist Name or Parent Email</label>
+                <label className="text-[11px] font-extrabold text-[#4B6169]">Child's Name or Guardian's Email</label>
                 <input
                   id="login-identifier-input"
                   type="text"

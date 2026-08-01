@@ -356,10 +356,10 @@ export default function MoleculeBuilder({ solvedLevels, onSolve }: MoleculeBuild
       prev.map((a) =>
         a.id === drag.id
           ? {
-              ...a,
-              x: clamp(targetX, 30, BOARD_W - 30),
-              y: clamp(targetY, 30, BOARD_H - 30)
-            }
+            ...a,
+            x: clamp(targetX, 30, BOARD_W - 30),
+            y: clamp(targetY, 30, BOARD_H - 30)
+          }
           : a
       )
     );
@@ -402,11 +402,10 @@ export default function MoleculeBuilder({ solvedLevels, onSolve }: MoleculeBuild
           <button
             key={lvl.formula}
             onClick={() => setLevelIndex(i)}
-            className={`px-3 py-1.5 rounded-full text-[11px] font-mono border transition cursor-pointer flex items-center gap-1.5 ${
-              i === levelIndex
+            className={`px-3 py-1.5 rounded-full text-[11px] font-mono border transition cursor-pointer flex items-center gap-1.5 ${i === levelIndex
                 ? 'bg-red-500/20 border-red-500/40 text-red-300'
                 : 'bg-white/5 border-white/10 text-zinc-400 hover:text-white'
-            }`}
+              }`}
           >
             {solvedLevels.includes(i) && <Trophy className="w-3 h-3 text-amber-400" />}
             {lvl.formula}
@@ -552,8 +551,7 @@ export default function MoleculeBuilder({ solvedLevels, onSolve }: MoleculeBuild
               {level.formula} complete!
             </h4>
             <p className="text-xs text-zinc-300 font-sans max-w-sm leading-relaxed">
-              Every atom has exactly the number of bonds it wants, and the whole molecule is one
-              connected piece.
+              Connect the atoms in the right way!
             </p>
             <div className="flex gap-2 pt-1">
               <button

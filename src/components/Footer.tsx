@@ -67,8 +67,8 @@ export default function Footer({ setCurrentTab, onSubscribe }: FooterProps) {
               <li><button onClick={() => setCurrentTab('about')} className="hover:text-[#1F3A42] transition cursor-pointer text-[#4B6169]">Who We Are</button></li>
               <li>
                 <button onClick={() => setCurrentTab('about')} className="hover:text-[#1F3A42] transition cursor-pointer text-[#4B6169] flex items-center gap-1">
-                  <HelpCircle className="w-3.5 h-3.5 text-[#4B6169]" />
                   Frequently Asked Questions
+                  <HelpCircle className="w-3.5 h-3.5 text-[#4B6169]" />
                 </button>
               </li>
               <li>
@@ -87,12 +87,12 @@ export default function Footer({ setCurrentTab, onSubscribe }: FooterProps) {
           <div className="space-y-4">
             <h4 className="font-display font-bold text-xs uppercase tracking-widest text-[#1F3A42]">Contact & Support</h4>
             <p className="text-xs text-[#4B6169] leading-relaxed font-sans">
-              Have questions, materials to donate, or want to collaborate? Get in touch!
+              Questions? Get in touch!
             </p>
             <div className="space-y-1.5 text-xs font-sans font-bold text-[#1F3A42]">
               <p className="flex items-center gap-1.5">
                 <Mail className="w-3.5 h-3.5 text-[#F2C94C]" />
-                contact@trscienceclub.org
+                <a href="mailto:contact@trscienceclub.org">contact@trscienceclub.org</a>
               </p>
             </div>
           </div>
@@ -106,8 +106,7 @@ export default function Footer({ setCurrentTab, onSubscribe }: FooterProps) {
                 Get the Club Newsletter
               </h4>
               <p className="text-xs text-[#4B6169] leading-relaxed font-sans max-w-md">
-                Upcoming experiments, field trips, and lab log highlights — sent to your inbox.
-                No spam, and you can unsubscribe any time.
+                Upcoming events, club information, and more, sent to your inbox. Unsubscribe at any time.
               </p>
             </div>
 
@@ -172,11 +171,6 @@ export default function Footer({ setCurrentTab, onSubscribe }: FooterProps) {
 
         <div className="mt-12 pt-6 border-t-2 border-[#1F3A42]/10 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-[#4B6169]">
           <p>© 2026 Turtle Rock Science Club. All rights reserved.</p>
-          <div className="flex items-center gap-1 font-sans font-bold text-[11px]">
-            <span>Crafted with</span>
-            <Heart className="w-3 h-3 text-red-400 fill-red-400" />
-            <span>for discovery.</span>
-          </div>
         </div>
 
       </div>

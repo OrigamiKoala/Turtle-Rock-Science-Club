@@ -83,7 +83,7 @@ export default function JoinModal({ onClose, onJoinSuccess, onJoinSubmit }: Join
             <h4 className="font-display font-bold text-lg leading-tight text-[#1F3A42]">
               Join the Club!
             </h4>
-            <p className="text-[11px] text-[#4B6169] mt-0.5 font-sans">Takes about a minute.</p>
+            <p className="text-[11px] text-[#4B6169] mt-0.5 font-sans">Takes less than a minute.</p>
           </div>
           <button
             id="close-join-modal"
@@ -106,7 +106,7 @@ export default function JoinModal({ onClose, onJoinSuccess, onJoinSubmit }: Join
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4 font-sans">
               <div className="space-y-1">
-                <label className="text-[11px] font-extrabold text-[#4B6169]">Scientist's First Name (Child)</label>
+                <label className="text-[11px] font-extrabold text-[#4B6169]">Child Name</label>
                 <input id="join-child-name" type="text" placeholder="e.g. Timothy" value={childName} onChange={(e) => setChildName(e.target.value)}
                   className="w-full p-2.5 rounded-xl text-sm border-2 border-[#1F3A42]/12 bg-white text-[#1F3A42] focus:outline-none" required />
               </div>
@@ -131,7 +131,7 @@ export default function JoinModal({ onClose, onJoinSuccess, onJoinSubmit }: Join
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-extrabold text-[#4B6169]">Parent Email</label>
+                <label className="text-[11px] font-extrabold text-[#4B6169]">Guardian Email</label>
                 <input id="join-email" type="email" placeholder="parent@example.com" value={email} onChange={(e) => setEmail(e.target.value)}
                   className="w-full p-2.5 rounded-xl text-sm border-2 border-[#1F3A42]/12 bg-white text-[#1F3A42] focus:outline-none" required />
                 <p className="text-[10px] text-[#4B6169] leading-relaxed">
@@ -155,32 +155,9 @@ export default function JoinModal({ onClose, onJoinSuccess, onJoinSubmit }: Join
                   {newsletterOptIn ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
                 </div>
                 <span className="text-xs text-[#4B6169] leading-relaxed font-sans">
-                  Send me the weekly club newsletter — events, lab notes, and what the
-                  scientists have been up to. Unsubscribe any time.
+                  Send me the weekly club newsletter — upcoming events, club information, and more. Unsubscribe any time.
                 </span>
               </button>
-
-              <div className="space-y-2.5 pt-2">
-                <label className="text-[11px] font-extrabold text-[#4B6169]">A couple promises</label>
-
-                <button type="button" onClick={() => setGoggleAgreement(!goggleAgreement)} className="flex items-start gap-2.5 text-left text-xs cursor-pointer select-none">
-                  <div className="mt-0.5 shrink-0 text-[#2E7D46]">
-                    {goggleAgreement ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
-                  </div>
-                  <span className="text-xs text-[#4B6169] leading-relaxed font-sans">
-                    We'll wear safety goggles and closed-toe shoes at every bench workshop.
-                  </span>
-                </button>
-
-                <button type="button" onClick={() => setCuriosityAgreement(!curiosityAgreement)} className="flex items-start gap-2.5 text-left text-xs cursor-pointer select-none">
-                  <div className="mt-0.5 shrink-0 text-[#2E7D46]">
-                    {curiosityAgreement ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
-                  </div>
-                  <span className="text-xs text-[#4B6169] leading-relaxed font-sans">
-                    We'll stay curious, ask questions, and share equipment kindly.
-                  </span>
-                </button>
-              </div>
 
               {errorMsg && (
                 <p className="text-[11px] text-red-500 font-bold flex items-center gap-1">

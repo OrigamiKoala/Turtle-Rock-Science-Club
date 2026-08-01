@@ -207,23 +207,21 @@ export default function App() {
 
             <div className="pt-6 space-y-1">
               <h4 className="font-display font-bold text-2xl text-[#B8860B]">Scientist Level Up!</h4>
-              <p className="text-[11px] text-[#9AA6A6] font-bold">Record updated at Basecamp</p>
             </div>
 
             <p className="text-xs text-[#4B6169] leading-relaxed">
               Congratulations, <strong className="text-[#1F3A42] font-bold">{userProfile.name}</strong>! You've reached{' '}
-              <strong className="text-[#B8860B] font-bold">Level {userProfile.level}</strong>. Keep exploring to unlock
-              ultimate Principal Investigator status!
+              <strong className="text-[#B8860B] font-bold">Level {userProfile.level}</strong>. Keep exploring!
             </p>
 
             <div className="py-2.5 px-4 bg-white rounded-xl border-2 border-[#1F3A42]/8 text-xs flex justify-center items-center gap-2">
               <Star className="w-4 h-4 text-[#F2C94C] fill-[#F2C94C]" />
-              <span>{userProfile.xp} Total Discovery XP Earned</span>
+              <span>{userProfile.xp} Total XP Earned</span>
             </div>
 
             <button id="close-levelup-btn" onClick={() => setShowLevelUpAlert(false)}
               className="w-full py-2.5 bg-[#6CC24A] text-[#14351F] font-display font-bold text-xs rounded-xl shadow-[0_3px_0_#4C9A3A] cursor-pointer transition">
-              Continue Experimenting
+              Continue experimenting!
             </button>
           </div>
         </div>

@@ -31,13 +31,12 @@ export default function LabLogAnnouncements({ logs, announcements }: LabLogAnnou
       <div className="space-y-8">
         <div>
           <h3 className="font-display font-bold text-2xl sm:text-3xl tracking-tight text-[#1F3A42]">Latest From the Lab Log</h3>
-          <p className="text-xs mt-1 text-[#4B6169] max-w-2xl">Journal entries from our lead mentors and junior experimenters.</p>
         </div>
 
         {logs.length === 0 ? (
           <div className="p-8 rounded-[28px] border-2 border-[#1F3A42]/8 bg-white text-center space-y-2">
             <p className="font-display font-bold text-base text-[#1F3A42]">No lab log entries yet.</p>
-            <p className="text-xs text-[#4B6169]">Check back soon for new journal entries from our mentors!</p>
+            <p className="text-xs text-[#4B6169]">Check back soon for new posts!</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -67,7 +66,6 @@ export default function LabLogAnnouncements({ logs, announcements }: LabLogAnnou
       <div className="space-y-6 pt-6 border-t-2 border-[#1F3A42]/8">
         <div className="space-y-1">
           <h4 className="font-display font-bold text-xl sm:text-2xl tracking-tight text-[#1F3A42]">Club Announcements</h4>
-          <p className="text-xs text-[#4B6169]">Expansion updates, toolkit releases, and volunteer calls.</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

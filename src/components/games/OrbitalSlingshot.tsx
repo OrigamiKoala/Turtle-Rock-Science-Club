@@ -51,7 +51,7 @@ const LEVELS: Level[] = [
   {
     name: 'First Contact',
     brief:
-      'No obstacles — just get a feel for the launcher. Drag from the probe toward the beacon and let go. The further you drag, the faster it flies.',
+      'Get a feel for the launcher. Drag from the probe toward the beacon and let go. The further you drag, the faster it flies.',
     start: { x: 90, y: 250 },
     target: { x: 690, y: 250, r: 26 },
     planets: []
@@ -59,7 +59,7 @@ const LEVELS: Level[] = [
   {
     name: 'The Bend',
     brief:
-      'A planet sits between you and the beacon. Aim off to one side and let its gravity curve you back in.',
+      'A planet sits between you and the beacon. Aim off to one side and let its gravity pull you back in.',
     start: { x: 80, y: 400 },
     target: { x: 720, y: 120, r: 26 },
     planets: [{ x: 400, y: 260, r: 52, color: '#3b82f6', name: 'Kepler' }]
@@ -90,7 +90,7 @@ const LEVELS: Level[] = [
   {
     name: 'The Long Way Round',
     brief:
-      'The beacon sits behind a giant. There is no direct shot — you have to go the long way around.',
+      'A giant planet blocks the way. There is no direct shot — you have to go the long way around.',
     start: { x: 100, y: 430 },
     target: { x: 640, y: 90, r: 22 },
     planets: [
@@ -433,11 +433,10 @@ export default function OrbitalSlingshot({ solvedLevels, onSolve }: OrbitalSling
           <button
             key={lvl.name}
             onClick={() => setLevelIndex(i)}
-            className={`px-3 py-1.5 rounded-full text-[11px] font-mono border transition cursor-pointer flex items-center gap-1.5 ${
-              i === levelIndex
-                ? 'bg-sky-500/20 border-sky-500/40 text-sky-300'
-                : 'bg-white/5 border-white/10 text-zinc-400 hover:text-white'
-            }`}
+            className={`px-3 py-1.5 rounded-full text-[11px] font-mono border transition cursor-pointer flex items-center gap-1.5 ${i === levelIndex
+              ? 'bg-sky-500/20 border-sky-500/40 text-sky-300'
+              : 'bg-white/5 border-white/10 text-zinc-400 hover:text-white'
+              }`}
           >
             {solvedLevels.includes(i) && <Trophy className="w-3 h-3 text-amber-400" />}
             {i + 1}. {lvl.name}
@@ -456,9 +455,8 @@ export default function OrbitalSlingshot({ solvedLevels, onSolve }: OrbitalSling
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
-          className={`w-full block touch-none ${
-            phase === 'aiming' ? 'cursor-crosshair' : 'cursor-default'
-          }`}
+          className={`w-full block touch-none ${phase === 'aiming' ? 'cursor-crosshair' : 'cursor-default'
+            }`}
         />
 
         {phase === 'won' && (
