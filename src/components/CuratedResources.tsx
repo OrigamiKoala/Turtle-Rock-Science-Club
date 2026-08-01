@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Resource } from '../types';
 import {
   BookMarked,
@@ -11,12 +11,16 @@ import {
   FileText,
   Sparkles,
   Filter,
-  ArrowUpRight
+  ArrowUpRight,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 
 interface CuratedResourcesProps {
   resources: Resource[];
 }
+
+const ITEMS_PER_PAGE = 6;
 
 const CATEGORY_LABELS: Record<string, { label: string; bg: string; text: string }> = {
   chemistry: { label: 'Chemistry', bg: 'bg-purple-100 dark:bg-purple-900/40', text: 'text-purple-700 dark:text-purple-300' },
@@ -50,6 +54,12 @@ export default function CuratedResources({ resources }: CuratedResourcesProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedType, setSelectedType] = useState<string>('all');
   const [selectedLevel, setSelectedLevel] = useState<string>('all');
+  const [currentPage, setCurrentPage] = useState<number>(1);
+
+  // Reset to page 1 when filters or search change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedCategory, selectedType, selectedLevel]);
 
   const uniqueCategories = Array.from(
     new Set([
@@ -92,6 +102,10 @@ export default function CuratedResources({ resources }: CuratedResourcesProps) {
     return matchesCategory && matchesType && matchesLevel && matchesQuery;
   });
 
+  const totalPages = Math.ceil(filteredResources.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const paginatedResources = filteredResources.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8 animate-fade-in">
       {/* Header Banner */}
@@ -110,7 +124,7 @@ export default function CuratedResources({ resources }: CuratedResourcesProps) {
           </h2>
 
           <p className="text-sm sm:text-base text-gray-200 leading-relaxed font-sans">
-            Curated resources. A complete list can be found on our{' '}
+            Resources created by our coaches. A complete list of resources can be found on our{' '}
             <a
               href="https://docs.google.com/document/d/1ev0rV0iSfNzGwVkLtUcggu7fINd0rD7nv4nyroO3u9c/edit?tab=t.0"
               target="_blank"
@@ -175,11 +189,10 @@ export default function CuratedResources({ resources }: CuratedResourcesProps) {
                 id={`filter-level-${lvl}`}
                 key={lvl}
                 onClick={() => setSelectedLevel(lvl)}
-                className={`px-3 py-1.5 rounded-full text-xs font-sans font-bold capitalize transition-all shrink-0 cursor-pointer border-2 ${
-                  isActive
-                    ? 'bg-[#F2C94C] text-[#4A3900] border-[#F2C94C]'
-                    : 'bg-white dark:bg-gray-800 text-[#4B6169] dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-gray-300'
-                }`}
+                className={`px-3 py-1.5 rounded-full text-xs font-sans font-bold capitalize transition-all shrink-0 cursor-pointer border-2 ${isActive
+                  ? 'bg-[#F2C94C] text-[#4A3900] border-[#F2C94C]'
+                  : 'bg-white dark:bg-gray-800 text-[#4B6169] dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-gray-300'
+                  }`}
               >
                 {label}
               </button>
@@ -216,65 +229,123 @@ export default function CuratedResources({ resources }: CuratedResourcesProps) {
         </div>
       </div>
 
+      {/* Results Header & Counter */}
+      {filteredResources.length > 0 && (
+        <div className="flex items-center justify-between text-xs text-[#4B6169] dark:text-gray-300 px-1 font-sans font-semibold">
+          <span>
+            Showing <strong className="text-[#1F3A42] dark:text-white font-bold">{startIndex + 1}–{Math.min(startIndex + ITEMS_PER_PAGE, filteredResources.length)}</strong> of{' '}
+            <strong className="text-[#1F3A42] dark:text-white font-bold">{filteredResources.length}</strong> resources
+          </span>
+          {totalPages > 1 && (
+            <span>
+              Page <strong className="text-[#1F3A42] dark:text-white font-bold">{currentPage}</strong> of <strong className="text-[#1F3A42] dark:text-white font-bold">{totalPages}</strong>
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Grid of Resource Cards */}
       {filteredResources.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredResources.map((res) => {
-            const catKey = res.category.toLowerCase();
-            const catMeta = CATEGORY_LABELS[catKey] || {
-              label: catKey.charAt(0).toUpperCase() + catKey.slice(1),
-              bg: 'bg-indigo-100 dark:bg-indigo-900/40',
-              text: 'text-indigo-700 dark:text-indigo-300'
-            };
-            const TypeIcon = getTypeIcon(res.type);
+        <div className="space-y-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {paginatedResources.map((res) => {
+              const catKey = res.category.toLowerCase();
+              const catMeta = CATEGORY_LABELS[catKey] || {
+                label: catKey.charAt(0).toUpperCase() + catKey.slice(1),
+                bg: 'bg-indigo-100 dark:bg-indigo-900/40',
+                text: 'text-indigo-700 dark:text-indigo-300'
+              };
+              const TypeIcon = getTypeIcon(res.type);
 
-            return (
-              <div
-                key={res.id}
-                className="group relative bg-white dark:bg-gray-800 rounded-[28px] border-2 border-[#1F3A42]/10 dark:border-gray-700 p-6 flex flex-col justify-between hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
-              >
-                <div className="space-y-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className={`px-3 py-1 rounded-full text-[11px] font-sans font-bold ${catMeta.bg} ${catMeta.text}`}>
-                      {catMeta.label}
-                    </span>
-
-                    <div className="flex items-center gap-1.5">
-                      {res.level && res.level !== 'all' && (
-                        <span className="px-2.5 py-1 rounded-full text-[10px] font-sans font-bold bg-[#FEF3C7] text-[#92400E] dark:bg-amber-900/40 dark:text-amber-300 capitalize">
-                          {res.level}
-                        </span>
-                      )}
-                      <span className="px-2.5 py-1 rounded-full text-[11px] font-sans font-semibold bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 flex items-center gap-1 capitalize">
-                        <TypeIcon className="w-3 h-3" />
-                        {res.type || 'website'}
+              return (
+                <div
+                  key={res.id}
+                  className="group relative bg-white dark:bg-gray-800 rounded-[28px] border-2 border-[#1F3A42]/10 dark:border-gray-700 p-6 flex flex-col justify-between hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+                >
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className={`px-3 py-1 rounded-full text-[11px] font-sans font-bold ${catMeta.bg} ${catMeta.text}`}>
+                        {catMeta.label}
                       </span>
+
+                      <div className="flex items-center gap-1.5">
+                        {res.level && res.level !== 'all' && (
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-sans font-bold bg-[#FEF3C7] text-[#92400E] dark:bg-amber-900/40 dark:text-amber-300 capitalize">
+                            {res.level}
+                          </span>
+                        )}
+                        <span className="px-2.5 py-1 rounded-full text-[11px] font-sans font-semibold bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 flex items-center gap-1 capitalize">
+                          <TypeIcon className="w-3 h-3" />
+                          {res.type || 'website'}
+                        </span>
+                      </div>
                     </div>
+
+                    <h3 className="font-display font-bold text-lg text-[#1F3A42] dark:text-white group-hover:text-[#4C9A3A] transition-colors leading-snug">
+                      {res.title}
+                    </h3>
+
+                    <p className="text-xs text-[#4B6169] dark:text-gray-300 leading-relaxed font-sans line-clamp-3">
+                      {res.description || 'No description provided.'}
+                    </p>
                   </div>
 
-                  <h3 className="font-display font-bold text-lg text-[#1F3A42] dark:text-white group-hover:text-[#4C9A3A] transition-colors leading-snug">
-                    {res.title}
-                  </h3>
-
-                  <p className="text-xs text-[#4B6169] dark:text-gray-300 leading-relaxed font-sans line-clamp-3">
-                    {res.description || 'No description provided.'}
-                  </p>
+                  <div className="pt-6 mt-4 border-t border-gray-100 dark:border-gray-700/60">
+                    <a
+                      href={res.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full py-2.5 px-4 rounded-xl font-display font-bold text-xs flex items-center justify-center gap-2 bg-[#6CC24A] text-[#14351F] hover:brightness-105 shadow-[0_3px_0_#4C9A3A] transition cursor-pointer"
+                    >
+                      <span>Visit Resource</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  </div>
                 </div>
+              );
+            })}
+          </div>
 
-                <div className="pt-6 mt-4 border-t border-gray-100 dark:border-gray-700/60">
-                  <a
-                    href={res.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full py-2.5 px-4 rounded-xl font-display font-bold text-xs flex items-center justify-center gap-2 bg-[#6CC24A] text-[#14351F] hover:brightness-105 shadow-[0_3px_0_#4C9A3A] transition cursor-pointer"
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 pt-4">
+              <button
+                id="pagination-prev-btn"
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className="p-2.5 rounded-full border-2 border-[#1F3A42]/12 dark:border-gray-700 bg-white dark:bg-gray-800 text-[#1F3A42] dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
+                aria-label="Previous Page"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+
+              <div className="flex items-center gap-1.5">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                  <button
+                    key={pageNum}
+                    id={`pagination-page-${pageNum}`}
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`w-9 h-9 rounded-full text-xs font-display font-bold transition cursor-pointer border-2 ${currentPage === pageNum
+                      ? 'bg-[#1F3A42] text-white border-[#1F3A42] dark:bg-[#6CC24A] dark:text-[#14351F] dark:border-[#6CC24A]'
+                      : 'bg-white dark:bg-gray-800 text-[#4B6169] dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-gray-300'
+                      }`}
                   >
-                    <span>Visit Resource</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                </div>
+                    {pageNum}
+                  </button>
+                ))}
               </div>
-            );
-          })}
+
+              <button
+                id="pagination-next-btn"
+                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="p-2.5 rounded-full border-2 border-[#1F3A42]/12 dark:border-gray-700 bg-white dark:bg-gray-800 text-[#1F3A42] dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
+                aria-label="Next Page"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         /* Empty State */
@@ -291,6 +362,7 @@ export default function CuratedResources({ resources }: CuratedResourcesProps) {
               setSearchQuery('');
               setSelectedCategory('all');
               setSelectedType('all');
+              setSelectedLevel('all');
             }}
             className="px-4 py-2 rounded-full text-xs font-display font-bold bg-[#1F3A42] text-white cursor-pointer hover:bg-[#2D525D]"
           >
