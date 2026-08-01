@@ -2,7 +2,7 @@ export interface LabLog {
   id: string;
   title: string;
   date: string;
-  category: 'chemistry' | 'robotics' | 'astronomy' | 'general';
+  category: 'chemistry' | 'robotics' | 'astronomy' | 'general' | string;
   summary: string;
   content: string;
   image: string;
@@ -78,7 +78,7 @@ export interface Announcement {
   id: string;
   title: string;
   date: string;
-  category: 'expansion' | 'toolkit' | 'volunteer' | 'general';
+  category: 'expansion' | 'toolkit' | 'volunteer' | 'general' | string;
   content: string;
   image?: string;
 }

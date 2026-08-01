@@ -50,7 +50,18 @@ export default function CuratedResources({ resources }: CuratedResourcesProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedType, setSelectedType] = useState<string>('all');
 
-  const categories = ['all', 'chemistry', 'physics', 'astronomy', 'biology', 'robotics', 'general'];
+  const uniqueCategories = Array.from(
+    new Set([
+      'chemistry',
+      'physics',
+      'astronomy',
+      'biology',
+      'robotics',
+      'general',
+      ...resources.map((r) => r.category.toLowerCase().trim()).filter(Boolean)
+    ])
+  );
+  const categories = ['all', ...uniqueCategories];
   const types = ['all', 'website', 'tool', 'video', 'article', 'book'];
 
   const filteredResources = resources.filter((item) => {
@@ -143,7 +154,11 @@ export default function CuratedResources({ resources }: CuratedResourcesProps) {
           <span className="text-xs font-bold text-[#4B6169] dark:text-gray-300 shrink-0 mr-1">Category:</span>
           {categories.map((cat) => {
             const isActive = selectedCategory === cat;
-            const meta = CATEGORY_LABELS[cat] || { label: cat, bg: 'bg-gray-100', text: 'text-gray-700' };
+            const meta = CATEGORY_LABELS[cat] || {
+              label: cat.charAt(0).toUpperCase() + cat.slice(1),
+              bg: 'bg-indigo-100 dark:bg-indigo-900/40',
+              text: 'text-indigo-700 dark:text-indigo-300'
+            };
             const label = cat === 'all' ? 'All Categories' : meta.label;
 
             return (
@@ -167,10 +182,11 @@ export default function CuratedResources({ resources }: CuratedResourcesProps) {
       {filteredResources.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredResources.map((res) => {
-            const catMeta = CATEGORY_LABELS[res.category.toLowerCase()] || {
-              label: res.category,
-              bg: 'bg-gray-100',
-              text: 'text-gray-700'
+            const catKey = res.category.toLowerCase();
+            const catMeta = CATEGORY_LABELS[catKey] || {
+              label: catKey.charAt(0).toUpperCase() + catKey.slice(1),
+              bg: 'bg-indigo-100 dark:bg-indigo-900/40',
+              text: 'text-indigo-700 dark:text-indigo-300'
             };
             const TypeIcon = getTypeIcon(res.type);
 

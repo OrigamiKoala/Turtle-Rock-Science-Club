@@ -386,8 +386,8 @@ function setWidths_(sheet, widths) {
 function categoryRule_(values) {
   return SpreadsheetApp.newDataValidation()
     .requireValueInList(values, true)
-    .setAllowInvalid(false)
-    .setHelpText('Pick a category — it controls the badge shown on the site.')
+    .setAllowInvalid(true)
+    .setHelpText('Pick or type a category — it controls the badge shown on the site.')
     .build();
 }
 
@@ -582,7 +582,7 @@ function readPhotos_(sheet, problems) {
       imageUrl: imageUrl,
       caption: String(row[2] || '').trim(),
       description: String(row[2] || '').trim(),
-      category: normaliseCategory_(row[3], PHOTO_CATEGORIES),
+      category: String(row[3] || '').trim().toLowerCase() || 'experiments',
       submittedBy: String(row[4] || '').trim() || 'Turtle Rock Science Club',
       date: formatDate_(new Date())
     });
@@ -612,7 +612,7 @@ function readAnnouncements_(sheet, problems) {
       id: 'sheet-ann-' + rowNumber,
       title: title,
       date: formatDate_(row[1]),
-      category: normaliseCategory_(row[2], ANNOUNCEMENT_CATEGORIES),
+      category: String(row[2] || '').trim().toLowerCase() || 'general',
       content: String(row[3] || '').trim()
     });
   }
@@ -644,7 +644,7 @@ function readLabLogs_(sheet, problems) {
       id: 'sheet-log-' + rowNumber,
       title: title,
       date: formatDate_(row[1]),
-      category: normaliseCategory_(row[2], LABLOG_CATEGORIES),
+      category: String(row[2] || '').trim().toLowerCase() || 'general',
       // The card shows the summary and the expanded view shows the write-up, so
       // fall back between them rather than rendering an empty card.
       summary: summary || content,
@@ -680,7 +680,7 @@ function readResources_(sheet, problems) {
       id: 'sheet-resource-' + rowNumber,
       title: title,
       description: String(row[1] || '').trim(),
-      category: normaliseCategory_(row[2], RESOURCE_CATEGORIES),
+      category: String(row[2] || '').trim().toLowerCase() || 'general',
       url: url,
       type: String(row[4] || 'website').trim().toLowerCase() || 'website'
     });

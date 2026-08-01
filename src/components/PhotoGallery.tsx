@@ -58,7 +58,7 @@ function HtmlEmbedCard({ embedHtml }: { embedHtml: string }) {
 }
 
 export default function PhotoGallery({ photos, sheetPhotos = [], eventPhotos = [], userProfile, onAddPhoto, onOpenJoin }: PhotoGalleryProps) {
-  const [activeFilter, setActiveFilter] = useState<'all' | 'experiments' | 'field-trips' | 'lab-meetings'>('all');
+  const [activeFilter, setActiveFilter] = useState<string>('all');
   const [showSubmitForm, setShowSubmitForm] = useState(false);
 
   const [title, setTitle] = useState('');
@@ -75,7 +75,7 @@ export default function PhotoGallery({ photos, sheetPhotos = [], eventPhotos = [
 
   // Top Section: Direct photos from Google Sheet "Photos" tab + user uploaded photos
   const directPhotos = [...sheetPhotos, ...photos];
-  const filteredDirectPhotos = activeFilter === 'all' ? directPhotos : directPhotos.filter((p) => p.category === activeFilter);
+  const filteredDirectPhotos = activeFilter === 'all' ? directPhotos : directPhotos.filter((p) => p.category.toLowerCase() === activeFilter);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -121,11 +121,18 @@ export default function PhotoGallery({ photos, sheetPhotos = [], eventPhotos = [
     }, 1800);
   };
 
+  const extraCategories = Array.from(
+    new Set(directPhotos.map((p) => p.category.toLowerCase().trim()).filter(Boolean))
+  );
+
   const categories = [
     { id: 'all', label: 'All Photos' },
     { id: 'experiments', label: 'Experiments' },
     { id: 'field-trips', label: 'Field Trips' },
-    { id: 'lab-meetings', label: 'Lab Meetings' }
+    { id: 'lab-meetings', label: 'Lab Meetings' },
+    ...extraCategories
+      .filter((c) => !['all', 'experiments', 'field-trips', 'lab-meetings'].includes(c))
+      .map((c) => ({ id: c, label: c.charAt(0).toUpperCase() + c.slice(1) }))
   ];
 
   return (

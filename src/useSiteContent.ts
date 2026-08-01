@@ -150,7 +150,7 @@ function toAnnouncements(raw: unknown): Announcement[] {
         id: asString(row.id) || `sheet-ann-${index}`,
         title,
         date: asString(row.date),
-        category: pickCategory(row.category, ANNOUNCEMENT_CATEGORIES, 'general'),
+        category: asString(row.category, 'general').toLowerCase(),
         content: asString(row.content)
       }
     ];
@@ -172,7 +172,7 @@ function toLabLogs(raw: unknown): LabLog[] {
         id: asString(row.id) || `sheet-log-${index}`,
         title,
         date: asString(row.date),
-        category: pickCategory(row.category, LABLOG_CATEGORIES, 'general'),
+        category: asString(row.category, 'general').toLowerCase(),
         summary: asString(row.summary),
         content: asString(row.content),
         image: asString(row.image) || PLACEHOLDER_IMAGE,
@@ -302,7 +302,7 @@ function toResources(raw: unknown): Resource[] {
         id: asString(row.id) || `sheet-resource-${index}`,
         title,
         description: asString(row.description),
-        category: pickCategory(row.category, RESOURCE_CATEGORIES, 'general'),
+        category: asString(row.category, 'general').toLowerCase(),
         url,
         type: asString(row.type, 'website').toLowerCase()
       }
