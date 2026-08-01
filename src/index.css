@@ -130,6 +130,12 @@ textarea:focus {
   border-color: rgba(255, 255, 255, 0.09) !important;
 }
 
+/* Text inputs (join, signup, newsletter). Without this their border is dark on
+   a dark field and the box reads as floating placeholder text. */
+:root.dark .border-\[\#1F3A42\]\/12 {
+  border-color: rgba(255, 255, 255, 0.16) !important;
+}
+
 /* Orbital Slingshot is space-themed and stays dark in every mode — no rule needed. */
 
 /* Molecule Builder / Robot Programmer / Chem Text Adventure: dark chrome in dark mode */

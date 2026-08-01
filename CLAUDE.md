@@ -78,14 +78,14 @@ Google Sheet  ──[🐢 Website ▸ Publish]──▶  hidden _Published tab (
 | Web app URL | `src/config.ts` → `SHEET_API_URL` |
 | Operator instructions | `apps-script/SETUP.md` |
 
-Sheet tabs: **Events**, **Announcements**, **Lab Log** (hand-edited) and
-**Signups** (written by the script — do not type in it). `_Published` is hidden
-and holds the snapshot.
+Sheet tabs: **Events**, **Announcements**, **Lab Log**, **Photos**
+(hand-edited) and **Members**, **Signups**, **Newsletter** (written by the
+script — do not type in them). `_Published` is hidden and holds the snapshot.
 
 **Publish is explicit.** Editing the sheet changes nothing until someone clicks
 🐢 Website ▸ Publish to Website. That is deliberate — half-drafted events stay
-private. The one exception is event sign-ups, which write through immediately
-(see below).
+private. The exceptions are event sign-ups, club joins and newsletter
+subscriptions, which all write through immediately (see below).
 
 There is no bundled fallback content: if `SHEET_API_URL` is empty, the fetch
 fails, or nothing has been published yet, `useSiteContent.ts` returns empty
@@ -104,6 +104,48 @@ the script, under a `LockService` lock:
 Step 3 is why the live "spots left" counter stays honest without republishing
 anything still being drafted. If you change how events are published, keep
 `bumpPublishedSpots_` in sync.
+
+## Newsletter (Sender.net)
+
+The footer's "Get the Club Newsletter" box and the Join form both push email
+addresses into Sender.net, routed by where they came from:
+
+| Source | `audience` | Sender group |
+|---|---|---|
+| Footer subscribe box | `newsletter` | **Newsletter** |
+| Join form, Parent Email | `parent` | **Parents** |
+| Join form, Student Email | `student` | **Students** |
+
+**The API token never touches the frontend.** The bundle is public, so the
+browser POSTs `{action:'subscribe'}` to the same Apps Script web app as
+everything else, and `Code.gs` is what calls `api.sender.net`. The token lives
+in Script Properties (`SENDER_API_TOKEN`), set via 🐢 Website ▸ ✉️ Newsletter ▸
+🔑 — never hardcoded, or it would be committed.
+
+Group ids are resolved by *title* and cached in Script Properties
+(`SENDER_GROUP_ID_PARENT` etc.). A group that doesn't exist yet is created on
+first use, so the only setup step is the token. Renaming or deleting a group in
+Sender leaves a stale cached id — 👥 Show / Repair Sender Groups clears the
+cache and re-resolves.
+
+Order matters in `subscribeEmail_`: the address is written to the **Newsletter**
+tab *before* the Sender API call, so a Sender outage, an expired token, or a
+script timeout loses nobody. The row keeps a non-`Subscribed` status until
+🔁 Sync Pending Subscribers retries it. That is also why `handleSubscribe_`
+returns `ok: true` with `pending: true` when Sender itself failed — the
+visitor's part succeeded, and the operator sees the failure in the sheet rather
+than the visitor seeing an error they cannot act on.
+
+Dedupe is per *(email, group)*, not per email — the Newsletter tab's **Sender
+Groups** column records which groups an address reached. A parent who used the
+footer box and later joins the club must still be added to **Parents**, so a
+row already marked `Subscribed` is re-sent when the audience is new.
+
+Creating a subscriber that Sender already knows is a 4xx there, not a success;
+`senderSubscribe_` detects that (`looksLikeDuplicate_`) and falls back to the
+add-to-group endpoint. That endpoint answers **200 even for addresses it
+rejected**, listing them under `non_existing_subscribers` — `wasRejectedByGroupAdd_`
+checks for that, so don't simplify it to a status-code check.
 
 ## Apps Script gotchas (all of these bit us)
 

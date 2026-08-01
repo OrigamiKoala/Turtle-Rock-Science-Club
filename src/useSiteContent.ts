@@ -29,6 +29,13 @@ export interface MemberJoinDetails {
   childAge?: string;
 }
 
+export interface NewsletterResult {
+  ok: boolean;
+  error?: string;
+  /** The address was already on the list — worth saying so rather than "welcome!". */
+  alreadySubscribed?: boolean;
+}
+
 export interface SiteContent {
   missions: Mission[];
   announcements: Announcement[];
@@ -44,6 +51,8 @@ export interface SiteContent {
   submitMemberJoin: (details: MemberJoinDetails) => Promise<void>;
   loginMember: (identifier: string) => Promise<{ ok: boolean; profile?: UserProfile; error?: string }>;
   syncProfile: (profile: UserProfile) => Promise<void>;
+  /** Adds an address to the Newsletter tab, which mirrors it into Sender.net. */
+  subscribeNewsletter: (email: string, source?: string) => Promise<NewsletterResult>;
 }
 
 interface SheetPayload {
@@ -415,6 +424,42 @@ export function useSiteContent(): SiteContent {
     }
   }, []);
 
+  /**
+   * The Sender.net API token lives in the Apps Script's properties, never in
+   * this bundle, so the browser subscribes by asking the script to do it.
+   */
+  const subscribeNewsletter = useCallback(
+    async (email: string, source?: string): Promise<NewsletterResult> => {
+      const trimmed = email.trim();
+      if (!trimmed) return { ok: false, error: 'Please enter your email address.' };
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(trimmed)) {
+        return { ok: false, error: 'That does not look like an email address.' };
+      }
+      if (!SHEET_API_URL) {
+        return { ok: false, error: 'The newsletter is not connected yet. Please check back soon.' };
+      }
+
+      try {
+        const response = await fetch(SHEET_API_URL, {
+          method: 'POST',
+          redirect: 'follow',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'subscribe', email: trimmed, source: source ?? 'Website footer' })
+        });
+
+        if (!response.ok) return { ok: false, error: `The server returned HTTP ${response.status}.` };
+
+        return JSON.parse(await response.text()) as NewsletterResult;
+      } catch {
+        return {
+          ok: false,
+          error: 'Could not reach the sign-up server. Check your connection and try again.'
+        };
+      }
+    },
+    []
+  );
+
   const sheetMissions = toMissions(payload?.events);
   const sheetAnnouncements = toAnnouncements(payload?.announcements);
   const sheetLabLogs = toLabLogs(payload?.labLogs);
@@ -434,6 +479,7 @@ export function useSiteContent(): SiteContent {
     submitSignup,
     submitMemberJoin,
     loginMember,
-    syncProfile
+    syncProfile,
+    subscribeNewsletter
   };
 }

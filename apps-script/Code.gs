@@ -11,6 +11,7 @@
  *     Announcements  — what shows under "Club Announcements"
  *     Lab Log        — the write-ups under "Latest From the Lab Log"
  *     Signups        — filled in automatically when someone signs up online
+ *     Newsletter     — filled in automatically; mirrored into Sender.net
  *
  *   Click  🐢 Website ▸ Publish to Website  and the site picks up your changes.
  *   Nothing you type goes live until you press Publish, so a half-finished
@@ -21,6 +22,11 @@
  *   "Spots Taken", and nudges the published copy so the "spots left" counter on
  *   the site stays honest — without publishing anything you may still be
  *   drafting.
+ *
+ *   Newsletter sign-ups are live too. The footer box and the Join form both
+ *   write to the Newsletter tab and push the address to Sender.net, so the next
+ *   campaign you send reaches them. See "Newsletter — Sender.net" below; the
+ *   API token is configured through 🐢 Website ▸ ✉️ Newsletter, never in code.
  *
  * SETUP — see SETUP.md for the click-by-click version.
  */
@@ -35,6 +41,7 @@ var LABLOG_SHEET = 'Lab Log';
 var PHOTOS_SHEET = 'Photos';
 var MEMBERS_SHEET = 'Members';
 var SIGNUPS_SHEET = 'Signups';
+var NEWSLETTER_SHEET = 'Newsletter';
 var PUBLISHED_SHEET = '_Published';
 
 var EVENT_HEADERS = [
@@ -82,12 +89,68 @@ var MEMBER_HEADERS = [
 
 var PHOTO_HEADERS = ['Title', 'Image URL', 'Caption', 'Category', 'Submitted By', 'Show on Site'];
 
+var NEWSLETTER_HEADERS = [
+  'Timestamp',
+  'Email',
+  'Name',
+  'Source',
+  'Sender Groups',
+  'Sender Status',
+  'Last Attempt'
+];
+
+// Column positions in the Newsletter sheet (1-based).
+var NL_COL_TIMESTAMP = 1;
+var NL_COL_EMAIL = 2;
+var NL_COL_NAME = 3;
+var NL_COL_SOURCE = 4;
+var NL_COL_GROUPS = 5;
+var NL_COL_STATUS = 6;
+var NL_COL_ATTEMPT = 7;
+
+// Values written into the "Sender Status" column. Anything that is not
+// STATUS_SUBSCRIBED is retried by 🔁 Sync Pending Subscribers.
+var STATUS_SUBSCRIBED = 'Subscribed';
+var STATUS_PENDING = 'Pending — no API key';
+
 var ANNOUNCEMENT_CATEGORIES = ['general', 'expansion', 'toolkit', 'volunteer'];
 var LABLOG_CATEGORIES = ['chemistry', 'robotics', 'astronomy', 'general'];
 var PHOTO_CATEGORIES = ['experiments', 'field-trips', 'lab-meetings'];
 
 var BRAND_DARK = '#064e3b';
 var SIGNUP_HEADER_COLOR = '#1e3a8a';
+var NEWSLETTER_HEADER_COLOR = '#7c2d12';
+
+// ---------------------------------------------------------------------------
+// Sender.net (newsletter)
+// ---------------------------------------------------------------------------
+//
+// The API token is a secret and must never reach the website bundle, which is
+// public. It lives in this script's Script Properties instead, and the browser
+// only ever talks to this web app — this script is what talks to Sender.
+//
+// Set it through  🐢 Website ▸ ✉️ Newsletter ▸ 🔑  (never by typing it here,
+// which would commit the token into the repo).
+//
+// Addresses are routed to one of three Sender groups by where they came from.
+// The groups are looked up by title and created if they do not exist yet, so
+// there is nothing to configure beyond the token; the resolved ids are cached
+// in Script Properties so the common path is a single API call.
+
+var SENDER_API_BASE = 'https://api.sender.net/v2';
+var SENDER_TOKEN_PROPERTY = 'SENDER_API_TOKEN';
+var SENDER_GROUP_PROPERTY_PREFIX = 'SENDER_GROUP_ID_';
+
+var AUDIENCE_PARENT = 'parent';
+var AUDIENCE_STUDENT = 'student';
+var AUDIENCE_NEWSLETTER = 'newsletter';
+
+/** Audience → the Sender.net group title that audience belongs in. */
+var SENDER_GROUP_TITLES = {
+  parent: 'Parents',
+  student: 'Students',
+  newsletter: 'Newsletter'
+};
 
 // Column positions in the Events sheet (1-based), used by the signup handler.
 var EVENT_COL_TITLE = 1;
@@ -100,12 +163,23 @@ var EVENT_COL_SPOTS_TAKEN = 7;
 
 /** Simple trigger: builds the custom menu every time the sheet is opened. */
 function onOpen() {
-  SpreadsheetApp.getUi()
-    .createMenu('🐢 Website')
+  var ui = SpreadsheetApp.getUi();
+
+  var newsletter = ui
+    .createMenu('✉️ Newsletter')
+    .addItem('🔑 Set Sender.net API Token', 'setSenderApiToken')
+    .addItem('👥 Show / Repair Sender Groups', 'showSenderGroups')
+    .addSeparator()
+    .addItem('🧪 Test Sender Connection', 'testSenderConnection')
+    .addItem('🔁 Sync Pending Subscribers', 'syncNewsletterToSender');
+
+  ui.createMenu('🐢 Website')
     .addItem('🚀 Publish to Website', 'publishToWebsite')
     .addSeparator()
     .addItem('🔗 Show Web App URL', 'showWebAppUrl')
     .addItem('👀 Preview Published JSON', 'previewPublishedJson')
+    .addSeparator()
+    .addSubMenu(newsletter)
     .addSeparator()
     .addItem('⚙️ Set Up / Repair Sheets', 'setupSheets')
     .addToUi();
@@ -128,6 +202,7 @@ function setupSheets() {
   var photos = ensureSheet_(ss, PHOTOS_SHEET, PHOTO_HEADERS, BRAND_DARK);
   var members = ensureSheet_(ss, MEMBERS_SHEET, MEMBER_HEADERS, BRAND_DARK);
   var signups = ensureSheet_(ss, SIGNUPS_SHEET, SIGNUP_HEADERS, SIGNUP_HEADER_COLOR);
+  var newsletter = ensureSheet_(ss, NEWSLETTER_SHEET, NEWSLETTER_HEADERS, NEWSLETTER_HEADER_COLOR);
 
   styleEventsSheet_(events);
   styleAnnouncementsSheet_(announcements);
@@ -135,6 +210,7 @@ function setupSheets() {
   stylePhotosSheet_(photos);
   styleMembersSheet_(members);
   styleSignupsSheet_(signups);
+  styleNewsletterSheet_(newsletter);
 
   var stray = ss.getSheetByName('Sheet1');
   if (stray && stray.getLastRow() === 0 && ss.getSheets().length > 1) {
@@ -147,7 +223,8 @@ function setupSheets() {
   notify_(
     'Setup complete',
     'Your tabs are ready:\n\n' +
-      '  • Events\n  • Announcements\n  • Lab Log\n  • Photos\n  • Members (filled in automatically)\n  • Signups (filled in automatically)\n\n' +
+      '  • Events\n  • Announcements\n  • Lab Log\n  • Photos\n  • Members (filled in automatically)\n' +
+      '  • Signups (filled in automatically)\n  • Newsletter (filled in automatically)\n\n' +
       'Type your content, then click  🐢 Website ▸ Publish to Website.'
   );
 }
@@ -235,6 +312,15 @@ function styleSignupsSheet_(sheet) {
   if (body <= 0) return;
   sheet.getRange(2, 1, body, 1).setNumberFormat('yyyy-mm-dd hh:mm:ss');
   sheet.getRange(1, 1, body + 1, SIGNUP_HEADERS.length).setVerticalAlignment('top');
+}
+
+function styleNewsletterSheet_(sheet) {
+  setWidths_(sheet, [180, 280, 200, 190, 180, 260, 180]);
+  var body = Math.min(100, Math.max(20, sheet.getLastRow() - 1));
+  if (body <= 0) return;
+  sheet.getRange(2, NL_COL_TIMESTAMP, body, 1).setNumberFormat('yyyy-mm-dd hh:mm:ss');
+  sheet.getRange(2, NL_COL_ATTEMPT, body, 1).setNumberFormat('yyyy-mm-dd hh:mm:ss');
+  sheet.getRange(1, 1, body + 1, NEWSLETTER_HEADERS.length).setVerticalAlignment('top');
 }
 
 function styleMembersSheet_(sheet) {
@@ -609,6 +695,8 @@ function doPost(e) {
       result = handleLogin_(body);
     } else if (body.action === 'syncProfile') {
       result = handleSyncProfile_(body);
+    } else if (body.action === 'subscribe') {
+      result = handleSubscribe_(body);
     } else {
       throw new Error('Unknown action.');
     }
@@ -640,7 +728,17 @@ function handleJoin_(body) {
 
   members.appendRow([new Date(), name, school, role, parentName, email, childAge, 1, 15, 'Foundation Member', '', studentEmail]);
 
-  return { ok: true, name: name };
+  // Joining the club subscribes you to the newsletter. subscribeEmail_ swallows
+  // its own failures on purpose — a Sender.net problem must not fail the join.
+  var subscribed = false;
+  if (email) {
+    subscribed = subscribeEmail_(ss, email, parentName || name, 'Club join — guardian', AUDIENCE_PARENT).ok || subscribed;
+  }
+  if (studentEmail) {
+    subscribed = subscribeEmail_(ss, studentEmail, name, 'Club join — student', AUDIENCE_STUDENT).ok || subscribed;
+  }
+
+  return { ok: true, name: name, newsletterSubscribed: subscribed };
 }
 
 function handleLogin_(body) {
@@ -884,6 +982,530 @@ function bumpPublishedSpots_(ss, eventId, spotsReserved) {
       return;
     }
   }
+}
+
+// ---------------------------------------------------------------------------
+// Newsletter — Sender.net
+// ---------------------------------------------------------------------------
+
+/**
+ * A visitor typed their address into the footer box.
+ *
+ * The address is written to the Newsletter tab first and pushed to Sender.net
+ * second, so a Sender outage or an expired token loses nobody: the row sits
+ * there with a non-"Subscribed" status until 🔁 Sync Pending Subscribers runs.
+ */
+function handleSubscribe_(body) {
+  var email = normaliseEmail_(body.email);
+  var name = String(body.name || '').trim();
+  var source = String(body.source || '').trim() || 'Website footer';
+
+  if (!email) return { ok: false, error: 'Please enter your email address.' };
+  if (!isEmail_(email)) return { ok: false, error: 'That does not look like an email address.' };
+
+  // Two people subscribing at once must not each append their own copy of the
+  // same address, and must not both claim row N.
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(15000);
+  } catch (err) {
+    return { ok: false, error: 'The server is busy. Please try again in a moment.' };
+  }
+
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var outcome = subscribeEmail_(ss, email, name, source, AUDIENCE_NEWSLETTER);
+
+    // The address is safely recorded either way, so an API-side problem is not
+    // the visitor's to fix or to read about — it surfaces in the sheet instead.
+    return {
+      ok: true,
+      alreadySubscribed: !!outcome.alreadySubscribed,
+      pending: !outcome.ok
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * Records one address in the Newsletter tab and adds it to its Sender.net group.
+ *
+ * `audience` is one of AUDIENCE_PARENT / AUDIENCE_STUDENT / AUDIENCE_NEWSLETTER
+ * and decides which group the address lands in.
+ *
+ * Returns { ok, status, alreadySubscribed, message } and never throws — a
+ * newsletter problem must not fail the join it is attached to.
+ */
+function subscribeEmail_(ss, email, name, source, audience) {
+  email = normaliseEmail_(email);
+  if (!isEmail_(email)) {
+    return { ok: false, status: 'Skipped — not an email address', message: 'Invalid address.' };
+  }
+
+  var title = SENDER_GROUP_TITLES[audience] || SENDER_GROUP_TITLES[AUDIENCE_NEWSLETTER];
+  var existing = findNewsletterRow_(ss, email);
+
+  // Already handled only if this exact group was the one that succeeded — a
+  // parent who used the footer box first still needs adding to "Parents".
+  if (existing && existing.status.indexOf(STATUS_SUBSCRIBED) === 0 && hasGroup_(existing.groups, title)) {
+    return { ok: true, alreadySubscribed: true, status: existing.status };
+  }
+
+  // Capture before calling out: if UrlFetch throws or the run times out here,
+  // the address is already on the sheet and the sync will retry it.
+  var row = upsertNewsletterRow_(ss, email, name, source, existing, 'Queued…', existing ? existing.groups : []);
+
+  var outcome;
+  try {
+    outcome = senderSubscribe_(email, name, audience);
+  } catch (err) {
+    outcome = { ok: false, status: 'Error: ' + (err && err.message ? err.message : 'unknown') };
+  }
+
+  var groups = existing ? existing.groups.slice() : [];
+  if (outcome.ok && !hasGroup_(groups, title)) groups.push(title);
+
+  setNewsletterResult_(ss, row, outcome.status, groups);
+  outcome.alreadySubscribed = !!existing;
+  return outcome;
+}
+
+/**
+ * Creates the subscriber in Sender.net and puts them in their audience's group.
+ *
+ * Creating an address that Sender already knows is an error there, not a
+ * success, so that case falls back to adding the existing subscriber to the
+ * group — which is what actually matters for "will they get the next
+ * newsletter". The same fallback covers a parent who is already in "Parents"
+ * and now needs to be in "Newsletter" too.
+ */
+function senderSubscribe_(email, name, audience) {
+  var token = senderToken_();
+  if (!token) {
+    return { ok: false, status: STATUS_PENDING, message: 'No Sender.net API token set.' };
+  }
+
+  var group = senderGroupFor_(audience, token);
+  if (!group.id) {
+    return { ok: false, status: 'Error: could not resolve the "' + group.title + '" group — ' + group.error };
+  }
+
+  var payload = { email: email, groups: [group.id], trigger_automation: true };
+  if (name) payload.firstname = name;
+
+  var created = senderFetch_('post', '/subscribers', payload, token);
+  if (created.ok) return { ok: true, status: STATUS_SUBSCRIBED + ' → ' + group.title };
+
+  if (looksLikeDuplicate_(created)) {
+    var added = senderFetch_(
+      'post',
+      '/subscribers/groups/' + encodeURIComponent(group.id),
+      { subscribers: [email], trigger_automation: false },
+      token
+    );
+
+    if (added.ok && !wasRejectedByGroupAdd_(added, email)) {
+      return { ok: true, status: STATUS_SUBSCRIBED + ' → ' + group.title };
+    }
+    return { ok: false, status: 'Error: ' + senderError_(added) };
+  }
+
+  return { ok: false, status: 'Error: ' + senderError_(created) };
+}
+
+/**
+ * Resolves an audience to its Sender.net group, creating the group the first
+ * time. Returns { id, title, error }.
+ *
+ * Ids are cached in Script Properties. If a group is deleted in Sender the
+ * cached id goes stale and subscribing starts failing — 👥 Show / Repair
+ * Sender Groups clears the cache and re-resolves.
+ */
+function senderGroupFor_(audience, token) {
+  var title = SENDER_GROUP_TITLES[audience] || SENDER_GROUP_TITLES[AUDIENCE_NEWSLETTER];
+  var props = PropertiesService.getScriptProperties();
+  var key = SENDER_GROUP_PROPERTY_PREFIX + String(audience || AUDIENCE_NEWSLETTER).toUpperCase();
+
+  var cached = String(props.getProperty(key) || '').trim();
+  if (cached) return { id: cached, title: title, error: '' };
+
+  var found = findSenderGroupByTitle_(title, token);
+  if (found.error) return { id: '', title: title, error: found.error };
+
+  var id = found.id;
+  if (!id) {
+    var created = senderFetch_('post', '/groups', { title: title }, token);
+    if (!created.ok) return { id: '', title: title, error: senderError_(created) };
+    id = created.json && created.json.data ? String(created.json.data.id || '') : '';
+    if (!id) return { id: '', title: title, error: 'Sender did not return a group id.' };
+  }
+
+  props.setProperty(key, id);
+  return { id: id, title: title, error: '' };
+}
+
+/** Looks up a group by its exact title, walking the paginated group list. */
+function findSenderGroupByTitle_(title, token) {
+  var wanted = String(title || '').trim().toLowerCase();
+  var path = '/groups?limit=100';
+
+  // A club will never have many groups; the cap just stops a runaway loop.
+  for (var page = 0; page < 20 && path; page++) {
+    var response = senderFetch_('get', path, null, token);
+    if (!response.ok) return { id: '', error: senderError_(response) };
+
+    var list = (response.json && response.json.data) || [];
+    for (var i = 0; i < list.length; i++) {
+      var name = String(list[i].title || list[i].name || '').trim().toLowerCase();
+      if (name === wanted) return { id: String(list[i].id || ''), error: '' };
+    }
+
+    var next = response.json && response.json.links ? response.json.links.next : null;
+    path = next ? String(next).replace(SENDER_API_BASE, '') : '';
+  }
+
+  return { id: '', error: '' };
+}
+
+/** One HTTP call to Sender.net. Never throws on an HTTP error status. */
+function senderFetch_(method, path, payload, token) {
+  var options = {
+    method: method,
+    contentType: 'application/json',
+    headers: { Authorization: 'Bearer ' + token, Accept: 'application/json' },
+    muteHttpExceptions: true
+  };
+  if (payload) options.payload = JSON.stringify(payload);
+
+  var response = UrlFetchApp.fetch(SENDER_API_BASE + path, options);
+  var code = response.getResponseCode();
+  var text = String(response.getContentText() || '');
+  var json = null;
+  try {
+    json = JSON.parse(text);
+  } catch (err) {
+    json = null;
+  }
+
+  return { ok: code >= 200 && code < 300, code: code, text: text, json: json };
+}
+
+/** Sender reports an existing address as a validation failure, not a conflict. */
+function looksLikeDuplicate_(response) {
+  if (response.code === 409) return true;
+  if (response.code !== 422 && response.code !== 400) return false;
+  return /already|taken|exist|duplicate/i.test(response.text);
+}
+
+/**
+ * The group-add endpoint answers 200 even for addresses it could not place,
+ * listing them under non_existing_subscribers.
+ */
+function wasRejectedByGroupAdd_(response, email) {
+  var message = response.json && response.json.message;
+  var missing = message && message.non_existing_subscribers;
+  if (!missing || !missing.length) return false;
+
+  for (var i = 0; i < missing.length; i++) {
+    if (normaliseEmail_(missing[i]) === email) return true;
+  }
+  return false;
+}
+
+/** A short, human-readable version of a failed Sender response. */
+function senderError_(response) {
+  var detail = '';
+  if (response.json) {
+    if (typeof response.json.message === 'string') detail = response.json.message;
+    else if (response.json.error) detail = String(response.json.error);
+    else if (response.json.errors) detail = JSON.stringify(response.json.errors);
+  }
+  if (!detail) detail = response.text;
+
+  detail = String(detail).replace(/\s+/g, ' ').trim();
+  if (detail.length > 160) detail = detail.substring(0, 160) + '…';
+  return 'HTTP ' + response.code + (detail ? ' — ' + detail : '');
+}
+
+// --- Newsletter sheet ------------------------------------------------------
+
+function newsletterSheet_(ss) {
+  var sheet = ss.getSheetByName(NEWSLETTER_SHEET);
+  if (!sheet) {
+    sheet = ensureSheet_(ss, NEWSLETTER_SHEET, NEWSLETTER_HEADERS, NEWSLETTER_HEADER_COLOR);
+    styleNewsletterSheet_(sheet);
+  }
+  return sheet;
+}
+
+/**
+ * Finds an address already on the Newsletter tab.
+ * Returns { row, status, groups, name } or null.
+ */
+function findNewsletterRow_(ss, email) {
+  var sheet = newsletterSheet_(ss);
+  var rows = bodyRows_(sheet, NEWSLETTER_HEADERS.length);
+
+  for (var i = 0; i < rows.length; i++) {
+    if (normaliseEmail_(rows[i][NL_COL_EMAIL - 1]) === email) {
+      return {
+        row: i + 2,
+        status: String(rows[i][NL_COL_STATUS - 1] || '').trim(),
+        groups: splitGroups_(rows[i][NL_COL_GROUPS - 1]),
+        name: String(rows[i][NL_COL_NAME - 1] || '').trim()
+      };
+    }
+  }
+  return null;
+}
+
+/** Adds or refreshes one Newsletter row. Returns its row number. */
+function upsertNewsletterRow_(ss, email, name, source, existing, status, groups) {
+  var sheet = newsletterSheet_(ss);
+  var now = new Date();
+
+  if (existing) {
+    if (name) sheet.getRange(existing.row, NL_COL_NAME).setValue(name);
+    sheet.getRange(existing.row, NL_COL_SOURCE).setValue(source);
+    sheet.getRange(existing.row, NL_COL_GROUPS).setValue(groups.join(', '));
+    sheet.getRange(existing.row, NL_COL_STATUS).setValue(status);
+    sheet.getRange(existing.row, NL_COL_ATTEMPT).setValue(now);
+    return existing.row;
+  }
+
+  sheet.appendRow([now, email, name, source, groups.join(', '), status, now]);
+  return sheet.getLastRow();
+}
+
+function setNewsletterResult_(ss, row, status, groups) {
+  var sheet = newsletterSheet_(ss);
+  sheet.getRange(row, NL_COL_GROUPS).setValue(groups.join(', '));
+  sheet.getRange(row, NL_COL_STATUS).setValue(status);
+  sheet.getRange(row, NL_COL_ATTEMPT).setValue(new Date());
+}
+
+function splitGroups_(value) {
+  return String(value || '')
+    .split(',')
+    .map(function (part) {
+      return part.trim();
+    })
+    .filter(Boolean);
+}
+
+function hasGroup_(groups, title) {
+  var wanted = String(title || '').toLowerCase();
+  for (var i = 0; i < groups.length; i++) {
+    if (String(groups[i]).toLowerCase() === wanted) return true;
+  }
+  return false;
+}
+
+/** Maps a group title recorded on the sheet back to its audience key. */
+function audienceForTitle_(title) {
+  var wanted = String(title || '').trim().toLowerCase();
+  for (var audience in SENDER_GROUP_TITLES) {
+    if (SENDER_GROUP_TITLES[audience].toLowerCase() === wanted) return audience;
+  }
+  return '';
+}
+
+/**
+ * Which audience a stalled row should be retried as: whatever group it was
+ * heading for, falling back to what its Source says, then to Newsletter.
+ */
+function audienceForRow_(groupsCell, sourceCell) {
+  var groups = splitGroups_(groupsCell);
+  for (var i = 0; i < groups.length; i++) {
+    var audience = audienceForTitle_(groups[i]);
+    if (audience) return audience;
+  }
+
+  var source = String(sourceCell || '').toLowerCase();
+  if (source.indexOf('student') !== -1) return AUDIENCE_STUDENT;
+  if (source.indexOf('guardian') !== -1 || source.indexOf('parent') !== -1) return AUDIENCE_PARENT;
+  return AUDIENCE_NEWSLETTER;
+}
+
+function normaliseEmail_(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function isEmail_(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(value || '').trim());
+}
+
+// --- Menu items ------------------------------------------------------------
+
+/** 🔑 Stores the Sender.net API token in Script Properties. */
+function setSenderApiToken() {
+  var ui = SpreadsheetApp.getUi();
+  var current = senderToken_();
+
+  var response = ui.prompt(
+    'Sender.net API token',
+    (current ? 'A token is already saved (' + maskToken_(current) + ').\n\n' : '') +
+      'Get one at sender.net ▸ Settings ▸ API access tokens, then paste it below.\n' +
+      'Leave the box empty and click OK to remove the saved token.',
+    ui.ButtonSet.OK_CANCEL
+  );
+
+  if (response.getSelectedButton() !== ui.Button.OK) return;
+
+  var token = String(response.getResponseText() || '').trim();
+  var props = PropertiesService.getScriptProperties();
+
+  if (!token) {
+    props.deleteProperty(SENDER_TOKEN_PROPERTY);
+    ui.alert('Token removed', 'New subscribers will be collected in the Newsletter tab but not sent to Sender.net.', ui.ButtonSet.OK);
+    return;
+  }
+
+  props.setProperty(SENDER_TOKEN_PROPERTY, token);
+
+  var check = senderFetch_('get', '/groups', null, token);
+  if (check.ok) {
+    ui.alert(
+      'Token saved',
+      'Sender.net accepted the token.\n\nThe Parents, Students and Newsletter groups are created ' +
+        'automatically on the first sign-up. To create them now (and see their ids), use ' +
+        '👥 Show / Repair Sender Groups.',
+      ui.ButtonSet.OK
+    );
+  } else {
+    ui.alert(
+      'Token saved, but Sender rejected it',
+      'Sender.net answered: ' + senderError_(check) + '\n\nDouble-check the token and try again.',
+      ui.ButtonSet.OK
+    );
+  }
+}
+
+/**
+ * 👥 Makes sure Parents / Students / Newsletter exist in Sender.net and shows
+ * their ids. Forgets the cached ids first, so this also repairs the setup after
+ * a group is renamed or deleted in Sender.
+ */
+function showSenderGroups() {
+  var token = senderToken_();
+  if (!token) {
+    notify_('No API token yet', 'Set the API token first: ✉️ Newsletter ▸ 🔑 Set Sender.net API Token.');
+    return;
+  }
+
+  var props = PropertiesService.getScriptProperties();
+  var lines = [];
+
+  for (var audience in SENDER_GROUP_TITLES) {
+    props.deleteProperty(SENDER_GROUP_PROPERTY_PREFIX + audience.toUpperCase());
+    var group = senderGroupFor_(audience, token);
+    lines.push('  ' + group.title + '  →  ' + (group.id || 'FAILED: ' + group.error));
+  }
+
+  notify_(
+    'Sender.net groups',
+    'Addresses are routed like this:\n\n' +
+      '  Join form, guardian email   →  Parents\n' +
+      '  Join form, student email    →  Students\n' +
+      '  Footer subscribe box        →  Newsletter\n\n' +
+      'Groups (created if they were missing):\n' + lines.join('\n')
+  );
+}
+
+/** 🧪 Confirms the token works and shows what is configured. */
+function testSenderConnection() {
+  var token = senderToken_();
+  if (!token) {
+    notify_('Not connected', 'No API token saved.\n\nSet one with ✉️ Newsletter ▸ 🔑 Set Sender.net API Token.');
+    return;
+  }
+
+  var groups = senderFetch_('get', '/groups?limit=100', null, token);
+  if (!groups.ok) {
+    notify_('Sender.net rejected the request', senderError_(groups));
+    return;
+  }
+
+  var lines = [];
+  for (var audience in SENDER_GROUP_TITLES) {
+    var group = senderGroupFor_(audience, token);
+    lines.push('  ' + group.title + '  →  ' + (group.id || 'FAILED: ' + group.error));
+  }
+
+  notify_(
+    'Connected to Sender.net',
+    'Token: ' + maskToken_(token) + '\n' +
+      'Groups in your account: ' + ((groups.json && groups.json.data) || []).length + '\n\n' +
+      'Club groups:\n' + lines.join('\n')
+  );
+}
+
+/**
+ * 🔁 Retries every Newsletter row that is not yet Subscribed.
+ *
+ * Use after setting the API token for the first time, or after a Sender outage.
+ */
+function syncNewsletterToSender() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  if (!senderToken_()) {
+    notify_('No API token', 'Set one with ✉️ Newsletter ▸ 🔑 Set Sender.net API Token, then run this again.');
+    return;
+  }
+
+  var sheet = newsletterSheet_(ss);
+  var rows = bodyRows_(sheet, NEWSLETTER_HEADERS.length);
+
+  var done = 0;
+  var failed = 0;
+  var skipped = 0;
+
+  for (var i = 0; i < rows.length; i++) {
+    var status = String(rows[i][NL_COL_STATUS - 1] || '').trim();
+    if (status.indexOf(STATUS_SUBSCRIBED) === 0) continue;
+
+    var email = normaliseEmail_(rows[i][NL_COL_EMAIL - 1]);
+    if (!isEmail_(email)) {
+      skipped++;
+      continue;
+    }
+
+    var audience = audienceForRow_(rows[i][NL_COL_GROUPS - 1], rows[i][NL_COL_SOURCE - 1]);
+    var groups = splitGroups_(rows[i][NL_COL_GROUPS - 1]);
+
+    var outcome;
+    try {
+      outcome = senderSubscribe_(email, String(rows[i][NL_COL_NAME - 1] || '').trim(), audience);
+    } catch (err) {
+      outcome = { ok: false, status: 'Error: ' + (err && err.message ? err.message : 'unknown') };
+    }
+
+    var title = SENDER_GROUP_TITLES[audience];
+    if (outcome.ok && !hasGroup_(groups, title)) groups.push(title);
+
+    setNewsletterResult_(ss, i + 2, outcome.status, groups);
+    if (outcome.ok) done++;
+    else failed++;
+
+    // Sender.net rate-limits; a short pause keeps a big backlog from tripping it.
+    Utilities.sleep(400);
+  }
+
+  notify_(
+    'Newsletter sync finished',
+    'Subscribed: ' + done + '\nStill failing: ' + failed + '\nSkipped (not an email): ' + skipped +
+      (failed ? '\n\nOpen the Newsletter tab — the "Sender Status" column says why.' : '')
+  );
+}
+
+function senderToken_() {
+  return String(PropertiesService.getScriptProperties().getProperty(SENDER_TOKEN_PROPERTY) || '').trim();
+}
+
+function maskToken_(token) {
+  if (token.length <= 8) return '••••';
+  return token.substring(0, 4) + '…' + token.substring(token.length - 4);
 }
 
 function readPublishedJson_() {

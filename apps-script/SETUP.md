@@ -153,6 +153,62 @@ To close sign-ups for an event, untick its **Show on Site** and Publish.
 
 ---
 
+## Newsletter (Sender.net)
+
+Email addresses collected by the site are pushed straight into your Sender.net
+account, so the next campaign you send reaches them. Nothing here waits for
+Publish.
+
+### Where addresses come from, and which group they land in
+
+| Where someone typed it | Sender.net group |
+|---|---|
+| Join the Club form — **Parent Email** | **Parents** |
+| Join the Club form — **Student Email** (optional) | **Students** |
+| **Get the Club Newsletter** box in the site footer | **Newsletter** |
+
+Every address is also written to the **Newsletter** tab of the spreadsheet, with
+the group(s) it was added to and whether Sender accepted it.
+
+### One-time setup
+
+1. In Sender.net: **Settings ▸ API access tokens ▸ Create token**. Copy it.
+2. In the spreadsheet: **🐢 Website ▸ ✉️ Newsletter ▸ 🔑 Set Sender.net API
+   Token**, paste, OK. It tells you straight away whether Sender accepted it.
+3. Optional: **👥 Show / Repair Sender Groups**. This creates the Parents,
+   Students and Newsletter groups if they don't exist yet and shows their ids.
+   You can skip it — the groups are created automatically on the first sign-up.
+
+That's the whole setup. The token is stored in the script's properties, never in
+the website code, because the website is public and anyone could read it there.
+
+### Sending a newsletter
+
+Compose the campaign in Sender.net as usual and pick the group(s) you want:
+Parents, Students, Newsletter, or several at once.
+
+### If something goes wrong
+
+The **Sender Status** column on the Newsletter tab says what happened to each
+address. Anything that does not start with `Subscribed` failed and can be
+retried with **✉️ Newsletter ▸ 🔁 Sync Pending Subscribers**, which walks the tab
+and re-sends everything still outstanding.
+
+This is also what you run if you collected addresses *before* setting the API
+token — those rows sit there marked `Pending — no API key` until you sync them.
+
+Addresses are recorded on the sheet **before** the Sender call, on purpose: if
+Sender is down or the token has expired, nobody is lost, the row just waits.
+
+**🧪 Test Sender Connection** confirms the token still works and shows the three
+group ids.
+
+> If you rename or delete one of the groups inside Sender.net, run
+> **👥 Show / Repair Sender Groups** — the script remembers group ids and needs
+> to be told to look them up again.
+
+---
+
 ## Updating the script later
 
 If you edit `Code.gs`, you must **re-deploy** for the website to see the change:

@@ -167,7 +167,7 @@ export default function App() {
         )}
       </main>
 
-      <Footer setCurrentTab={setCurrentTab} />
+      <Footer setCurrentTab={setCurrentTab} onSubscribe={content.subscribeNewsletter} />
 
       {signupMission && (
         <SignupModal mission={signupMission} onClose={() => setSignupMission(null)} onSubmit={content.submitSignup} onSuccess={handleSignupSuccess} />

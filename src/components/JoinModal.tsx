@@ -57,7 +57,9 @@ export default function JoinModal({ onClose, onJoinSuccess, onJoinSubmit }: Join
       xp: 15,
       unlockedBadges: ['Foundation Member'],
       reservedMissionIds: [],
-      newsletterSubscribed: false
+      // Joining subscribes the address given here to the newsletter — the Apps
+      // Script's join handler pushes it to Sender.net.
+      newsletterSubscribed: true
     };
 
     setTimeout(() => {
@@ -128,6 +130,9 @@ export default function JoinModal({ onClose, onJoinSuccess, onJoinSubmit }: Join
                 <label className="text-[11px] font-extrabold text-[#4B6169]">Parent Email</label>
                 <input id="join-email" type="email" placeholder="parent@example.com" value={email} onChange={(e) => setEmail(e.target.value)}
                   className="w-full p-2.5 rounded-xl text-sm border-2 border-[#1F3A42]/12 bg-white text-[#1F3A42] focus:outline-none" required />
+                <p className="text-[10px] text-[#4B6169] leading-relaxed">
+                  We'll add this to the club newsletter so you don't miss an event. Unsubscribe any time.
+                </p>
               </div>
 
               <div className="space-y-1">
