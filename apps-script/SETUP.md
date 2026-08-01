@@ -217,8 +217,17 @@ token — those rows sit there marked `Pending — no API key` until you sync th
 Addresses are recorded on the sheet **before** the Sender call, on purpose: if
 Sender is down or the token has expired, nobody is lost, the row just waits.
 
-**🧪 Test Sender Connection** confirms the token still works and shows the three
-group ids.
+**🧪 Test Sender Connection** checks reading and writing *separately* and shows
+the three group ids. The distinction matters: a Sender.net account that is still
+under review can answer reads perfectly while refusing to create subscribers, so
+"the token works" and "sign-ups will go through" are two different questions.
+
+If it reports **reading OK, writing FAILED**, your token is not the problem —
+generating a new one will not help. That is an account-level restriction, so
+check your Sender.net dashboard for a verification or review notice, or ask
+their support whether the API is allowed to create subscribers yet. Addresses
+keep collecting in the Newsletter tab in the meantime; run 🔁 Sync Pending
+Subscribers once it clears.
 
 > If you rename or delete one of the groups inside Sender.net, run
 > **👥 Show / Repair Sender Groups** — the script remembers group ids and needs

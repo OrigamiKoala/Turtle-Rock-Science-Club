@@ -136,6 +136,13 @@ hand in Sender is found by title and reused, not duplicated. Renaming or
 deleting a group in Sender leaves a stale cached id — 👥 Show / Repair Sender
 Groups clears the cache and re-resolves.
 
+**Reads and writes fail independently.** A Sender account awaiting review can
+answer `GET /groups` while rejecting `POST /subscribers` — with a 401, not a
+403, which reads like a bad token and sends you chasing the wrong thing.
+`testSenderConnection` therefore probes both (`senderWriteProbe_`) and reports
+them apart; don't collapse it back into a single read check, and don't treat the
+token-save validation as proof that sign-ups work, because it too is read-only.
+
 Order matters in `subscribeEmail_`: the address is written to the **Newsletter**
 tab *before* the Sender API call, so a Sender outage, an expired token, or a
 script timeout loses nobody. The row keeps a non-`Subscribed` status until

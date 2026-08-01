@@ -142,6 +142,10 @@ var SENDER_API_BASE = 'https://api.sender.net/v2';
 var SENDER_TOKEN_PROPERTY = 'SENDER_API_TOKEN';
 var SENDER_GROUP_PROPERTY_PREFIX = 'SENDER_GROUP_ID_';
 
+// Address used by 🧪 Test Sender Connection to check that writing works.
+// example.com is reserved by the IANA, so this can never be a real person.
+var SENDER_PROBE_EMAIL = 'trsc-connection-test@example.com';
+
 var AUDIENCE_PARENT = 'parent';
 var AUDIENCE_STUDENT = 'student';
 var AUDIENCE_NEWSLETTER = 'newsletter';
@@ -1470,7 +1474,15 @@ function showSenderGroups() {
   );
 }
 
-/** 🧪 Confirms the token works and shows what is configured. */
+/**
+ * 🧪 Checks reading *and* writing, separately.
+ *
+ * These are worth reporting apart because they fail apart: an account that is
+ * still under review, or otherwise restricted, can answer reads perfectly while
+ * refusing to create subscribers. A read-only check in that situation says
+ * "connected" and sends you off to re-generate a token that was never the
+ * problem — which is exactly what it did before this told you both halves.
+ */
 function testSenderConnection() {
   var token = senderToken_();
   if (!token) {
@@ -1480,7 +1492,12 @@ function testSenderConnection() {
 
   var groups = senderFetch_('get', '/groups?limit=100', null, token);
   if (!groups.ok) {
-    notify_('Sender.net rejected the request', senderError_(groups));
+    notify_(
+      'Reading failed',
+      'Sender.net answered: ' + senderError_(groups) +
+        '\n\nThe token is not being accepted at all. Generate a fresh one in ' +
+        'Sender.net ▸ Settings ▸ API access tokens.'
+    );
     return;
   }
 
@@ -1490,12 +1507,44 @@ function testSenderConnection() {
     lines.push('  ' + SENDER_GROUP_TITLES[i] + '  →  ' + (group.id || 'FAILED: ' + group.error));
   }
 
+  var write = senderWriteProbe_(token);
+
   notify_(
-    'Connected to Sender.net',
+    write.ok ? 'Connected to Sender.net' : 'Reading works, but writing is blocked',
     'Token: ' + maskToken_(token) + '\n' +
-      'Groups in your account: ' + ((groups.json && groups.json.data) || []).length + '\n\n' +
-      'Club groups:\n' + lines.join('\n')
+      'Reading (list groups): OK — ' + ((groups.json && groups.json.data) || []).length + ' groups\n' +
+      'Writing (add subscriber): ' + (write.ok ? 'OK' : 'FAILED — ' + write.error) + '\n\n' +
+      'Club groups:\n' + lines.join('\n') +
+      (write.ok
+        ? '\n\nSign-ups will reach Sender.net.' +
+          (write.created ? '\n\nThis added the test address ' + SENDER_PROBE_EMAIL + ' — delete it from your subscribers.' : '')
+        : '\n\nYour token is fine — reading proves that. Sign-ups cannot be written ' +
+          'until this is lifted, which is usually an account still awaiting review ' +
+          'or verification. Check your Sender.net dashboard for a notice, or ask ' +
+          'their support whether the API can create subscribers yet.\n\n' +
+          'Nothing is lost meanwhile: addresses keep collecting in the Newsletter ' +
+          'tab. Run 🔁 Sync Pending Subscribers once this clears.')
   );
+}
+
+/**
+ * Tries the one operation sign-ups depend on: creating a subscriber.
+ *
+ * Uses an example.com address, which is reserved by the IANA and can never
+ * belong to a real person. "Already exists" counts as success — it means the
+ * write was allowed, just redundant.
+ */
+function senderWriteProbe_(token) {
+  var response = senderFetch_(
+    'post',
+    '/subscribers',
+    { email: SENDER_PROBE_EMAIL, trigger_automation: false },
+    token
+  );
+
+  if (response.ok) return { ok: true, created: true, error: '' };
+  if (looksLikeDuplicate_(response)) return { ok: true, created: false, error: '' };
+  return { ok: false, created: false, error: senderError_(response) };
 }
 
 /**
