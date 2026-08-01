@@ -82,3 +82,13 @@ export interface Announcement {
   content: string;
   image?: string;
 }
+
+export interface Resource {
+  id: string;
+  title: string;
+  description: string;
+  category: 'chemistry' | 'physics' | 'astronomy' | 'biology' | 'robotics' | 'general' | string;
+  url: string;
+  type?: 'article' | 'video' | 'website' | 'tool' | 'book' | 'pdf' | string;
+}
+

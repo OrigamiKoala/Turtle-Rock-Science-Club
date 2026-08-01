@@ -19,9 +19,6 @@ export default function JoinModal({ onClose, onJoinSuccess, onJoinSubmit }: Join
   // email, and an unticked box keeps the list to people who actually want it.
   const [newsletterOptIn, setNewsletterOptIn] = useState(false);
 
-  const [goggleAgreement, setGoggleAgreement] = useState(false);
-  const [curiosityAgreement, setCuriosityAgreement] = useState(false);
-
   const [errorMsg, setErrorMsg] = useState('');
   const [joinedDone, setJoinedDone] = useState(false);
 

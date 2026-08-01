@@ -35,6 +35,7 @@ You only do this once. It takes about five minutes.
    | **Announcements** | Club announcements shown on the site |
    | **Lab Log** | Write-ups shown under "Latest From the Lab Log" |
    | **Photos** | Direct photos shown at top of Photo Gallery |
+   | **Resources** | Curated STEM websites, tools, videos, and articles shown on the site |
    | **Members** | Filled in **automatically** when someone joins the club |
    | **Signups** | Filled in **automatically** when someone signs up online |
 

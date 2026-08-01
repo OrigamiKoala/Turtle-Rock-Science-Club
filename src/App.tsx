@@ -12,6 +12,7 @@ import PhotoGallery from './components/PhotoGallery';
 import AboutUs from './components/AboutUs';
 import LabLogAnnouncements from './components/LabLogAnnouncements';
 import Dashboard from './components/Dashboard';
+import CuratedResources from './components/CuratedResources';
 import JoinModal from './components/JoinModal';
 import LoginModal from './components/LoginModal';
 import SignupModal from './components/SignupModal';
@@ -151,6 +152,8 @@ export default function App() {
         )}
 
         {currentTab === 'lab' && <VirtualLab userProfile={userProfile} onUpdateXp={handleUpdateXp} />}
+
+        {currentTab === 'resources' && <CuratedResources resources={content.resources} />}
 
         {currentTab === 'logs' && (
           <LabLogAnnouncements logs={content.labLogs} announcements={content.announcements} />

@@ -39,10 +39,13 @@ var EVENTS_SHEET = 'Events';
 var ANNOUNCEMENTS_SHEET = 'Announcements';
 var LABLOG_SHEET = 'Lab Log';
 var PHOTOS_SHEET = 'Photos';
+var RESOURCES_SHEET = 'Resources';
 var MEMBERS_SHEET = 'Members';
 var SIGNUPS_SHEET = 'Signups';
 var NEWSLETTER_SHEET = 'Newsletter';
 var PUBLISHED_SHEET = '_Published';
+
+var RESOURCE_HEADERS = ['Title', 'Description', 'Category', 'URL', 'Type', 'Show on Site'];
 
 var EVENT_HEADERS = [
   'Title',
@@ -117,6 +120,7 @@ var STATUS_PENDING = 'Pending — no API key';
 var ANNOUNCEMENT_CATEGORIES = ['general', 'expansion', 'toolkit', 'volunteer'];
 var LABLOG_CATEGORIES = ['chemistry', 'robotics', 'astronomy', 'general'];
 var PHOTO_CATEGORIES = ['experiments', 'field-trips', 'lab-meetings'];
+var RESOURCE_CATEGORIES = ['chemistry', 'physics', 'astronomy', 'biology', 'robotics', 'general'];
 
 var BRAND_DARK = '#064e3b';
 var SIGNUP_HEADER_COLOR = '#1e3a8a';
@@ -220,6 +224,7 @@ function setupSheets() {
   var announcements = ensureSheet_(ss, ANNOUNCEMENTS_SHEET, ANNOUNCEMENT_HEADERS, BRAND_DARK);
   var labLog = ensureSheet_(ss, LABLOG_SHEET, LABLOG_HEADERS, BRAND_DARK);
   var photos = ensureSheet_(ss, PHOTOS_SHEET, PHOTO_HEADERS, BRAND_DARK);
+  var resources = ensureSheet_(ss, RESOURCES_SHEET, RESOURCE_HEADERS, BRAND_DARK);
   var members = ensureSheet_(ss, MEMBERS_SHEET, MEMBER_HEADERS, BRAND_DARK);
   var signups = ensureSheet_(ss, SIGNUPS_SHEET, SIGNUP_HEADERS, SIGNUP_HEADER_COLOR);
   var newsletter = ensureSheet_(ss, NEWSLETTER_SHEET, NEWSLETTER_HEADERS, NEWSLETTER_HEADER_COLOR);
@@ -228,6 +233,7 @@ function setupSheets() {
   styleAnnouncementsSheet_(announcements);
   styleLabLogSheet_(labLog);
   stylePhotosSheet_(photos);
+  styleResourcesSheet_(resources);
   styleMembersSheet_(members);
   styleSignupsSheet_(signups);
   styleNewsletterSheet_(newsletter);
@@ -243,7 +249,7 @@ function setupSheets() {
   notify_(
     'Setup complete',
     'Your tabs are ready:\n\n' +
-      '  • Events\n  • Announcements\n  • Lab Log\n  • Photos\n  • Members (filled in automatically)\n' +
+      '  • Events\n  • Announcements\n  • Lab Log\n  • Photos\n  • Resources\n  • Members (filled in automatically)\n' +
       '  • Signups (filled in automatically)\n  • Newsletter (filled in automatically)\n\n' +
       'Type your content, then click  🐢 Website ▸ Publish to Website.'
   );
@@ -362,6 +368,17 @@ function stylePhotosSheet_(sheet) {
   sheet.getRange(1, 1, body + 1, PHOTO_HEADERS.length).setVerticalAlignment('top');
 }
 
+function styleResourcesSheet_(sheet) {
+  setWidths_(sheet, [240, 420, 140, 300, 120, 100]);
+  var body = Math.min(100, Math.max(20, sheet.getLastRow() - 1));
+  if (body <= 0) return;
+
+  sheet.getRange(2, 3, body, 1).setDataValidation(categoryRule_(RESOURCE_CATEGORIES));
+  sheet.getRange(2, 6, body, 1).insertCheckboxes();
+  sheet.getRange(2, 2, body, 1).setWrap(true);
+  sheet.getRange(1, 1, body + 1, RESOURCE_HEADERS.length).setVerticalAlignment('top');
+}
+
 function setWidths_(sheet, widths) {
   for (var i = 0; i < widths.length; i++) sheet.setColumnWidth(i + 1, widths[i]);
 }
@@ -399,6 +416,7 @@ function publishToWebsite() {
   var announcementsSheet = ss.getSheetByName(ANNOUNCEMENTS_SHEET);
   var labLogSheet = ss.getSheetByName(LABLOG_SHEET);
   var photosSheet = ss.getSheetByName(PHOTOS_SHEET);
+  var resourcesSheet = ss.getSheetByName(RESOURCES_SHEET);
 
   if (!eventsSheet || !announcementsSheet) {
     ui.alert(
@@ -417,6 +435,7 @@ function publishToWebsite() {
   var announcements = readAnnouncements_(announcementsSheet, problems);
   var labLogs = labLogSheet ? readLabLogs_(labLogSheet, problems) : [];
   var photosList = photosSheet ? readPhotos_(photosSheet, problems) : [];
+  var resourcesList = resourcesSheet ? readResources_(resourcesSheet, problems) : [];
 
   if (problems.length) {
     var response = ui.alert(
@@ -435,6 +454,7 @@ function publishToWebsite() {
     labLogs: labLogs,
     eventPhotos: eventPhotos,
     photos: photosList,
+    resources: resourcesList,
     publishedAt: new Date().toISOString(),
     publishedBy: Session.getActiveUser().getEmail() || 'unknown'
   };
@@ -461,7 +481,8 @@ function publishToWebsite() {
       '  • ' + photosList.length + ' direct photo(s)\n' +
       '  • ' + eventPhotos.length + ' photo album(s)\n' +
       '  • ' + announcements.length + ' announcement(s)\n' +
-      '  • ' + labLogs.length + ' lab log entr(ies)\n\n' +
+      '  • ' + labLogs.length + ' lab log entr(ies)\n' +
+      '  • ' + resourcesList.length + ' resource(s)\n\n' +
       (problems.length ? '  • ' + problems.length + ' row(s) skipped\n\n' : '') +
       'Refresh the website to see the change.',
     ui.ButtonSet.OK
@@ -630,6 +651,38 @@ function readLabLogs_(sheet, problems) {
       content: content || summary,
       image: String(row[5] || '').trim(),
       author: String(row[6] || '').trim()
+    });
+  }
+
+  return out;
+}
+
+function readResources_(sheet, problems) {
+  var rows = bodyRows_(sheet, RESOURCE_HEADERS.length);
+  var out = [];
+
+  for (var i = 0; i < rows.length; i++) {
+    var row = rows[i];
+    var rowNumber = i + 2;
+
+    if (isBlankRow_(row)) continue;
+    if (row[5] === false) continue;
+
+    var title = String(row[0]).trim();
+    var url = String(row[3] || '').trim();
+
+    if (!title || !url) {
+      problems.push('Resources row ' + rowNumber + ': missing Title or URL.');
+      continue;
+    }
+
+    out.push({
+      id: 'sheet-resource-' + rowNumber,
+      title: title,
+      description: String(row[1] || '').trim(),
+      category: normaliseCategory_(row[2], RESOURCE_CATEGORIES),
+      url: url,
+      type: String(row[4] || 'website').trim().toLowerCase() || 'website'
     });
   }
 

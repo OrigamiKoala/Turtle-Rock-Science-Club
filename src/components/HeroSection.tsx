@@ -1,7 +1,7 @@
 import React from 'react';
 import { UserProfile } from '../types';
 import TurtleRockLogo from './TurtleRockLogo';
-import { ArrowRight, Atom } from 'lucide-react';
+import { ArrowRight, Atom, BookMarked } from 'lucide-react';
 
 interface HeroSectionProps {
   userProfile: UserProfile;
@@ -56,6 +56,15 @@ export default function HeroSection({
                 <Atom className="w-4 h-4" />
               </button>
             )}
+
+            <button
+              id="hero-resources-btn"
+              onClick={() => setCurrentTab('resources')}
+              className="w-full sm:w-auto px-6 py-3 rounded-full font-display font-bold text-sm transition-all cursor-pointer bg-white hover:bg-[#1F3A42]/5 text-[#1F3A42] border-2 border-[#1F3A42]/15 flex items-center justify-center gap-2"
+            >
+              <BookMarked className="w-4 h-4 text-[#4C9A3A]" />
+              <span>Curated Resources</span>
+            </button>
 
             <button
               id="hero-learn-more-btn"

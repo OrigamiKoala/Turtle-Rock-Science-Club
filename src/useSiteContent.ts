@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Announcement, EventPhoto, GalleryPhoto, LabLog, Mission, UserProfile } from './types';
+import { Announcement, EventPhoto, GalleryPhoto, LabLog, Mission, Resource, UserProfile } from './types';
 import { CONTENT_CACHE_KEY, CONTENT_CACHE_MS, SHEET_API_URL } from './config';
 
 export type ContentStatus = 'bundled' | 'loading' | 'live' | 'error';
@@ -44,6 +44,7 @@ export interface SiteContent {
   labLogs: LabLog[];
   eventPhotos: EventPhoto[];
   photos: GalleryPhoto[];
+  resources: Resource[];
   status: ContentStatus;
   publishedAt: string | null;
   error: string | null;
@@ -63,6 +64,7 @@ interface SheetPayload {
   labLogs?: unknown;
   eventPhotos?: unknown;
   photos?: unknown;
+  resources?: unknown;
   publishedAt?: string | null;
 }
 
@@ -226,6 +228,83 @@ function toGalleryPhotos(raw: unknown): GalleryPhoto[] {
         imageUrl,
         submittedBy: asString(row.submittedBy, 'Turtle Rock Science Club'),
         date: asString(row.date, 'Club Moment')
+      }
+    ];
+  });
+}
+
+const RESOURCE_CATEGORIES = ['chemistry', 'physics', 'astronomy', 'biology', 'robotics', 'general'];
+
+const DEFAULT_RESOURCES: Resource[] = [
+  {
+    id: 'res-1',
+    title: 'PhET Interactive Science Simulations',
+    description: 'Explore interactive simulations for physics, chemistry, biology, earth science, and math created by UC Boulder.',
+    category: 'chemistry',
+    url: 'https://phet.colorado.edu/',
+    type: 'tool'
+  },
+  {
+    id: 'res-2',
+    title: 'NASA Climate Kids & Space Place',
+    description: 'Engaging games, hands-on activities, and articles exploring Earth’s climate, outer space, stars, and space exploration.',
+    category: 'astronomy',
+    url: 'https://spaceplace.nasa.gov/',
+    type: 'website'
+  },
+  {
+    id: 'res-3',
+    title: 'Science News Explores',
+    description: 'Topical STEM news articles, discoveries, and science explainers written specifically for young researchers and students.',
+    category: 'general',
+    url: 'https://www.snexplores.org/',
+    type: 'article'
+  },
+  {
+    id: 'res-4',
+    title: 'Scratch Coding & Robotics Lab',
+    description: 'Creative coding platform developed by MIT Media Lab to build interactive games, animations, and robot block scripts.',
+    category: 'robotics',
+    url: 'https://scratch.mit.edu/',
+    type: 'tool'
+  },
+  {
+    id: 'res-5',
+    title: 'Khan Academy Science',
+    description: 'Free comprehensive video lessons and practice problems covering force & motion, habitats, energy, and matter.',
+    category: 'physics',
+    url: 'https://www.khanacademy.org/science',
+    type: 'video'
+  },
+  {
+    id: 'res-6',
+    title: 'National Geographic Kids Science',
+    description: 'Fascinating videos, animal encyclopedias, and fun experiment guides to try at home or in class.',
+    category: 'biology',
+    url: 'https://kids.nationalgeographic.com/science',
+    type: 'website'
+  }
+];
+
+function toResources(raw: unknown): Resource[] {
+  if (!Array.isArray(raw)) return [];
+
+  return raw.flatMap((entry, index): Resource[] => {
+    if (!entry || typeof entry !== 'object') return [];
+    const row = entry as Record<string, unknown>;
+
+    const title = asString(row.title);
+    const url = asString(row.url);
+    if (!title || !url) return [];
+
+    return [
+      {
+        id: asString(row.id) || `sheet-resource-${index}`,
+        title,
+        description: asString(row.description),
+        category: pickCategory(row.category, RESOURCE_CATEGORIES, 'general'),
+        url,
+        type: asString(row.type, 'website').toLowerCase()
       }
     ];
   });
@@ -467,6 +546,8 @@ export function useSiteContent(): SiteContent {
   const sheetLabLogs = toLabLogs(payload?.labLogs);
   const sheetEventPhotos = toEventPhotos(payload?.eventPhotos);
   const sheetPhotos = toGalleryPhotos(payload?.photos);
+  const parsedResources = payload && Array.isArray(payload.resources) ? toResources(payload.resources) : [];
+  const finalResources = parsedResources.length > 0 ? parsedResources : DEFAULT_RESOURCES;
 
   return {
     missions: payload ? sheetMissions : [],
@@ -474,6 +555,7 @@ export function useSiteContent(): SiteContent {
     labLogs: payload && Array.isArray(payload.labLogs) ? sheetLabLogs : [],
     eventPhotos: payload && Array.isArray(payload.eventPhotos) ? sheetEventPhotos : [],
     photos: payload && Array.isArray(payload.photos) ? sheetPhotos : [],
+    resources: finalResources,
     status,
     publishedAt: typeof payload?.publishedAt === 'string' ? payload.publishedAt : null,
     error,
