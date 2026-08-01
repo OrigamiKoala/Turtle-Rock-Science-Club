@@ -21,4 +21,4 @@ export const SHEET_API_URL =
 export const CONTENT_CACHE_MS = 5 * 60 * 1000;
 
 /** localStorage key holding the last successful fetch. */
-export const CONTENT_CACHE_KEY = 'tr_sc_sheet_content_v1';
+export const CONTENT_CACHE_KEY = 'tr_sc_sheet_content_v2';

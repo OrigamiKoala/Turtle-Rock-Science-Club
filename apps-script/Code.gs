@@ -275,9 +275,33 @@ function notify_(title, message) {
 
 function ensureSheet_(ss, name, headers, headerColor) {
   var sheet = ss.getSheetByName(name);
-  if (!sheet) sheet = ss.insertSheet(name);
+  if (!sheet) {
+    sheet = ss.insertSheet(name);
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  } else {
+    // If repairing an existing Resources sheet that was created with 6 columns
+    if (name === RESOURCES_SHEET) {
+      var lastC = Math.max(1, sheet.getLastColumn());
+      var currentHeaders = sheet.getRange(1, 1, 1, lastC).getValues()[0];
+      var hasLevel = false;
+      for (var k = 0; k < currentHeaders.length; k++) {
+        if (String(currentHeaders[k] || '').trim().toLowerCase() === 'level') {
+          hasLevel = true;
+          break;
+        }
+      }
+      if (!hasLevel && lastC >= 4) {
+        sheet.insertColumnAfter(3);
+        sheet.getRange(1, 4).setValue('Level');
+        var lastR = sheet.getLastRow();
+        if (lastR >= 2) {
+          sheet.getRange(2, 4, lastR - 1, 1).setValue('All Levels');
+        }
+      }
+    }
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  }
 
-  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
   sheet.setFrozenRows(1);
   sheet
     .getRange(1, 1, 1, headers.length)
@@ -660,7 +684,9 @@ function readLabLogs_(sheet, problems) {
 }
 
 function readResources_(sheet, problems) {
-  var rows = bodyRows_(sheet, RESOURCE_HEADERS.length);
+  var lastCol = sheet.getLastColumn();
+  var width = Math.max(lastCol, RESOURCE_HEADERS.length);
+  var rows = bodyRows_(sheet, width);
   var out = [];
 
   for (var i = 0; i < rows.length; i++) {
@@ -668,14 +694,45 @@ function readResources_(sheet, problems) {
     var rowNumber = i + 2;
 
     if (isBlankRow_(row)) continue;
-    if (row[6] === false) continue;
 
-    var title = String(row[0]).trim();
-    var url = String(row[4] || '').trim();
-
-    if (!title || !url) {
-      problems.push('Resources row ' + rowNumber + ': missing Title or URL.');
+    var title = String(row[0] || '').trim();
+    if (!title) {
+      problems.push('Resources row ' + rowNumber + ': missing a Title.');
       continue;
+    }
+
+    var col3 = String(row[3] || '').trim();
+    var col4 = String(row[4] || '').trim();
+    var col5 = String(row[5] || '').trim();
+
+    var level = 'all';
+    var url = '';
+    var type = 'website';
+    var showOnSite = true;
+
+    // Detect if column 4 (index 3) is a URL vs Level
+    if (col3.indexOf('http://') === 0 || col3.indexOf('https://') === 0 || col3.indexOf('www.') === 0 || col3.indexOf('.') !== -1 && col3.indexOf(' ') === -1) {
+      // 6-column sheet: Title, Description, Category, URL, Type, Show on Site
+      url = col3;
+      type = col4 || 'website';
+      showOnSite = row[5] !== false;
+    } else {
+      // 7-column sheet: Title, Description, Category, Level, URL, Type, Show on Site
+      level = col3 || 'all';
+      url = col4 || col3;
+      type = col5 || 'website';
+      showOnSite = row[6] !== false;
+    }
+
+    if (!url) {
+      problems.push('Resources row ' + rowNumber + ' ("' + title + '"): missing a URL.');
+      continue;
+    }
+
+    if (!showOnSite) continue;
+
+    if (url.indexOf('http://') !== 0 && url.indexOf('https://') !== 0) {
+      url = 'https://' + url;
     }
 
     out.push({
@@ -683,9 +740,9 @@ function readResources_(sheet, problems) {
       title: title,
       description: String(row[1] || '').trim(),
       category: String(row[2] || '').trim().toLowerCase() || 'general',
-      level: String(row[3] || '').trim().toLowerCase() || 'all',
+      level: level.toLowerCase(),
       url: url,
-      type: String(row[5] || 'website').trim().toLowerCase() || 'website'
+      type: type.toLowerCase()
     });
   }
 

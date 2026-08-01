@@ -300,8 +300,12 @@ function toResources(raw: unknown): Resource[] {
     const row = entry as Record<string, unknown>;
 
     const title = asString(row.title);
-    const url = asString(row.url);
+    let url = asString(row.url);
     if (!title || !url) return [];
+
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = 'https://' + url;
+    }
 
     return [
       {
@@ -553,8 +557,9 @@ export function useSiteContent(): SiteContent {
   const sheetLabLogs = toLabLogs(payload?.labLogs);
   const sheetEventPhotos = toEventPhotos(payload?.eventPhotos);
   const sheetPhotos = toGalleryPhotos(payload?.photos);
-  const parsedResources = payload && Array.isArray(payload.resources) ? toResources(payload.resources) : [];
-  const finalResources = parsedResources.length > 0 ? parsedResources : DEFAULT_RESOURCES;
+  const hasResourcesInPayload = payload !== null && typeof payload === 'object' && 'resources' in payload && Array.isArray(payload.resources);
+  const parsedResources = hasResourcesInPayload ? toResources(payload.resources) : [];
+  const finalResources = hasResourcesInPayload ? parsedResources : DEFAULT_RESOURCES;
 
   return {
     missions: payload ? sheetMissions : [],
