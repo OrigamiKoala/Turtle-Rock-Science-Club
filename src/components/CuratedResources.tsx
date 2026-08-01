@@ -10,7 +10,8 @@ import {
   BookOpen,
   FileText,
   Sparkles,
-  Filter
+  Filter,
+  ArrowUpRight
 } from 'lucide-react';
 
 interface CuratedResourcesProps {
@@ -83,7 +84,16 @@ export default function CuratedResources({ resources }: CuratedResourcesProps) {
           </h2>
 
           <p className="text-sm sm:text-base text-gray-200 leading-relaxed font-sans">
-            Suggested resources for further exploration. A complete list can be found on our <a href="https://docs.google.com/document/d/1ev0rV0iSfNzGwVkLtUcggu7fINd0rD7nv4nyroO3u9c/edit?tab=t.0" target="_blank" rel="noopener noreferrer">Master Document</a>
+            Curated resources. A complete list can be found on our{' '}
+            <a
+              href="https://docs.google.com/document/d/1ev0rV0iSfNzGwVkLtUcggu7fINd0rD7nv4nyroO3u9c/edit?tab=t.0"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-4 decoration-[#A8E090] text-[#A8E090] hover:text-white font-bold inline-flex items-center gap-1 transition-colors"
+            >
+              <span>Master Document</span>
+              <ArrowUpRight className="w-4 h-4 shrink-0" />
+            </a>
           </p>
         </div>
       </div>
