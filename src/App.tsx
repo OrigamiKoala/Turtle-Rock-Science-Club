@@ -17,7 +17,7 @@ import JoinModal from './components/JoinModal';
 import LoginModal from './components/LoginModal';
 import SignupModal from './components/SignupModal';
 
-import { Trophy, Star } from 'lucide-react';
+import { Trophy, Star, MailCheck, X } from 'lucide-react';
 
 export default function App() {
   const [currentTab, setCurrentTab] = useState<string>('missions');
@@ -26,6 +26,26 @@ export default function App() {
   const [showLevelUpAlert, setShowLevelUpAlert] = useState<boolean>(false);
   const [signupMission, setSignupMission] = useState<Mission | null>(null);
   const [signupNotice, setSignupNotice] = useState<{ mission: Mission; result: SignupResult } | null>(null);
+
+  // The newsletter confirmation email's button lands here with ?confirmed=1.
+  // Without this the click just loads the homepage and looks like nothing
+  // happened. The query string is stripped afterwards so a refresh or a shared
+  // link doesn't show the banner again.
+  const [showConfirmedBanner, setShowConfirmedBanner] = useState<boolean>(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('confirmed') !== '1') return;
+
+    setShowConfirmedBanner(true);
+    params.delete('confirmed');
+    const query = params.toString();
+    window.history.replaceState(
+      {},
+      '',
+      window.location.pathname + (query ? `?${query}` : '') + window.location.hash
+    );
+  }, []);
 
   const content = useSiteContent();
   const { theme, toggleTheme } = useTheme();
@@ -140,6 +160,30 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col justify-between font-sans bg-[#FBF7EC] text-[#1F3A42] relative overflow-hidden bg-dot-pattern">
+
+      {showConfirmedBanner && (
+        <div className="relative z-20 bg-[#6CC24A] text-[#14351F]">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center gap-3">
+            <MailCheck className="w-6 h-6 shrink-0" strokeWidth={2} />
+            <div className="flex-1 text-left">
+              <p className="font-display font-bold text-sm sm:text-base leading-tight">
+                You're confirmed — welcome aboard!
+              </p>
+              <p className="text-xs sm:text-sm leading-snug mt-0.5">
+                You'll get session announcements and sign-up links from now on.
+              </p>
+            </div>
+            <button
+              id="dismiss-confirmed-banner"
+              onClick={() => setShowConfirmedBanner(false)}
+              aria-label="Dismiss"
+              className="p-1.5 rounded-full hover:bg-[#14351F]/10 transition cursor-pointer shrink-0"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      )}
 
       <Header currentTab={currentTab} setCurrentTab={setCurrentTab} userProfile={userProfile} onOpenJoin={() => setShowJoinModal(true)} onOpenLogin={() => setShowLoginModal(true)} theme={theme} onToggleTheme={toggleTheme} />
 

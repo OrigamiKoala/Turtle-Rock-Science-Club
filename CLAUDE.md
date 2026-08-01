@@ -116,6 +116,18 @@ addresses into Sender.net, routed by where they came from:
 | Join form, Parent Email | `parent` | **Parents** + **Newsletter** |
 | Join form, Student Email | `student` | **Students** + **Newsletter** |
 
+**Campaigns go to the Confirmed *segment*, never to a raw group.**
+`senderSubscribe_` writes every signup straight into its audience groups, so
+group membership on its own does **not** mean the address ever confirmed. A
+Sender automation fires on joining **Newsletter**, sends the confirmation email
+(`newsletter/confirm-subscription.html`), and adds anyone who clicks the button
+to a **Confirmed** group. Campaigns are then sent to a segment of *(audience
+group) AND Confirmed*. Sending to the bare **Newsletter** group mails everyone
+who ignored the confirmation and turns that email's "you won't receive anything
+until you do" into a lie. Do not "simplify" this by targeting the group
+directly. Nothing in this repo enforces it — it is a discipline in the Sender
+UI, which is why it is written down here.
+
 **The Join form only subscribes when the guardian ticks the newsletter box.**
 `JoinModal`'s opt-in checkbox defaults to unchecked and rides through as
 `newsletterOptIn`; `handleJoin_` records it in the Members tab's **Newsletter
