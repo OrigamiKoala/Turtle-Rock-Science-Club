@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { LabLog, Announcement } from '../types';
 import { Clock, User, X, MessageSquare } from 'lucide-react';
 import SafeHtml from './SafeHtml';
@@ -12,10 +12,21 @@ export default function LabLogAnnouncements({ logs, announcements }: LabLogAnnou
   const [activeLogId, setActiveLogId] = useState<string | null>(null);
 
   const [comments, setComments] = useState<Record<string, Array<{ name: string; text: string; date: string }>>>({
-    'log-1': [{ name: 'Parent David L.', text: 'My daughter can not stop talking about the volcano eruption!', date: 'June 19, 2026' }]
+    'log-1': [{ name: 'Sarah Chen', text: 'Loved watching the slime react to the magnets!', date: 'Yesterday' }]
   });
   const [newCommentName, setNewCommentName] = useState('');
   const [newCommentText, setNewCommentText] = useState('');
+
+  useEffect(() => {
+    if (activeLogId) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [activeLogId]);
 
   const activeLog = logs.find((l) => l.id === activeLogId);
 
@@ -91,8 +102,13 @@ export default function LabLogAnnouncements({ logs, announcements }: LabLogAnnou
       </div>
 
       {activeLog && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-[#1F3A42]/45 backdrop-blur-sm flex items-center justify-center p-4">
-          <div id="log-detail-modal" className="w-full max-w-2xl rounded-[28px] overflow-hidden shadow-2xl bg-[#FBF7EC] flex flex-col justify-between max-h-[90vh]">
+        <div
+          className="fixed inset-0 z-[100] overflow-y-auto bg-[#1F3A42]/60 backdrop-blur-md flex items-center justify-center p-4 sm:p-6"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setActiveLogId(null);
+          }}
+        >
+          <div id="log-detail-modal" className="w-full max-w-2xl rounded-[28px] overflow-hidden shadow-2xl bg-[#FBF7EC] dark:bg-gray-800 dark:text-white flex flex-col justify-between max-h-[85vh] my-auto">
             <div className="relative h-60">
               <img src={activeLog.image} alt={activeLog.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
               <button id="close-log-modal-btn" onClick={() => setActiveLogId(null)} className="absolute top-4 right-4 p-2 bg-white/90 hover:bg-white text-[#1F3A42] rounded-full transition-all cursor-pointer">
