@@ -1,23 +1,6 @@
 import React, { useState } from 'react';
-import { LabLog, Announcement, PressMention } from '../types';
-import { Newspaper, Clock, User, X, MessageSquare } from 'lucide-react';
-
-const PRESS_MENTIONS: PressMention[] = [
-  {
-    id: 'press-1',
-    source: 'The Daily Chronicle',
-    title: 'Turtle Rock Science Club is Redefining Neighborhood STEM Education',
-    date: 'May 14, 2026',
-    snippet: 'By combining hands-on parent-student experimentation with top-tier scientific methodology, this small neighborhood collective is showing that you do not need university funding to inspire the next generation of researchers.'
-  },
-  {
-    id: 'press-2',
-    source: 'The Valley Bugle',
-    title: 'Local Residents Turn Overlook Ridge into Astronomy Hotspot',
-    date: 'June 2, 2026',
-    snippet: 'Armed with community-calibrated refractors, Turtle Rock Star Watch participants mapped Jupiter with stunning precision, demonstrating how local science collectives foster genuine astronomy passion.'
-  }
-];
+import { LabLog, Announcement } from '../types';
+import { Clock, User, X, MessageSquare } from 'lucide-react';
 
 interface LabLogAnnouncementsProps {
   logs: LabLog[];
@@ -81,54 +64,30 @@ export default function LabLogAnnouncements({ logs, announcements }: LabLogAnnou
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch pt-6 border-t-2 border-[#1F3A42]/8">
-        <div className="lg:col-span-7 space-y-6">
-          <div className="space-y-1">
-            <h4 className="font-display font-bold text-xl sm:text-2xl tracking-tight text-[#1F3A42]">Club Announcements</h4>
-            <p className="text-xs text-[#4B6169]">Expansion updates, toolkit releases, and volunteer calls.</p>
-          </div>
-
-          <div className="space-y-4">
-            {announcements.length === 0 ? (
-              <div className="p-6 rounded-2xl border-2 border-[#1F3A42]/8 bg-white text-center space-y-1">
-                <p className="font-display font-bold text-sm text-[#1F3A42]">No club announcements right now.</p>
-                <p className="text-xs text-[#4B6169]">Check back soon for updates!</p>
-              </div>
-            ) : (
-              announcements.map((ann) => (
-                <div id={`announcement-${ann.id}`} key={ann.id} className="p-5 rounded-2xl border-2 border-[#1F3A42]/8 bg-white space-y-2.5 hover:border-[#1F3A42]/15 transition-all">
-                  <div className="flex items-center justify-between gap-4">
-                    <span className="px-2.5 py-1 rounded-full text-[10px] font-display font-bold bg-[#E4F5DA] text-[#2E7D46]">{ann.category}</span>
-                    <span className="text-[10px] text-[#9AA6A6] font-bold">{ann.date}</span>
-                  </div>
-                  <h5 className="font-display font-bold text-sm tracking-tight leading-snug text-[#1F3A42]">{ann.title}</h5>
-                  <p className="text-xs leading-relaxed text-[#4B6169]">{ann.content}</p>
-                </div>
-              ))
-            )}
-          </div>
+      <div className="space-y-6 pt-6 border-t-2 border-[#1F3A42]/8">
+        <div className="space-y-1">
+          <h4 className="font-display font-bold text-xl sm:text-2xl tracking-tight text-[#1F3A42]">Club Announcements</h4>
+          <p className="text-xs text-[#4B6169]">Expansion updates, toolkit releases, and volunteer calls.</p>
         </div>
 
-        <div className="lg:col-span-5 space-y-6">
-          <div className="space-y-1">
-            <h4 className="font-display font-bold text-xl sm:text-2xl tracking-tight text-[#1F3A42] flex items-center gap-2">
-              <Newspaper className="w-5 h-5 text-[#4C9A3A]" /> In the News
-            </h4>
-            <p className="text-xs text-[#4B6169]">Media coverage and community press features.</p>
-          </div>
-
-          <div className="space-y-4">
-            {PRESS_MENTIONS.map((item) => (
-              <div key={item.id} className="p-5 rounded-2xl border-2 border-[#1F3A42]/8 bg-white space-y-2 hover:border-[#1F3A42]/15 transition-all">
-                <div className="flex items-center justify-between text-[10px] font-bold text-[#9AA6A6]">
-                  <span className="text-[#4C9A3A] font-display">{item.source}</span>
-                  <span>{item.date}</span>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {announcements.length === 0 ? (
+            <div className="col-span-full p-6 rounded-2xl border-2 border-[#1F3A42]/8 bg-white text-center space-y-1">
+              <p className="font-display font-bold text-sm text-[#1F3A42]">No club announcements right now.</p>
+              <p className="text-xs text-[#4B6169]">Check back soon for updates!</p>
+            </div>
+          ) : (
+            announcements.map((ann) => (
+              <div id={`announcement-${ann.id}`} key={ann.id} className="p-5 rounded-2xl border-2 border-[#1F3A42]/8 bg-white space-y-2.5 hover:border-[#1F3A42]/15 transition-all">
+                <div className="flex items-center justify-between gap-4">
+                  <span className="px-2.5 py-1 rounded-full text-[10px] font-display font-bold bg-[#E4F5DA] text-[#2E7D46]">{ann.category}</span>
+                  <span className="text-[10px] text-[#9AA6A6] font-bold">{ann.date}</span>
                 </div>
-                <h5 className="font-display font-bold text-sm tracking-tight leading-snug text-[#1F3A42]">{item.title}</h5>
-                <p className="text-xs leading-relaxed text-[#4B6169]">{item.snippet}</p>
+                <h5 className="font-display font-bold text-sm tracking-tight leading-snug text-[#1F3A42]">{ann.title}</h5>
+                <p className="text-xs leading-relaxed text-[#4B6169]">{ann.content}</p>
               </div>
-            ))}
-          </div>
+            ))
+          )}
         </div>
       </div>
 

@@ -82,12 +82,3 @@ export interface Announcement {
   content: string;
   image?: string;
 }
-
-export interface PressMention {
-  id: string;
-  source: string;
-  title: string;
-  date: string;
-  snippet: string;
-  url?: string;
-}
