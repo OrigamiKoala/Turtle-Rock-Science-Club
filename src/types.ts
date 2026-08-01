@@ -88,6 +88,7 @@ export interface Resource {
   title: string;
   description: string;
   category: 'chemistry' | 'physics' | 'astronomy' | 'biology' | 'robotics' | 'general' | string;
+  level?: 'elementary' | 'middle school' | 'high school' | 'all' | string;
   url: string;
   type?: 'article' | 'video' | 'website' | 'tool' | 'book' | 'pdf' | string;
 }

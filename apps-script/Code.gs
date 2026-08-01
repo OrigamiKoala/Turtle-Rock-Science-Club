@@ -45,7 +45,8 @@ var SIGNUPS_SHEET = 'Signups';
 var NEWSLETTER_SHEET = 'Newsletter';
 var PUBLISHED_SHEET = '_Published';
 
-var RESOURCE_HEADERS = ['Title', 'Description', 'Category', 'URL', 'Type', 'Show on Site'];
+var RESOURCE_HEADERS = ['Title', 'Description', 'Category', 'Level', 'URL', 'Type', 'Show on Site'];
+var RESOURCE_LEVELS = ['Elementary', 'Middle School', 'High School', 'All Levels'];
 
 var EVENT_HEADERS = [
   'Title',
@@ -369,12 +370,13 @@ function stylePhotosSheet_(sheet) {
 }
 
 function styleResourcesSheet_(sheet) {
-  setWidths_(sheet, [240, 420, 140, 300, 120, 100]);
+  setWidths_(sheet, [240, 420, 140, 140, 300, 120, 100]);
   var body = Math.min(100, Math.max(20, sheet.getLastRow() - 1));
   if (body <= 0) return;
 
   sheet.getRange(2, 3, body, 1).setDataValidation(categoryRule_(RESOURCE_CATEGORIES));
-  sheet.getRange(2, 6, body, 1).insertCheckboxes();
+  sheet.getRange(2, 4, body, 1).setDataValidation(categoryRule_(RESOURCE_LEVELS));
+  sheet.getRange(2, 7, body, 1).insertCheckboxes();
   sheet.getRange(2, 2, body, 1).setWrap(true);
   sheet.getRange(1, 1, body + 1, RESOURCE_HEADERS.length).setVerticalAlignment('top');
 }
@@ -666,10 +668,10 @@ function readResources_(sheet, problems) {
     var rowNumber = i + 2;
 
     if (isBlankRow_(row)) continue;
-    if (row[5] === false) continue;
+    if (row[6] === false) continue;
 
     var title = String(row[0]).trim();
-    var url = String(row[3] || '').trim();
+    var url = String(row[4] || '').trim();
 
     if (!title || !url) {
       problems.push('Resources row ' + rowNumber + ': missing Title or URL.');
@@ -681,8 +683,9 @@ function readResources_(sheet, problems) {
       title: title,
       description: String(row[1] || '').trim(),
       category: String(row[2] || '').trim().toLowerCase() || 'general',
+      level: String(row[3] || '').trim().toLowerCase() || 'all',
       url: url,
-      type: String(row[4] || 'website').trim().toLowerCase() || 'website'
+      type: String(row[5] || 'website').trim().toLowerCase() || 'website'
     });
   }
 

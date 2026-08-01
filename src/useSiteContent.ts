@@ -241,6 +241,7 @@ const DEFAULT_RESOURCES: Resource[] = [
     title: 'PhET Interactive Science Simulations',
     description: 'Explore interactive simulations for physics, chemistry, biology, earth science, and math created by UC Boulder.',
     category: 'chemistry',
+    level: 'elementary',
     url: 'https://phet.colorado.edu/',
     type: 'tool'
   },
@@ -249,6 +250,7 @@ const DEFAULT_RESOURCES: Resource[] = [
     title: 'NASA Climate Kids & Space Place',
     description: 'Engaging games, hands-on activities, and articles exploring Earth’s climate, outer space, stars, and space exploration.',
     category: 'astronomy',
+    level: 'elementary',
     url: 'https://spaceplace.nasa.gov/',
     type: 'website'
   },
@@ -257,6 +259,7 @@ const DEFAULT_RESOURCES: Resource[] = [
     title: 'Science News Explores',
     description: 'Topical STEM news articles, discoveries, and science explainers written specifically for young researchers and students.',
     category: 'general',
+    level: 'middle school',
     url: 'https://www.snexplores.org/',
     type: 'article'
   },
@@ -265,6 +268,7 @@ const DEFAULT_RESOURCES: Resource[] = [
     title: 'Scratch Coding & Robotics Lab',
     description: 'Creative coding platform developed by MIT Media Lab to build interactive games, animations, and robot block scripts.',
     category: 'robotics',
+    level: 'elementary',
     url: 'https://scratch.mit.edu/',
     type: 'tool'
   },
@@ -273,6 +277,7 @@ const DEFAULT_RESOURCES: Resource[] = [
     title: 'Khan Academy Science',
     description: 'Free comprehensive video lessons and practice problems covering force & motion, habitats, energy, and matter.',
     category: 'physics',
+    level: 'middle school',
     url: 'https://www.khanacademy.org/science',
     type: 'video'
   },
@@ -281,6 +286,7 @@ const DEFAULT_RESOURCES: Resource[] = [
     title: 'National Geographic Kids Science',
     description: 'Fascinating videos, animal encyclopedias, and fun experiment guides to try at home or in class.',
     category: 'biology',
+    level: 'elementary',
     url: 'https://kids.nationalgeographic.com/science',
     type: 'website'
   }
@@ -303,6 +309,7 @@ function toResources(raw: unknown): Resource[] {
         title,
         description: asString(row.description),
         category: asString(row.category, 'general').toLowerCase(),
+        level: asString(row.level, 'all').toLowerCase(),
         url,
         type: asString(row.type, 'website').toLowerCase()
       }

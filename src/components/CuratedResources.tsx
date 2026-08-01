@@ -49,6 +49,7 @@ export default function CuratedResources({ resources }: CuratedResourcesProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedType, setSelectedType] = useState<string>('all');
+  const [selectedLevel, setSelectedLevel] = useState<string>('all');
 
   const uniqueCategories = Array.from(
     new Set([
@@ -63,10 +64,24 @@ export default function CuratedResources({ resources }: CuratedResourcesProps) {
   );
   const categories = ['all', ...uniqueCategories];
   const types = ['all', 'website', 'tool', 'video', 'article', 'book'];
+  const uniqueLevels = Array.from(
+    new Set([
+      'elementary',
+      'middle school',
+      'high school',
+      ...resources.map((r) => r.level?.toLowerCase().trim()).filter(Boolean)
+    ])
+  ).filter((lvl) => lvl !== 'all');
+  const levels = ['all', ...uniqueLevels];
 
   const filteredResources = resources.filter((item) => {
     const matchesCategory = selectedCategory === 'all' || item.category.toLowerCase() === selectedCategory;
     const matchesType = selectedType === 'all' || (item.type || 'website').toLowerCase() === selectedType;
+    const matchesLevel =
+      selectedLevel === 'all' ||
+      !item.level ||
+      item.level.toLowerCase() === 'all' ||
+      item.level.toLowerCase() === selectedLevel;
     const q = searchQuery.toLowerCase().trim();
     const matchesQuery =
       !q ||
@@ -74,7 +89,7 @@ export default function CuratedResources({ resources }: CuratedResourcesProps) {
       item.description.toLowerCase().includes(q) ||
       item.category.toLowerCase().includes(q);
 
-    return matchesCategory && matchesType && matchesQuery;
+    return matchesCategory && matchesType && matchesLevel && matchesQuery;
   });
 
   return (
@@ -113,7 +128,7 @@ export default function CuratedResources({ resources }: CuratedResourcesProps) {
       <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md rounded-[24px] p-5 border-2 border-[#1F3A42]/10 dark:border-gray-700 shadow-sm space-y-4">
         <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
           {/* Search Box */}
-          <div className="relative w-full md:w-80">
+          <div className="relative w-full md:w-72">
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#4B6169] dark:text-gray-400" />
             <input
               id="resource-search-input"
@@ -147,6 +162,29 @@ export default function CuratedResources({ resources }: CuratedResourcesProps) {
               );
             })}
           </div>
+        </div>
+
+        {/* Level Filter Pills */}
+        <div className="flex items-center gap-2 overflow-x-auto pt-2 border-t border-gray-100 dark:border-gray-700">
+          <span className="text-xs font-bold text-[#4B6169] dark:text-gray-300 shrink-0 mr-1">Level:</span>
+          {levels.map((lvl) => {
+            const isActive = selectedLevel === lvl;
+            const label = lvl === 'all' ? 'All Levels' : lvl.charAt(0).toUpperCase() + lvl.slice(1);
+            return (
+              <button
+                id={`filter-level-${lvl}`}
+                key={lvl}
+                onClick={() => setSelectedLevel(lvl)}
+                className={`px-3 py-1.5 rounded-full text-xs font-sans font-bold capitalize transition-all shrink-0 cursor-pointer border-2 ${
+                  isActive
+                    ? 'bg-[#F2C94C] text-[#4A3900] border-[#F2C94C]'
+                    : 'bg-white dark:bg-gray-800 text-[#4B6169] dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-gray-300'
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
         </div>
 
         {/* Category Pills */}
@@ -196,15 +234,22 @@ export default function CuratedResources({ resources }: CuratedResourcesProps) {
                 className="group relative bg-white dark:bg-gray-800 rounded-[28px] border-2 border-[#1F3A42]/10 dark:border-gray-700 p-6 flex flex-col justify-between hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
               >
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className={`px-3 py-1 rounded-full text-[11px] font-sans font-bold ${catMeta.bg} ${catMeta.text}`}>
                       {catMeta.label}
                     </span>
 
-                    <span className="px-2.5 py-1 rounded-full text-[11px] font-sans font-semibold bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 flex items-center gap-1 capitalize">
-                      <TypeIcon className="w-3 h-3" />
-                      {res.type || 'website'}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      {res.level && res.level !== 'all' && (
+                        <span className="px-2.5 py-1 rounded-full text-[10px] font-sans font-bold bg-[#FEF3C7] text-[#92400E] dark:bg-amber-900/40 dark:text-amber-300 capitalize">
+                          {res.level}
+                        </span>
+                      )}
+                      <span className="px-2.5 py-1 rounded-full text-[11px] font-sans font-semibold bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 flex items-center gap-1 capitalize">
+                        <TypeIcon className="w-3 h-3" />
+                        {res.type || 'website'}
+                      </span>
+                    </div>
                   </div>
 
                   <h3 className="font-display font-bold text-lg text-[#1F3A42] dark:text-white group-hover:text-[#4C9A3A] transition-colors leading-snug">
