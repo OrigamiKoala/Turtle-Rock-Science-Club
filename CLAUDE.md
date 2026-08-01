@@ -116,6 +116,14 @@ addresses into Sender.net, routed by where they came from:
 | Join form, Parent Email | `parent` | **Parents** + **Newsletter** |
 | Join form, Student Email | `student` | **Students** + **Newsletter** |
 
+**The Join form only subscribes when the guardian ticks the newsletter box.**
+`JoinModal`'s opt-in checkbox defaults to unchecked and rides through as
+`newsletterOptIn`; `handleJoin_` records it in the Members tab's **Newsletter
+Opt-In** column and skips both `subscribeEmail_` calls when it is false. The
+member row is still written either way — joining the club and joining the
+mailing list are deliberately separate acts, so don't "simplify" this back into
+an unconditional subscribe.
+
 Club members are in Newsletter *as well as* their own group (see
 `SENDER_AUDIENCE_GROUPS`), so a campaign can target parents or students
 specifically while a general newsletter to Newsletter still reaches everyone.

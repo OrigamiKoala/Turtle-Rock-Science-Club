@@ -27,6 +27,8 @@ export interface MemberJoinDetails {
   email?: string;
   studentEmail?: string;
   childAge?: string;
+  /** Guardian ticked the newsletter box. Absent/false means do not subscribe. */
+  newsletterOptIn?: boolean;
 }
 
 export interface NewsletterResult {

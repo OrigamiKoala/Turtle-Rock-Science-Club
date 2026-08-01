@@ -84,7 +84,8 @@ var MEMBER_HEADERS = [
   'XP',
   'Unlocked Badges',
   'Reserved Missions',
-  'Student Email'
+  'Student Email',
+  'Newsletter Opt-In'
 ];
 
 var PHOTO_HEADERS = ['Title', 'Image URL', 'Caption', 'Category', 'Submitted By', 'Show on Site'];
@@ -734,6 +735,10 @@ function handleJoin_(body) {
   var email = String(body.email || body.parentEmail || '').trim();
   var studentEmail = String(body.studentEmail || '').trim();
   var childAge = String(body.childAge || '').trim();
+  // JSON gives a real boolean, but be tolerant of a stringified one so a
+  // hand-built POST or an older client can't accidentally read as consent.
+  var newsletterOptIn =
+    body.newsletterOptIn === true || String(body.newsletterOptIn).toLowerCase() === 'true';
 
   if (!name) return { ok: false, error: 'Please enter a name.' };
   if (!school) return { ok: false, error: 'Please enter a school.' };
@@ -745,16 +750,20 @@ function handleJoin_(body) {
     styleMembersSheet_(members);
   }
 
-  members.appendRow([new Date(), name, school, role, parentName, email, childAge, 1, 15, 'Foundation Member', '', studentEmail]);
+  members.appendRow([new Date(), name, school, role, parentName, email, childAge, 1, 15, 'Foundation Member', '', studentEmail, newsletterOptIn]);
 
-  // Joining the club subscribes you to the newsletter. subscribeEmail_ swallows
-  // its own failures on purpose — a Sender.net problem must not fail the join.
+  // Joining the club is NOT consent to the newsletter — only the opt-in box is.
+  // The member row is written either way so the club still has the contact.
+  // subscribeEmail_ swallows its own failures on purpose: a Sender.net problem
+  // must not fail the join.
   var subscribed = false;
-  if (email) {
-    subscribed = subscribeEmail_(ss, email, parentName || name, 'Club join — guardian', AUDIENCE_PARENT).ok || subscribed;
-  }
-  if (studentEmail) {
-    subscribed = subscribeEmail_(ss, studentEmail, name, 'Club join — student', AUDIENCE_STUDENT).ok || subscribed;
+  if (newsletterOptIn) {
+    if (email) {
+      subscribed = subscribeEmail_(ss, email, parentName || name, 'Club join — guardian', AUDIENCE_PARENT).ok || subscribed;
+    }
+    if (studentEmail) {
+      subscribed = subscribeEmail_(ss, studentEmail, name, 'Club join — student', AUDIENCE_STUDENT).ok || subscribed;
+    }
   }
 
   return { ok: true, name: name, newsletterSubscribed: subscribed };

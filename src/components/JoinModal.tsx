@@ -5,7 +5,7 @@ import { X, ShieldAlert, Smile, CheckSquare, Square, CheckCircle } from 'lucide-
 interface JoinModalProps {
   onClose: () => void;
   onJoinSuccess: (profile: UserProfile) => void;
-  onJoinSubmit?: (details: { name: string; school: string; role: string; parentName: string; email: string; studentEmail?: string; childAge: string }) => void;
+  onJoinSubmit?: (details: { name: string; school: string; role: string; parentName: string; email: string; studentEmail?: string; childAge: string; newsletterOptIn: boolean }) => void;
 }
 
 export default function JoinModal({ onClose, onJoinSuccess, onJoinSubmit }: JoinModalProps) {
@@ -15,6 +15,9 @@ export default function JoinModal({ onClose, onJoinSuccess, onJoinSubmit }: Join
   const [childAge, setChildAge] = useState('');
   const [email, setEmail] = useState('');
   const [studentEmail, setStudentEmail] = useState('');
+  // Defaults to false on purpose: joining the club is not consent to a weekly
+  // email, and an unticked box keeps the list to people who actually want it.
+  const [newsletterOptIn, setNewsletterOptIn] = useState(false);
 
   const [goggleAgreement, setGoggleAgreement] = useState(false);
   const [curiosityAgreement, setCuriosityAgreement] = useState(false);
@@ -44,7 +47,8 @@ export default function JoinModal({ onClose, onJoinSuccess, onJoinSubmit }: Join
         parentName,
         email,
         studentEmail,
-        childAge
+        childAge,
+        newsletterOptIn
       });
     }
 
@@ -57,9 +61,9 @@ export default function JoinModal({ onClose, onJoinSuccess, onJoinSubmit }: Join
       xp: 15,
       unlockedBadges: ['Foundation Member'],
       reservedMissionIds: [],
-      // Joining subscribes the address given here to the newsletter — the Apps
-      // Script's join handler pushes it to Sender.net.
-      newsletterSubscribed: true
+      // Mirrors the opt-in box rather than assuming it — handleJoin_ gates the
+      // Sender.net push on the same flag, so the two must not drift apart.
+      newsletterSubscribed: newsletterOptIn
     };
 
     setTimeout(() => {
@@ -131,7 +135,7 @@ export default function JoinModal({ onClose, onJoinSuccess, onJoinSubmit }: Join
                 <input id="join-email" type="email" placeholder="parent@example.com" value={email} onChange={(e) => setEmail(e.target.value)}
                   className="w-full p-2.5 rounded-xl text-sm border-2 border-[#1F3A42]/12 bg-white text-[#1F3A42] focus:outline-none" required />
                 <p className="text-[10px] text-[#4B6169] leading-relaxed">
-                  We'll add this to the club newsletter so you don't miss an event. Unsubscribe any time.
+                  We'll only use this to reach you about club business.
                 </p>
               </div>
 
@@ -140,6 +144,21 @@ export default function JoinModal({ onClose, onJoinSuccess, onJoinSubmit }: Join
                 <input id="join-student-email" type="email" placeholder="student@example.com" value={studentEmail} onChange={(e) => setStudentEmail(e.target.value)}
                   className="w-full p-2.5 rounded-xl text-sm border-2 border-[#1F3A42]/12 bg-white text-[#1F3A42] focus:outline-none" />
               </div>
+
+              <button
+                id="join-newsletter-optin"
+                type="button"
+                onClick={() => setNewsletterOptIn(!newsletterOptIn)}
+                className="flex items-start gap-2.5 text-left text-xs cursor-pointer select-none w-full rounded-xl p-2.5 bg-white border-2 border-[#1F3A42]/12"
+              >
+                <div className="mt-0.5 shrink-0 text-[#2E7D46]">
+                  {newsletterOptIn ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+                </div>
+                <span className="text-xs text-[#4B6169] leading-relaxed font-sans">
+                  Send me the weekly club newsletter — events, lab notes, and what the
+                  scientists have been up to. Unsubscribe any time.
+                </span>
+              </button>
 
               <div className="space-y-2.5 pt-2">
                 <label className="text-[11px] font-extrabold text-[#4B6169]">A couple promises</label>
