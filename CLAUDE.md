@@ -110,11 +110,18 @@ anything still being drafted. If you change how events are published, keep
 The footer's "Get the Club Newsletter" box and the Join form both push email
 addresses into Sender.net, routed by where they came from:
 
-| Source | `audience` | Sender group |
+| Source | `audience` | Sender groups |
 |---|---|---|
 | Footer subscribe box | `newsletter` | **Newsletter** |
-| Join form, Parent Email | `parent` | **Parents** |
-| Join form, Student Email | `student` | **Students** |
+| Join form, Parent Email | `parent` | **Parents** + **Newsletter** |
+| Join form, Student Email | `student` | **Students** + **Newsletter** |
+
+Club members are in Newsletter *as well as* their own group (see
+`SENDER_AUDIENCE_GROUPS`), so a campaign can target parents or students
+specifically while a general newsletter to Newsletter still reaches everyone.
+Someone who only used the footer box gets Newsletter alone — they did not join
+the club. This asymmetry is why `audienceForRow_` trusts the **Source** column
+over the recorded groups: seeing Newsletter proves nothing on its own.
 
 **The API token never touches the frontend.** The bundle is public, so the
 browser POSTs `{action:'subscribe'}` to the same Apps Script web app as
@@ -123,10 +130,11 @@ in Script Properties (`SENDER_API_TOKEN`), set via 🐢 Website ▸ ✉️ Newsl
 🔑 — never hardcoded, or it would be committed.
 
 Group ids are resolved by *title* and cached in Script Properties
-(`SENDER_GROUP_ID_PARENT` etc.). A group that doesn't exist yet is created on
-first use, so the only setup step is the token. Renaming or deleting a group in
-Sender leaves a stale cached id — 👥 Show / Repair Sender Groups clears the
-cache and re-resolves.
+(`SENDER_GROUP_ID_PARENTS` etc.). A group that doesn't exist yet is created on
+first use, so the only setup step is the token — and a group pre-created by
+hand in Sender is found by title and reused, not duplicated. Renaming or
+deleting a group in Sender leaves a stale cached id — 👥 Show / Repair Sender
+Groups clears the cache and re-resolves.
 
 Order matters in `subscribeEmail_`: the address is written to the **Newsletter**
 tab *before* the Sender API call, so a Sender outage, an expired token, or a
@@ -137,15 +145,19 @@ visitor's part succeeded, and the operator sees the failure in the sheet rather
 than the visitor seeing an error they cannot act on.
 
 Dedupe is per *(email, group)*, not per email — the Newsletter tab's **Sender
-Groups** column records which groups an address reached. A parent who used the
-footer box and later joins the club must still be added to **Parents**, so a
-row already marked `Subscribed` is re-sent when the audience is new.
+Groups** column records which groups an address reached, and `hasAllGroups_`
+decides whether there is anything left to do. A parent who used the footer box
+and later joins the club is already in Newsletter but still needs **Parents**,
+so a row marked `Subscribed` is re-sent when its audience needs a group the row
+has not reached yet.
 
 Creating a subscriber that Sender already knows is a 4xx there, not a success;
-`senderSubscribe_` detects that (`looksLikeDuplicate_`) and falls back to the
-add-to-group endpoint. That endpoint answers **200 even for addresses it
-rejected**, listing them under `non_existing_subscribers` — `wasRejectedByGroupAdd_`
-checks for that, so don't simplify it to a status-code check.
+`senderSubscribe_` detects that (`looksLikeDuplicate_`) and falls back to adding
+them to each group individually. That endpoint answers **200 even for addresses
+it rejected**, listing them under `non_existing_subscribers` —
+`wasRejectedByGroupAdd_` checks for that, so don't simplify it to a status-code
+check. A partial failure still records the groups that took, so the retry only
+has the remainder to do.
 
 ## Apps Script gotchas (all of these bit us)
 

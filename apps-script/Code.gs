@@ -132,10 +132,11 @@ var NEWSLETTER_HEADER_COLOR = '#7c2d12';
 // Set it through  🐢 Website ▸ ✉️ Newsletter ▸ 🔑  (never by typing it here,
 // which would commit the token into the repo).
 //
-// Addresses are routed to one of three Sender groups by where they came from.
-// The groups are looked up by title and created if they do not exist yet, so
-// there is nothing to configure beyond the token; the resolved ids are cached
-// in Script Properties so the common path is a single API call.
+// Addresses are routed to Sender groups by where they came from — see
+// SENDER_AUDIENCE_GROUPS below. The groups are looked up by title and created
+// if they do not exist yet, so there is nothing to configure beyond the token;
+// the resolved ids are cached in Script Properties so the common path is a
+// single API call.
 
 var SENDER_API_BASE = 'https://api.sender.net/v2';
 var SENDER_TOKEN_PROPERTY = 'SENDER_API_TOKEN';
@@ -145,12 +146,26 @@ var AUDIENCE_PARENT = 'parent';
 var AUDIENCE_STUDENT = 'student';
 var AUDIENCE_NEWSLETTER = 'newsletter';
 
-/** Audience → the Sender.net group title that audience belongs in. */
-var SENDER_GROUP_TITLES = {
-  parent: 'Parents',
-  student: 'Students',
-  newsletter: 'Newsletter'
+var GROUP_PARENTS = 'Parents';
+var GROUP_STUDENTS = 'Students';
+var GROUP_NEWSLETTER = 'Newsletter';
+
+/**
+ * Audience → every Sender.net group that audience belongs in.
+ *
+ * Club members land in both their own group and Newsletter, so a campaign can
+ * target parents or students specifically, and a general newsletter to the
+ * Newsletter group still reaches everyone. Someone who only used the footer box
+ * gets Newsletter alone — they did not join the club.
+ */
+var SENDER_AUDIENCE_GROUPS = {
+  parent: [GROUP_PARENTS, GROUP_NEWSLETTER],
+  student: [GROUP_STUDENTS, GROUP_NEWSLETTER],
+  newsletter: [GROUP_NEWSLETTER]
 };
+
+/** Every group this script manages, for the setup and repair menu items. */
+var SENDER_GROUP_TITLES = [GROUP_PARENTS, GROUP_STUDENTS, GROUP_NEWSLETTER];
 
 // Column positions in the Events sheet (1-based), used by the signup handler.
 var EVENT_COL_TITLE = 1;
@@ -1043,12 +1058,12 @@ function subscribeEmail_(ss, email, name, source, audience) {
     return { ok: false, status: 'Skipped — not an email address', message: 'Invalid address.' };
   }
 
-  var title = SENDER_GROUP_TITLES[audience] || SENDER_GROUP_TITLES[AUDIENCE_NEWSLETTER];
+  var titles = groupsForAudience_(audience);
   var existing = findNewsletterRow_(ss, email);
 
-  // Already handled only if this exact group was the one that succeeded — a
-  // parent who used the footer box first still needs adding to "Parents".
-  if (existing && existing.status.indexOf(STATUS_SUBSCRIBED) === 0 && hasGroup_(existing.groups, title)) {
+  // Already handled only if every group this audience needs was reached — a
+  // parent who used the footer box first is in Newsletter but not Parents.
+  if (existing && existing.status.indexOf(STATUS_SUBSCRIBED) === 0 && hasAllGroups_(existing.groups, titles)) {
     return { ok: true, alreadySubscribed: true, status: existing.status };
   }
 
@@ -1060,11 +1075,10 @@ function subscribeEmail_(ss, email, name, source, audience) {
   try {
     outcome = senderSubscribe_(email, name, audience);
   } catch (err) {
-    outcome = { ok: false, status: 'Error: ' + (err && err.message ? err.message : 'unknown') };
+    outcome = { ok: false, status: 'Error: ' + (err && err.message ? err.message : 'unknown'), groups: [] };
   }
 
-  var groups = existing ? existing.groups.slice() : [];
-  if (outcome.ok && !hasGroup_(groups, title)) groups.push(title);
+  var groups = mergeGroups_(existing ? existing.groups : [], outcome.groups);
 
   setNewsletterResult_(ss, row, outcome.status, groups);
   outcome.alreadySubscribed = !!existing;
@@ -1072,60 +1086,88 @@ function subscribeEmail_(ss, email, name, source, audience) {
 }
 
 /**
- * Creates the subscriber in Sender.net and puts them in their audience's group.
+ * Creates the subscriber in Sender.net and puts them in every group their
+ * audience belongs to.
  *
  * Creating an address that Sender already knows is an error there, not a
- * success, so that case falls back to adding the existing subscriber to the
- * group — which is what actually matters for "will they get the next
- * newsletter". The same fallback covers a parent who is already in "Parents"
- * and now needs to be in "Newsletter" too.
+ * success, so that case falls back to adding the existing subscriber to each
+ * group one at a time — which is what actually matters for "will they get the
+ * next newsletter". That fallback is also the normal path for a parent who
+ * already subscribed through the footer and now needs "Parents" as well.
+ *
+ * Returns { ok, status, groups } where `groups` lists the titles that actually
+ * took, so a partial failure still records what succeeded.
  */
 function senderSubscribe_(email, name, audience) {
   var token = senderToken_();
   if (!token) {
-    return { ok: false, status: STATUS_PENDING, message: 'No Sender.net API token set.' };
+    return { ok: false, status: STATUS_PENDING, groups: [], message: 'No Sender.net API token set.' };
   }
 
-  var group = senderGroupFor_(audience, token);
-  if (!group.id) {
-    return { ok: false, status: 'Error: could not resolve the "' + group.title + '" group — ' + group.error };
+  var titles = groupsForAudience_(audience);
+  var ids = [];
+
+  for (var i = 0; i < titles.length; i++) {
+    var group = senderGroupByTitle_(titles[i], token);
+    if (!group.id) {
+      return {
+        ok: false,
+        status: 'Error: could not resolve the "' + titles[i] + '" group — ' + group.error,
+        groups: []
+      };
+    }
+    ids.push(group.id);
   }
 
-  var payload = { email: email, groups: [group.id], trigger_automation: true };
+  var payload = { email: email, groups: ids, trigger_automation: true };
   if (name) payload.firstname = name;
 
   var created = senderFetch_('post', '/subscribers', payload, token);
-  if (created.ok) return { ok: true, status: STATUS_SUBSCRIBED + ' → ' + group.title };
+  if (created.ok) {
+    return { ok: true, status: STATUS_SUBSCRIBED + ' → ' + titles.join(', '), groups: titles.slice() };
+  }
 
-  if (looksLikeDuplicate_(created)) {
-    var added = senderFetch_(
+  if (!looksLikeDuplicate_(created)) {
+    return { ok: false, status: 'Error: ' + senderError_(created), groups: [] };
+  }
+
+  var added = [];
+  var failures = [];
+
+  for (var j = 0; j < ids.length; j++) {
+    var result = senderFetch_(
       'post',
-      '/subscribers/groups/' + encodeURIComponent(group.id),
+      '/subscribers/groups/' + encodeURIComponent(ids[j]),
       { subscribers: [email], trigger_automation: false },
       token
     );
 
-    if (added.ok && !wasRejectedByGroupAdd_(added, email)) {
-      return { ok: true, status: STATUS_SUBSCRIBED + ' → ' + group.title };
-    }
-    return { ok: false, status: 'Error: ' + senderError_(added) };
+    if (result.ok && !wasRejectedByGroupAdd_(result, email)) added.push(titles[j]);
+    else failures.push(titles[j] + ' (' + senderError_(result) + ')');
   }
 
-  return { ok: false, status: 'Error: ' + senderError_(created) };
+  if (!failures.length) {
+    return { ok: true, status: STATUS_SUBSCRIBED + ' → ' + added.join(', '), groups: added };
+  }
+  return { ok: false, status: 'Error: ' + failures.join('; '), groups: added };
+}
+
+/** Every group title an audience belongs to. */
+function groupsForAudience_(audience) {
+  return SENDER_AUDIENCE_GROUPS[audience] || SENDER_AUDIENCE_GROUPS[AUDIENCE_NEWSLETTER];
 }
 
 /**
- * Resolves an audience to its Sender.net group, creating the group the first
+ * Resolves a group title to its Sender.net id, creating the group the first
  * time. Returns { id, title, error }.
  *
  * Ids are cached in Script Properties. If a group is deleted in Sender the
  * cached id goes stale and subscribing starts failing — 👥 Show / Repair
  * Sender Groups clears the cache and re-resolves.
  */
-function senderGroupFor_(audience, token) {
-  var title = SENDER_GROUP_TITLES[audience] || SENDER_GROUP_TITLES[AUDIENCE_NEWSLETTER];
+function senderGroupByTitle_(title, token) {
   var props = PropertiesService.getScriptProperties();
-  var key = SENDER_GROUP_PROPERTY_PREFIX + String(audience || AUDIENCE_NEWSLETTER).toUpperCase();
+  var key = groupPropertyKey_(title);
 
   var cached = String(props.getProperty(key) || '').trim();
   if (cached) return { id: cached, title: title, error: '' };
@@ -1143,6 +1185,11 @@ function senderGroupFor_(audience, token) {
 
   props.setProperty(key, id);
   return { id: id, title: title, error: '' };
+}
+
+/** Script Property name caching one group's id, e.g. SENDER_GROUP_ID_PARENTS. */
+function groupPropertyKey_(title) {
+  return SENDER_GROUP_PROPERTY_PREFIX + String(title).toUpperCase().replace(/[^A-Z0-9]+/g, '_');
 }
 
 /** Looks up a group by its exact title, walking the paginated group list. */
@@ -1302,29 +1349,38 @@ function hasGroup_(groups, title) {
   return false;
 }
 
-/** Maps a group title recorded on the sheet back to its audience key. */
-function audienceForTitle_(title) {
-  var wanted = String(title || '').trim().toLowerCase();
-  for (var audience in SENDER_GROUP_TITLES) {
-    if (SENDER_GROUP_TITLES[audience].toLowerCase() === wanted) return audience;
+function hasAllGroups_(groups, titles) {
+  for (var i = 0; i < titles.length; i++) {
+    if (!hasGroup_(groups, titles[i])) return false;
   }
-  return '';
+  return true;
+}
+
+/** Union of two group-title lists, keeping the order already on the sheet. */
+function mergeGroups_(groups, added) {
+  var merged = (groups || []).slice();
+  for (var i = 0; i < (added || []).length; i++) {
+    if (!hasGroup_(merged, added[i])) merged.push(added[i]);
+  }
+  return merged;
 }
 
 /**
- * Which audience a stalled row should be retried as: whatever group it was
- * heading for, falling back to what its Source says, then to Newsletter.
+ * Which audience a stalled row should be retried as.
+ *
+ * Source is the reliable signal — it records how the address arrived. The
+ * groups already recorded are only a fallback, and "Parents"/"Students" beat
+ * "Newsletter" there because club members are in Newsletter too, so seeing
+ * Newsletter alone proves nothing.
  */
 function audienceForRow_(groupsCell, sourceCell) {
-  var groups = splitGroups_(groupsCell);
-  for (var i = 0; i < groups.length; i++) {
-    var audience = audienceForTitle_(groups[i]);
-    if (audience) return audience;
-  }
-
   var source = String(sourceCell || '').toLowerCase();
   if (source.indexOf('student') !== -1) return AUDIENCE_STUDENT;
   if (source.indexOf('guardian') !== -1 || source.indexOf('parent') !== -1) return AUDIENCE_PARENT;
+
+  var groups = splitGroups_(groupsCell);
+  if (hasGroup_(groups, GROUP_STUDENTS)) return AUDIENCE_STUDENT;
+  if (hasGroup_(groups, GROUP_PARENTS)) return AUDIENCE_PARENT;
   return AUDIENCE_NEWSLETTER;
 }
 
@@ -1397,18 +1453,19 @@ function showSenderGroups() {
   var props = PropertiesService.getScriptProperties();
   var lines = [];
 
-  for (var audience in SENDER_GROUP_TITLES) {
-    props.deleteProperty(SENDER_GROUP_PROPERTY_PREFIX + audience.toUpperCase());
-    var group = senderGroupFor_(audience, token);
-    lines.push('  ' + group.title + '  →  ' + (group.id || 'FAILED: ' + group.error));
+  for (var i = 0; i < SENDER_GROUP_TITLES.length; i++) {
+    var title = SENDER_GROUP_TITLES[i];
+    props.deleteProperty(groupPropertyKey_(title));
+    var group = senderGroupByTitle_(title, token);
+    lines.push('  ' + title + '  →  ' + (group.id || 'FAILED: ' + group.error));
   }
 
   notify_(
     'Sender.net groups',
     'Addresses are routed like this:\n\n' +
-      '  Join form, guardian email   →  Parents\n' +
-      '  Join form, student email    →  Students\n' +
-      '  Footer subscribe box        →  Newsletter\n\n' +
+      '  Join form, guardian email   →  Parents + Newsletter\n' +
+      '  Join form, student email    →  Students + Newsletter\n' +
+      '  Footer subscribe box        →  Newsletter only\n\n' +
       'Groups (created if they were missing):\n' + lines.join('\n')
   );
 }
@@ -1428,9 +1485,9 @@ function testSenderConnection() {
   }
 
   var lines = [];
-  for (var audience in SENDER_GROUP_TITLES) {
-    var group = senderGroupFor_(audience, token);
-    lines.push('  ' + group.title + '  →  ' + (group.id || 'FAILED: ' + group.error));
+  for (var i = 0; i < SENDER_GROUP_TITLES.length; i++) {
+    var group = senderGroupByTitle_(SENDER_GROUP_TITLES[i], token);
+    lines.push('  ' + SENDER_GROUP_TITLES[i] + '  →  ' + (group.id || 'FAILED: ' + group.error));
   }
 
   notify_(
@@ -1472,17 +1529,15 @@ function syncNewsletterToSender() {
     }
 
     var audience = audienceForRow_(rows[i][NL_COL_GROUPS - 1], rows[i][NL_COL_SOURCE - 1]);
-    var groups = splitGroups_(rows[i][NL_COL_GROUPS - 1]);
 
     var outcome;
     try {
       outcome = senderSubscribe_(email, String(rows[i][NL_COL_NAME - 1] || '').trim(), audience);
     } catch (err) {
-      outcome = { ok: false, status: 'Error: ' + (err && err.message ? err.message : 'unknown') };
+      outcome = { ok: false, status: 'Error: ' + (err && err.message ? err.message : 'unknown'), groups: [] };
     }
 
-    var title = SENDER_GROUP_TITLES[audience];
-    if (outcome.ok && !hasGroup_(groups, title)) groups.push(title);
+    var groups = mergeGroups_(splitGroups_(rows[i][NL_COL_GROUPS - 1]), outcome.groups);
 
     setNewsletterResult_(ss, i + 2, outcome.status, groups);
     if (outcome.ok) done++;

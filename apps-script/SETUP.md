@@ -159,16 +159,21 @@ Email addresses collected by the site are pushed straight into your Sender.net
 account, so the next campaign you send reaches them. Nothing here waits for
 Publish.
 
-### Where addresses come from, and which group they land in
+### Where addresses come from, and which groups they land in
 
-| Where someone typed it | Sender.net group |
+| Where someone typed it | Sender.net groups |
 |---|---|
-| Join the Club form — **Parent Email** | **Parents** |
-| Join the Club form — **Student Email** (optional) | **Students** |
-| **Get the Club Newsletter** box in the site footer | **Newsletter** |
+| Join the Club form — **Parent Email** | **Parents** *and* **Newsletter** |
+| Join the Club form — **Student Email** (optional) | **Students** *and* **Newsletter** |
+| **Get the Club Newsletter** box in the site footer | **Newsletter** only |
+
+People who join the club go into Newsletter too, so one newsletter sent to the
+Newsletter group reaches everybody, while you can still write to just parents or
+just students when you need to. Someone who only used the footer box is in
+Newsletter alone — they have not joined the club.
 
 Every address is also written to the **Newsletter** tab of the spreadsheet, with
-the group(s) it was added to and whether Sender accepted it.
+the groups it was added to and whether Sender accepted it.
 
 ### One-time setup
 
@@ -179,13 +184,25 @@ the group(s) it was added to and whether Sender accepted it.
    Students and Newsletter groups if they don't exist yet and shows their ids.
    You can skip it — the groups are created automatically on the first sign-up.
 
+**You do not need to create the groups yourself.** If you'd rather make them in
+Sender.net by hand (empty is fine), that works too: the script matches them by
+name and reuses them, so you won't end up with duplicates. Just spell them
+exactly `Parents`, `Students` and `Newsletter`.
+
 That's the whole setup. The token is stored in the script's properties, never in
 the website code, because the website is public and anyone could read it there.
 
 ### Sending a newsletter
 
-Compose the campaign in Sender.net as usual and pick the group(s) you want:
-Parents, Students, Newsletter, or several at once.
+Compose the campaign in Sender.net as usual and pick the group you want:
+
+- **Newsletter** — everyone: club families *and* people who only subscribed
+  through the footer. This is the one to use for a general club newsletter.
+- **Parents** — only the guardian addresses from the Join form.
+- **Students** — only the student addresses from the Join form.
+
+Sending to **Newsletter** alone reaches everybody, so pick just that one for a
+general newsletter rather than ticking all three.
 
 ### If something goes wrong
 
