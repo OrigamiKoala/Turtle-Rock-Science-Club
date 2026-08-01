@@ -11,7 +11,7 @@ const FAQ_ITEMS: FAQItem[] = [
   {
     id: 'faq-2',
     question: 'Where do weekly meetings take place?',
-    answer: 'Meetings take place at UCI’s Paul Merage School of Business (Room SB-117) every Saturday from 7:00 to 8:30 PM throughout the school year.'
+    answer: 'Meetings take place at UCI’s Paul Merage School of Business (Room SB2-117) every Saturday from 7:00 to 8:30 PM throughout the school year.'
   },
   {
     id: 'faq-3',
@@ -159,12 +159,12 @@ export default function AboutUs() {
               </div>
               <p className="text-xs leading-relaxed text-[#4B6169]">
                 Until the end of October, Turtle Rock Science Club meetings will occur every Saturday, from 7–8:30 PM,
-                at <strong>UCI’s Paul Merage School of Business (SB-117)</strong>. During each session, there will be 3 different rooms,
+                at <strong>UCI’s Paul Merage School of Business (SB2-117)</strong>. During each session, there will be 3 different rooms,
                 each with a different subject. Students can choose what subject they want to explore.
               </p>
               <div className="flex items-center gap-1.5 text-xs text-[#2E7D46] font-bold pt-1">
                 <MapPin className="w-3.5 h-3.5" />
-                <span>UCI Paul Merage School of Business — Room SB-117</span>
+                <span>UCI Paul Merage School of Business — Room SB2-117</span>
               </div>
             </div>
           </div>
