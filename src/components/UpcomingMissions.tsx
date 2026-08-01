@@ -2,6 +2,7 @@ import React from 'react';
 import { Mission } from '../types';
 import { ContentStatus } from '../useSiteContent';
 import { Calendar, Clock, MapPin, Ticket, CalendarOff } from 'lucide-react';
+import SafeHtml from './SafeHtml';
 
 interface UpcomingMissionsProps {
   missions: Mission[];
@@ -81,9 +82,7 @@ export default function UpcomingMissions({
                   <h4 className="font-display font-bold text-base leading-snug text-[#1F3A42]">
                     {mission.title}
                   </h4>
-                  <p className="text-[13px] leading-relaxed text-[#4B6169] font-sans">
-                    {mission.description}
-                  </p>
+                  <SafeHtml content={mission.description} className="text-[13px] leading-relaxed text-[#4B6169] font-sans" />
                 </div>
 
                 <div className="space-y-1.5 pt-3.5 border-t-2 border-[#1F3A42]/8 text-[12px] font-sans font-bold text-[#4B6169]">

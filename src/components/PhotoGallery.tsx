@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { EventPhoto, GalleryPhoto, UserProfile } from '../types';
+import SafeHtml from './SafeHtml';
 import { Camera, Image as ImageIcon, Filter, CheckCircle, Upload, AlertCircle, ExternalLink, FolderHeart } from 'lucide-react';
 
 interface PhotoGalleryProps {
@@ -287,7 +288,7 @@ export default function PhotoGallery({ photos, sheetPhotos = [], eventPhotos = [
                 <div className="p-5 space-y-3 flex-1 flex flex-col justify-between">
                   <div className="space-y-1">
                     <h4 className="font-display font-bold text-base leading-snug text-[#1F3A42]">{photo.title}</h4>
-                    <p className="text-xs leading-relaxed text-[#4B6169]">{photo.description}</p>
+                    <SafeHtml content={photo.description} className="text-xs leading-relaxed text-[#4B6169]" />
                   </div>
                   <div className="pt-3 border-t-2 border-[#1F3A42]/8 text-[11px] font-bold flex items-center justify-between text-[#4B6169]">
                     <span>By: {photo.submittedBy}</span>
@@ -335,7 +336,7 @@ export default function PhotoGallery({ photos, sheetPhotos = [], eventPhotos = [
                       <h4 className="font-display font-bold text-base leading-snug text-[#1F3A42]">{ep.title}</h4>
                       <span className="text-[10px] font-bold text-[#4B6169]">{ep.date}</span>
                     </div>
-                    <p className="text-xs leading-relaxed text-[#4B6169]">{ep.description || `Photo album for ${ep.title}`}</p>
+                    <SafeHtml content={ep.description || `Photo album for ${ep.title}`} className="text-xs leading-relaxed text-[#4B6169]" />
                   </div>
 
                   {ep.albumEmbed && isHtmlEmbed(ep.albumEmbed) ? (

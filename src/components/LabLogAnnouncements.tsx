@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { LabLog, Announcement } from '../types';
 import { Clock, User, X, MessageSquare } from 'lucide-react';
+import SafeHtml from './SafeHtml';
 
 interface LabLogAnnouncementsProps {
   logs: LabLog[];
@@ -50,7 +51,7 @@ export default function LabLogAnnouncements({ logs, announcements }: LabLogAnnou
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-2 text-[11px] font-bold text-[#9AA6A6]"><Clock className="w-3.5 h-3.5" /><span>{log.date}</span></div>
                     <h4 className="font-display font-bold text-base leading-snug text-[#1F3A42]">{log.title}</h4>
-                    <p className="text-xs leading-relaxed line-clamp-2 text-[#4B6169]">{log.summary}</p>
+                    <SafeHtml content={log.summary} className="text-xs leading-relaxed line-clamp-2 text-[#4B6169]" />
                   </div>
                   <div className="pt-3 border-t-2 border-[#1F3A42]/8 flex items-center justify-between text-[11px] font-bold text-[#4B6169]">
                     <span>By: {log.author}</span>
@@ -82,7 +83,7 @@ export default function LabLogAnnouncements({ logs, announcements }: LabLogAnnou
                   <span className="text-[10px] text-[#9AA6A6] font-bold">{ann.date}</span>
                 </div>
                 <h5 className="font-display font-bold text-sm tracking-tight leading-snug text-[#1F3A42]">{ann.title}</h5>
-                <p className="text-xs leading-relaxed text-[#4B6169]">{ann.content}</p>
+                <SafeHtml content={ann.content} className="text-xs leading-relaxed text-[#4B6169]" />
               </div>
             ))
           )}
@@ -112,7 +113,7 @@ export default function LabLogAnnouncements({ logs, announcements }: LabLogAnnou
                 <div className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /><span>{activeLog.date}</span></div>
               </div>
 
-              <p className="text-sm leading-relaxed font-sans text-[#1F3A42]">{activeLog.content}</p>
+              <SafeHtml content={activeLog.content} className="text-sm leading-relaxed font-sans text-[#1F3A42]" />
 
               <div className="space-y-4 pt-6 border-t-2 border-[#1F3A42]/8">
                 <h5 className="font-display font-bold text-sm text-[#1F3A42] flex items-center gap-1.5">

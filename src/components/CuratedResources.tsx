@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Resource } from '../types';
+import SafeHtml from './SafeHtml';
 import {
   BookMarked,
   Search,
@@ -285,9 +286,10 @@ export default function CuratedResources({ resources }: CuratedResourcesProps) {
                       {res.title}
                     </h3>
 
-                    <p className="text-xs text-[#4B6169] dark:text-gray-300 leading-relaxed font-sans line-clamp-3">
-                      {res.description || 'No description provided.'}
-                    </p>
+                    <SafeHtml
+                      content={res.description || 'No description provided.'}
+                      className="text-xs text-[#4B6169] dark:text-gray-300 leading-relaxed font-sans line-clamp-3"
+                    />
                   </div>
 
                   <div className="pt-6 mt-4 border-t border-gray-100 dark:border-gray-700/60">
