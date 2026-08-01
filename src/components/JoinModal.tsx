@@ -31,10 +31,6 @@ export default function JoinModal({ onClose, onJoinSuccess, onJoinSubmit }: Join
       setErrorMsg('Please fill in every field.');
       return;
     }
-    if (!goggleAgreement || !curiosityAgreement) {
-      setErrorMsg('Please check both boxes to continue.');
-      return;
-    }
 
     setErrorMsg('');
     setJoinedDone(true);
