@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import TurtleRockLogo from './TurtleRockLogo';
 import { HelpCircle, Mail, Heart, Send, CheckCircle, ShieldAlert, Loader2 } from 'lucide-react';
 import { NewsletterResult } from '../useSiteContent';
+import ConfirmEmailModal from './ConfirmEmailModal';
 
 interface FooterProps {
   setCurrentTab: (tab: string) => void;
@@ -14,6 +15,7 @@ export default function Footer({ setCurrentTab, onSubscribe }: FooterProps) {
   const [email, setEmail] = useState('');
   const [state, setState] = useState<SubscribeState>('idle');
   const [errorMsg, setErrorMsg] = useState('');
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,10 +34,14 @@ export default function Footer({ setCurrentTab, onSubscribe }: FooterProps) {
 
     setEmail('');
     setState(result.alreadySubscribed ? 'already' : 'done');
+    // Only brand-new subscribers get a confirmation email — an address that was
+    // already on the list is not re-sent one, so the popup would be misleading.
+    if (!result.alreadySubscribed) setShowConfirmModal(true);
   };
 
   return (
     <footer className="border-t-2 border-[#1F3A42]/10 bg-[#F3F0E4] text-[#4B6169] relative z-10">
+      {showConfirmModal && <ConfirmEmailModal onClose={() => setShowConfirmModal(false)} />}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
 
@@ -124,12 +130,12 @@ export default function Footer({ setCurrentTab, onSubscribe }: FooterProps) {
                         That address is already subscribed — no need to sign up twice.
                       </p>
                     ) : (
-                      <p className="text-[11px] text-[#4B6169] font-sans mt-0.5 leading-relaxed">
-                        Check your email for a message from{' '}
-                        <span className="font-bold text-[#2E7D46]">contact@trscienceclub.org</span>{' '}
-                        and click the confirm button. If it's not in your inbox, look in your spam
-                        folder and mark it "Not spam" so you don't miss future updates.
-                      </p>
+                      <button
+                        onClick={() => setShowConfirmModal(true)}
+                        className="text-[11px] font-bold text-[#2E7D46] underline underline-offset-2 cursor-pointer mt-0.5"
+                      >
+                        Don't forget to confirm your email
+                      </button>
                     )}
                   </div>
                 </div>
