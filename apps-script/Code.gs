@@ -339,7 +339,7 @@ function styleAnnouncementsSheet_(sheet) {
   if (body <= 0) return;
 
   sheet.getRange(2, 2, body, 1).setNumberFormat('mmmm d, yyyy');
-  sheet.getRange(2, 3, body, 1).setDataValidation(categoryRule_(ANNOUNCEMENT_CATEGORIES));
+  sheet.getRange(2, 3, body, 1).setDataValidation(categoryRule_(ANNOUNCEMENT_CATEGORIES, sheet, 3));
   sheet.getRange(2, 5, body, 1).insertCheckboxes();
   sheet.getRange(2, 4, body, 1).setWrap(true);
   sheet.getRange(1, 1, body + 1, ANNOUNCEMENT_HEADERS.length).setVerticalAlignment('top');
@@ -351,7 +351,7 @@ function styleLabLogSheet_(sheet) {
   if (body <= 0) return;
 
   sheet.getRange(2, 2, body, 1).setNumberFormat('mmmm d, yyyy');
-  sheet.getRange(2, 3, body, 1).setDataValidation(categoryRule_(LABLOG_CATEGORIES));
+  sheet.getRange(2, 3, body, 1).setDataValidation(categoryRule_(LABLOG_CATEGORIES, sheet, 3));
   sheet.getRange(2, 8, body, 1).insertCheckboxes();
   sheet.getRange(2, 4, body, 2).setWrap(true);
   sheet.getRange(1, 1, body + 1, LABLOG_HEADERS.length).setVerticalAlignment('top');
@@ -387,7 +387,7 @@ function stylePhotosSheet_(sheet) {
   var body = Math.min(100, Math.max(20, sheet.getLastRow() - 1));
   if (body <= 0) return;
 
-  sheet.getRange(2, 4, body, 1).setDataValidation(categoryRule_(PHOTO_CATEGORIES));
+  sheet.getRange(2, 4, body, 1).setDataValidation(categoryRule_(PHOTO_CATEGORIES, sheet, 4));
   sheet.getRange(2, 6, body, 1).insertCheckboxes();
   sheet.getRange(2, 3, body, 1).setWrap(true);
   sheet.getRange(1, 1, body + 1, PHOTO_HEADERS.length).setVerticalAlignment('top');
@@ -398,8 +398,8 @@ function styleResourcesSheet_(sheet) {
   var body = Math.min(100, Math.max(20, sheet.getLastRow() - 1));
   if (body <= 0) return;
 
-  sheet.getRange(2, 3, body, 1).setDataValidation(categoryRule_(RESOURCE_CATEGORIES));
-  sheet.getRange(2, 4, body, 1).setDataValidation(categoryRule_(RESOURCE_LEVELS));
+  sheet.getRange(2, 3, body, 1).setDataValidation(categoryRule_(RESOURCE_CATEGORIES, sheet, 3));
+  sheet.getRange(2, 4, body, 1).setDataValidation(categoryRule_(RESOURCE_LEVELS, sheet, 4));
   sheet.getRange(2, 7, body, 1).insertCheckboxes();
   sheet.getRange(2, 2, body, 1).setWrap(true);
   sheet.getRange(1, 1, body + 1, RESOURCE_HEADERS.length).setVerticalAlignment('top');
@@ -409,11 +409,29 @@ function setWidths_(sheet, widths) {
   for (var i = 0; i < widths.length; i++) sheet.setColumnWidth(i + 1, widths[i]);
 }
 
-function categoryRule_(values) {
+function categoryRule_(values, sheet, col) {
+  var list = values.slice();
+  if (sheet && col) {
+    try {
+      var lastR = sheet.getLastRow();
+      if (lastR >= 2) {
+        var existing = sheet.getRange(2, col, lastR - 1, 1).getValues();
+        for (var i = 0; i < existing.length; i++) {
+          var val = String(existing[i][0] || '').trim();
+          if (val && list.indexOf(val) === -1) {
+            list.push(val);
+          }
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+
   return SpreadsheetApp.newDataValidation()
-    .requireValueInList(values, true)
+    .requireValueInList(list, true)
     .setAllowInvalid(true)
-    .setHelpText('Pick or type a category — it controls the badge shown on the site.')
+    .setHelpText('Pick or type a category — custom entries are preserved on repair.')
     .build();
 }
 
