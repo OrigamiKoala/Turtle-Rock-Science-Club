@@ -45,7 +45,7 @@ export default function LabLogAnnouncements({ logs, announcements }: LabLogAnnou
               <div id={`log-card-${log.id}`} key={log.id} className="rounded-[28px] border-2 border-[#1F3A42]/8 bg-white overflow-hidden flex flex-col justify-between transition hover:border-[#1F3A42]/15 hover:shadow-lg cursor-pointer" onClick={() => setActiveLogId(log.id)}>
                 <div className="relative h-44 overflow-hidden border-b-2 border-[#1F3A42]/5">
                   <img src={log.image} alt={log.title} className="w-full h-full object-cover transition-transform duration-500 hover:scale-105" referrerPolicy="no-referrer" />
-                  <span className="absolute top-3 right-3 bg-white/95 text-[#1F3A42] text-[10px] font-display font-bold px-2.5 py-1 rounded-full">{log.category}</span>
+                  <span className="absolute top-3 right-3 bg-[#1F3A42] text-white dark:bg-[#6CC24A] dark:text-[#14351F] text-[10px] font-display font-bold px-2.5 py-1 rounded-full shadow-md capitalize">{log.category}</span>
                 </div>
                 <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
                   <div className="space-y-1.5">
@@ -100,7 +100,7 @@ export default function LabLogAnnouncements({ logs, announcements }: LabLogAnnou
               </button>
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent flex items-end p-6">
                 <div className="text-white space-y-1">
-                  <span className="bg-white/90 text-[#1F3A42] text-[10px] font-display font-bold px-2.5 py-1 rounded-full">{activeLog.category}</span>
+                  <span className="bg-[#1F3A42] text-white dark:bg-[#6CC24A] dark:text-[#14351F] text-[10px] font-display font-bold px-2.5 py-1 rounded-full capitalize">{activeLog.category}</span>
                   <h3 className="font-display font-bold text-lg sm:text-2xl tracking-tight leading-tight text-white">{activeLog.title}</h3>
                 </div>
               </div>
