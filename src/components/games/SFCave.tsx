@@ -194,7 +194,11 @@ export default function SFCave({ solvedLevels, onSolve }: SFCaveProps) {
   /** Back to the idle screen. Explicitly zeroes `holdingRef` — the original
    *  does the same (`down = false`) the instant it returns to the start
    *  screen, so a mouse button held through the whole death animation does
-   *  NOT auto-relaunch; a fresh press is always required. */
+   *  NOT auto-relaunch; a fresh press is always required. Deliberately does
+   *  NOT clear `note` — the last crash's commentary should stay legible
+   *  through the ready screen and into the next run, not flash by and
+   *  vanish the instant the death animation ends; it's only replaced by the
+   *  next crash or milestone. */
   const resetFlight = useCallback(() => {
     yRef.current = PLAY_H / 2;
     vyRef.current = 0;
@@ -203,7 +207,6 @@ export default function SFCave({ solvedLevels, onSolve }: SFCaveProps) {
     trailRef.current = [];
     deathTickRef.current = 0;
     setDistance(0);
-    setNote(null);
     setPhaseSynced('ready');
   }, [setPhaseSynced]);
 
@@ -217,7 +220,6 @@ export default function SFCave({ solvedLevels, onSolve }: SFCaveProps) {
     trailRef.current = [];
     crossedRef.current = new Set();
     setDistance(0);
-    setNote(null);
     setAttempts((n) => n + 1);
     setPhaseSynced('flying');
   }, [setPhaseSynced]);
