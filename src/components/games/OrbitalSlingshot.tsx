@@ -425,15 +425,14 @@ export default function OrbitalSlingshot({ solvedLevels, onSolve }: OrbitalSling
 
   const isLast = levelIndex === LEVELS.length - 1;
 
-  /** A casual read on the physics behind whatever phase the flight is in. */
+  /** Only speaks up once there's an actual outcome to react to — a crash or
+   *  the win — not a physics tutorial while the player is still aiming. */
   const phaseNote =
-    phase === 'aiming'
-      ? "Every planet pulls with real 1/d² gravity — the closer your path passes, the harder it bends. That's what lets a curved path reach targets a straight shot never could."
-      : phase === 'flying'
-        ? "No more steering now — the direction and speed you let go with already decided the whole path. Gravity is just running the numbers from here."
-        : phase === 'crashed'
-          ? "Too much speed and a planet's pull barely bends you; too little and it just reels you straight in. The sweet spot lets gravity curve your path without capturing you."
-          : "That bend is a real trick — spacecraft steal speed from planets the same way, for free, instead of burning fuel to turn.";
+    phase === 'crashed'
+      ? "Too much speed and a planet's pull barely bends you; too little and it just reels you straight in. The sweet spot lets gravity curve your path without capturing you."
+      : phase === 'won'
+        ? "That bend is a real trick — spacecraft steal speed from planets the same way, for free, instead of burning fuel to turn."
+        : null;
 
   return (
     <div className="space-y-4">
@@ -455,7 +454,7 @@ export default function OrbitalSlingshot({ solvedLevels, onSolve }: OrbitalSling
       </div>
 
       <p className="text-xs text-zinc-400 leading-relaxed font-sans">{level.brief}</p>
-      <p className="text-xs text-zinc-400 leading-relaxed font-sans">{phaseNote}</p>
+      {phaseNote && <p className="text-xs text-zinc-400 leading-relaxed font-sans">{phaseNote}</p>}
 
       <div className="relative rounded-2xl overflow-hidden border border-white/10 bg-black">
         <canvas

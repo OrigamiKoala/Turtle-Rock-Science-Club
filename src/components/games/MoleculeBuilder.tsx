@@ -301,26 +301,18 @@ export default function MoleculeBuilder({ solvedLevels, onSolve }: MoleculeBuild
     if (solved) onSolve(levelIndex);
   }, [solved, levelIndex, onSolve]);
 
-  /** A live, one-line read on whatever the player just touched — not the
-   *  puzzle hint (that's the "how to solve it" toggle below), just a running
-   *  translation of the valence rule into what's on screen right now. */
+  /** Only speaks up once there's something to react to — a real mistake
+   *  (every atom full, but split across two disconnected pieces) or the win
+   *  itself. No running commentary while the player is still figuring it out. */
   const liveNote = useMemo(() => {
-    if (selected !== null) {
-      const atom = atoms.find((a) => a.id === selected);
-      if (atom) {
-        const spec = ELEMENTS[atom.element];
-        const used = usedValence.get(atom.id) ?? 0;
-        const free = spec.valence - used;
-        if (free === 0) return `${spec.name}'s all booked up — every one of its bonds is already spoken for.`;
-        return `${spec.name} needs ${spec.valence} bond${spec.valence === 1 ? '' : 's'} total, ${free} more to go. Tap another atom to link them.`;
-      }
+    if (solved) {
+      return 'Every atom got exactly the bonds its valence calls for, and it all hangs together as one structure — that combination is what makes this molecule real.';
     }
     if (allSatisfied && !isConnected) {
       return "Every atom's arms are full, but that's two separate pieces — a real molecule has to be one connected structure.";
     }
-    if (bonds.length === 0) return 'Click an atom to see how many bonds it needs, then click a second one to make the bond.';
-    return 'Click the same pair again to stack a double or triple bond — atoms share more electron pairs, not more connections.';
-  }, [selected, atoms, usedValence, allSatisfied, isConnected, bonds.length]);
+    return null;
+  }, [solved, allSatisfied, isConnected]);
 
   // ------------------------------------------------------------------ bonding
 
@@ -455,7 +447,7 @@ export default function MoleculeBuilder({ solvedLevels, onSolve }: MoleculeBuild
         </p>
       )}
 
-      <p className="text-xs text-zinc-400 font-sans leading-relaxed">{liveNote}</p>
+      {liveNote && <p className="text-xs text-zinc-400 font-sans leading-relaxed">{liveNote}</p>}
 
       <div className="rounded-2xl overflow-hidden border border-white/10 bg-[#0d0d12] relative">
         <svg

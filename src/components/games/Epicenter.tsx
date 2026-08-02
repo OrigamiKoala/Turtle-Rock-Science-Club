@@ -780,11 +780,6 @@ export default function Epicenter({ solvedLevels, onSolve }: EpicenterProps) {
                           <span className="text-white">{formatAmplitude(selectedReading.amplitudeMm)} mm</span>
                         </div>
                       )}
-                      <div className="text-zinc-500 pt-1 leading-relaxed">
-                        P-waves outrun S-waves, and the farther they both travel the more that lead grows — every
-                        extra second of gap here is about {(1 / K).toFixed(1)} more km to the quake. Drag a marker
-                        and watch its circle on the map breathe in and out with it.
-                      </div>
                     </>
                   ) : (
                     <div className="text-red-300 flex items-center gap-1.5">
@@ -872,6 +867,14 @@ export default function Epicenter({ solvedLevels, onSolve }: EpicenterProps) {
               </span>
             )}
           </div>
+        )}
+
+        {submitted && (
+          <p className="text-xs text-zinc-400 font-sans leading-relaxed">
+            {submitted.distanceOk
+              ? "That's the whole trick — the S-P gap alone pins down distance from each station; three overlapping circles is what nails down direction too."
+              : `P-waves outrun S-waves more the farther they travel, so a bigger gap means farther out. Off by ${submitted.distanceErrorKm.toFixed(0)} km — recheck your ruler markers against where the bursts actually start.`}
+          </p>
         )}
 
         <button

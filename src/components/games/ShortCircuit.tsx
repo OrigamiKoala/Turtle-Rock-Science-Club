@@ -575,21 +575,6 @@ function makeComponent(
   }
 }
 
-/** A quick, casual read on whatever part is currently selected in the tray —
- *  shown the instant you pick a tool, before you've even placed it. */
-const TOOL_SCIENCE: Partial<Record<ToolId, string>> = {
-  battery: 'A battery pushes charge around the loop — but it only works on a closed loop. No return path, no current.',
-  wire: 'Wire is (basically) zero resistance, so current always takes it over everything else on offer.',
-  resistor: "A resistor trades voltage for heat — that's Ohm's law, V = IR. More ohms, less current for the same volts.",
-  bulb: 'A bulb is a resistor that glows once it gets hot enough. Push too much current through it and the filament just burns out.',
-  motor: 'A motor turns current straight into spinning — more current means more torque and more RPM.',
-  switch: "A switch is only ever two states — a dead short or a total break. There's no in-between setting.",
-  potentiometer: 'A potentiometer is a resistor you can slide live — dragging it changes how much current gets through in real time.',
-  galvanometer: "A galvanometer's needle swings with current, not voltage — dead center means zero amps crossing it.",
-  spdt: "A two-way switch doesn't open or close anything — it's a fork that redirects current down one of two paths.",
-  meter: 'A multimeter just measures — probing never changes what the circuit is doing.'
-};
-
 // ------------------------------------------------------------------ tray metadata
 
 type IconComponent = typeof Zap;
@@ -789,6 +774,13 @@ export default function ShortCircuit({ solvedLevels, onSolve }: ShortCircuitProp
   }, [meterProbes, result, components]);
 
   const isLast = levelIndex === LEVELS.length - 1;
+
+  /** Only speaks up once something has actually burned out — not a proactive
+   *  tutorial on each part before the player has tried anything. */
+  const burntComponent = components.find((c) => c.burnt);
+  const mistakeNote = burntComponent
+    ? `That ${burntComponent.type} popped — more current tried to force through it than its rating allows. Cut the resistance in its path and current only goes up from there.`
+    : null;
 
   // ------------------------------------------------------------------ svg parts
 
@@ -1160,8 +1152,8 @@ export default function ShortCircuit({ solvedLevels, onSolve }: ShortCircuitProp
             </button>
           </div>
 
-          {tool && TOOL_SCIENCE[tool] && (
-            <p className="text-xs text-zinc-400 font-sans leading-relaxed">{TOOL_SCIENCE[tool]}</p>
+          {mistakeNote && (
+            <p className="text-xs text-zinc-400 font-sans leading-relaxed">{mistakeNote}</p>
           )}
 
           {tool === 'resistor' && !resistorIsUnknown && level.resistorChoices && (

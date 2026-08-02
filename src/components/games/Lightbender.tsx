@@ -11,7 +11,9 @@ import {
   Triangle,
   GitFork,
   Filter as FilterIcon,
-  Waves
+  Waves,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 /**
@@ -688,6 +690,9 @@ export default function Lightbender({ solvedLevels, onSolve }: LightbenderProps)
   const [levelIndex, setLevelIndex] = useState(0);
   const [components, setComponents] = useState<PlacedComponent[]>([]);
   const [showHint, setShowHint] = useState(false);
+  /** Lets a solved player dismiss the results card to actually see the beam
+   *  path underneath it — the card otherwise covers the whole board. */
+  const [peeking, setPeeking] = useState(false);
 
   const componentsRef = useRef<PlacedComponent[]>([]);
   useEffect(() => {
@@ -700,12 +705,14 @@ export default function Lightbender({ solvedLevels, onSolve }: LightbenderProps)
   useEffect(() => {
     setComponents([]);
     setShowHint(false);
+    setPeeking(false);
     dragRef.current = null;
   }, [levelIndex]);
 
   const solved = useMemo(() => isLevelSolved(level, components), [level, components]);
   useEffect(() => {
     if (solved) onSolve(levelIndex);
+    else setPeeking(false);
   }, [solved, levelIndex, onSolve]);
 
   const remaining = useCallback(
@@ -1084,7 +1091,7 @@ export default function Lightbender({ solvedLevels, onSolve }: LightbenderProps)
             className="w-full block touch-none select-none cursor-pointer"
           />
 
-          {solved && (
+          {solved && !peeking && (
             <div className="absolute inset-0 bg-black/75 backdrop-blur-sm flex flex-col items-center justify-center gap-3 text-center px-6">
               <Trophy className="w-10 h-10 text-amber-400" />
               <h4 className="font-display font-bold text-xl text-emerald-400">{level.name} solved!</h4>
@@ -1095,6 +1102,12 @@ export default function Lightbender({ solvedLevels, onSolve }: LightbenderProps)
                 </p>
               )}
               <div className="flex gap-2 pt-1">
+                <button
+                  onClick={() => setPeeking(true)}
+                  className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 text-xs font-bold text-white cursor-pointer transition flex items-center gap-1.5"
+                >
+                  <Eye className="w-3.5 h-3.5" /> Admire the beam
+                </button>
                 <button
                   onClick={() => setComponents([])}
                   className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 text-xs font-bold text-white cursor-pointer transition"
@@ -1111,6 +1124,15 @@ export default function Lightbender({ solvedLevels, onSolve }: LightbenderProps)
                 )}
               </div>
             </div>
+          )}
+
+          {solved && peeking && (
+            <button
+              onClick={() => setPeeking(false)}
+              className="absolute top-3 right-3 px-3 py-1.5 rounded-full bg-black/70 hover:bg-black/85 border border-white/15 text-[11px] font-bold text-white cursor-pointer transition flex items-center gap-1.5"
+            >
+              <EyeOff className="w-3.5 h-3.5" /> Back to results
+            </button>
           )}
         </div>
 

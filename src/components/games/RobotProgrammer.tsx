@@ -477,35 +477,15 @@ export default function RobotProgrammer({ solvedLevels, onSolve }: RobotProgramm
   const isLast = levelIndex === LEVELS.length - 1;
   const facingRotation = [90, 180, 270, 0][robot.facing];
 
-  /** A running translation of what's on screen into the CS idea behind it —
-   *  separate from `message`, which only ever reports pass/fail. */
-  const currentInstruction =
-    running && traceIndex >= 0 ? traceRef.current[traceIndex]?.instruction : null;
-  const f1CallsItself = f1.includes('f1');
-  const liveNote = (() => {
-    if (currentInstruction === 'f1') {
-      return "Jumping into F1 — the main program freezes right here and picks back up the moment F1 finishes.";
-    }
-    if (currentInstruction === 'forward') {
-      return "Forward means one cell in whatever direction it's currently facing — the program has no idea what's actually ahead of it.";
-    }
-    if (currentInstruction === 'left' || currentInstruction === 'right') {
-      return 'A turn changes which way "forward" means next — direction is just as much state as position is.';
-    }
-    if (currentInstruction === 'collect') {
-      return 'Same instruction every time — it only does something if a sample happens to be under the robot right now.';
-    }
-    if (cursor.program === 'f1' && f1CallsItself) {
-      return "F1 calling itself is recursion — it keeps re-running its own steps until it runs out of room or the maze ends.";
-    }
-    if (cursor.program === 'f1') {
-      return "You're editing F1 now — a subroutine the main program can call by name instead of repeating those steps itself.";
-    }
-    if (level.f1Slots > 0) {
-      return "Too few main slots for this maze on purpose — whatever repeats belongs in F1, called instead of copy-pasted.";
-    }
-    return 'The robot only ever knows the next instruction, never the maze ahead — the whole route has to be planned up front.';
-  })();
+  /** Only speaks up on an actual outcome — a crash or the win — not while
+   *  the player is still writing and testing the program. */
+  const liveNote = solved
+    ? "That worked because every step was decided before the robot ever moved — plan the whole route first, then let it run blind."
+    : robot.crashed
+      ? f1.includes('f1')
+        ? "Crashed mid-loop — F1 calling itself just keeps re-running those same steps, so one bad step in there repeats every pass."
+        : 'Crashed — the robot only ever knows its next instruction, never the maze ahead, so a turn or a Forward off by one is the whole bug.'
+      : null;
 
   return (
     <div className="space-y-4">
@@ -543,7 +523,7 @@ export default function RobotProgrammer({ solvedLevels, onSolve }: RobotProgramm
         </p>
       )}
 
-      <p className="text-xs text-zinc-400 font-sans leading-relaxed">{liveNote}</p>
+      {liveNote && <p className="text-xs text-zinc-400 font-sans leading-relaxed">{liveNote}</p>}
 
       <div className="grid lg:grid-cols-[auto_1fr] gap-5 items-start">
         {/* Maze */}
