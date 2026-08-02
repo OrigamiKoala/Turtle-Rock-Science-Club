@@ -287,14 +287,20 @@ tuned (some with scratch Node scripts, not just eyeballed) to make a specific
 lesson land.
 
 Every hosted game (all ten but `ChemTextAdventure`, which links out) carries a
-small always-visible "live note" — plain-language commentary on the science
-of whatever the player is currently doing (the selected atom's valence, the
-tool currently in hand, the species picked for an intervention, the reading
-under the ruler), distinct from the per-level `hint` text hidden behind the
-Hint toggle. It's derived from render-time state, not a toggle a player has
-to find, so it updates the instant a selection or slider changes. Follow that
-pattern — computed from current state, not gated behind a click — if you add
-an eleventh game or touch these.
+small "live note" — plain-language commentary on the science behind an actual
+*outcome* — distinct from the per-level `hint` text hidden behind the Hint
+toggle, and deliberately **not** shown while the player is still exploring.
+It only appears once there's something to react to: a crash
+(`RobotProgrammer`, `OrbitalSlingshot`), a burnt-out part (`ShortCircuit`), a
+molecule that's fully bonded but split into two disconnected pieces
+(`MoleculeBuilder`), an unbalanced equation someone hit Run on anyway
+(`ReactorLine`), overgrazing that's already happened (`IslandKeeper`), a
+just-submitted guess (`Epicenter`), or the level being solved
+(`StarlightDecoder` and the win state everywhere else). The first pass at
+this showed commentary continuously as state changed — tool selected, slider
+dragged, atom picked — which amounted to narrating the solving method before
+the player had even tried it; don't regress back to that. Gate any new note
+behind a genuine mess-up or success, never a mere selection or drag.
 
 - `OrbitalSlingshot.tsx` — Newtonian gravity sim on canvas; drag *toward* the
   target to launch, speed scales with drag distance. Sim state lives in refs
@@ -315,7 +321,12 @@ an eleventh game or touch these.
   to already overlap the emitter's un-refracted straight-line beam auto-solves
   the level with zero components placed, as "Through the Glass" did before its
   radius was tightened from 24 to 16 — check the unsolved default (no pieces on
-  the grid) actually fails before shipping a new target position.
+  the grid) actually fails before shipping a new target position. The solved
+  overlay is a full opaque panel over the whole board, which used to hide the
+  beam path the instant a level solved with no way to actually look at it; an
+  "Admire the beam" button dismisses it (state `peeking`) with a small
+  "Back to results" button to bring it back — keep that escape hatch on any
+  overlay that covers a visualization worth seeing after the win.
 - `ShortCircuit.tsx` — an SVG breadboard backed by a hand-written nodal-analysis
   solver (Gaussian elimination with partial pivoting), not a series/parallel
   special case — that generality is what makes the Wheatstone-bridge level
