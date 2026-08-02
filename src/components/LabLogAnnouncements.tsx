@@ -111,7 +111,7 @@ export default function LabLogAnnouncements({ logs, announcements }: LabLogAnnou
           <div id="log-detail-modal" className="w-full max-w-2xl rounded-[28px] overflow-hidden shadow-2xl bg-[#FBF7EC] dark:bg-gray-800 dark:text-white flex flex-col justify-between max-h-[85vh] my-auto">
             <div className="relative h-60">
               <img src={activeLog.image} alt={activeLog.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-              <button id="close-log-modal-btn" onClick={() => setActiveLogId(null)} className="absolute top-4 right-4 p-2 bg-white/90 hover:bg-white text-[#1F3A42] rounded-full transition-all cursor-pointer">
+              <button id="close-log-modal-btn" onClick={() => setActiveLogId(null)} className="absolute top-4 right-4 p-2 text-[#1F3A42] rounded-full transition-all cursor-pointer">
                 <X className="w-4 h-4" />
               </button>
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent flex items-end p-6">

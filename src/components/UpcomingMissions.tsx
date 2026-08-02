@@ -39,7 +39,7 @@ export default function UpcomingMissions({
       {missions.length === 0 && (
         <div className="rounded-[2rem] border-2 border-[#1F3A42]/10 bg-white px-8 py-14 text-center space-y-3">
           <CalendarOff className="w-8 h-8 text-[#9AA6A6] mx-auto" />
-          <p className="font-display font-bold text-lg text-[#1F3A42]">No events scheduled right now</p>
+          <p className="font-display font-bold text-lg text-[#1F3A42]">Loading...</p>
           <p className="text-xs text-[#4B6169] font-sans max-w-sm mx-auto leading-relaxed">
             {contentStatus === 'loading' ? 'Loading the latest schedule…' : 'Check back soon — new sessions are added regularly.'}
           </p>
