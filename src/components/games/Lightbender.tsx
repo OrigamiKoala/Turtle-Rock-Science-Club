@@ -190,7 +190,7 @@ const LEVELS: Level[] = [
     brief: "No mirror this time — the target sits off to the side of the straight path. You must refract, not reflect.",
     hint: 'Light entering glass at an angle bends toward the normal, then bends back the same amount leaving — but it exits parallel to how it went in, just shifted sideways. Angle the block to shift the beam onto the target.',
     emitter: { x: 26, y: 234, angleDeg: 0 },
-    targets: [{ x: 520, y: 214, r: 24 }],
+    targets: [{ x: 520, y: 214, r: 16 }],
     walls: [],
     inventory: { glass: 1 }
   },

@@ -553,6 +553,17 @@ function PopulationChart({ level, history, targetYear }: { level: LevelDef; hist
   return <canvas ref={canvasRef} width={640} height={140} className="w-full h-[140px] rounded-xl border border-white/10" />;
 }
 
+/** A casual read on whatever species is currently selected for intervention —
+ *  what it eats, what eats it, why an action does what it does to it. */
+const SPECIES_BLURB: Record<string, string> = {
+  grass: "Grass grows back on its own, but only up to a hard ceiling — its carrying capacity. Overgraze it and that ceiling itself drops, so Plant only helps if the ceiling can still support it.",
+  rabbit: "Rabbits eat grass and get eaten by whatever's watching them — squeezed from both ends of the food chain at once.",
+  fox: 'Foxes live or die on how many rabbits are around to eat. No rabbits, no foxes, no matter how many you introduce.',
+  vole: 'Voles compete with rabbits for the same grass, and mostly answer to hawks rather than foxes.',
+  hawk: 'Hawks here mostly eat voles and only nibble at rabbits — pull them out and voles boom with nothing keeping them in check.',
+  beetle: "An invasive species — nothing on this island evolved to eat it back, so a fence on the grass is really the only brake that works."
+};
+
 // ------------------------------------------------------------------ component
 
 interface IslandKeeperProps {
@@ -652,6 +663,10 @@ export default function IslandKeeper({ solvedLevels, onSolve }: IslandKeeperProp
 
   const budgetRemaining = level.interventionBudget !== undefined ? level.interventionBudget - display.interventionsUsed : undefined;
   const isLast = levelIndex === LEVELS.length - 1;
+
+  const overgrazedProducer = level.speciesIds.find(
+    (id) => SPECIES_LIBRARY[id].role === 'producer' && display.kOverride[id] < SPECIES_LIBRARY[id].K * 0.95
+  );
 
   const shownPop = scrubIndex !== null && display.history[scrubIndex] ? display.history[scrubIndex].pop : display.pop;
   const shownYear = scrubIndex !== null && display.history[scrubIndex] ? display.history[scrubIndex].year : display.year;
@@ -778,6 +793,18 @@ export default function IslandKeeper({ solvedLevels, onSolve }: IslandKeeperProp
               })}
             </div>
           </div>
+        )}
+
+        {outcome === 'playing' && SPECIES_BLURB[selectedSpecies] && (
+          <p className="text-xs text-zinc-400 font-sans leading-relaxed">{SPECIES_BLURB[selectedSpecies]}</p>
+        )}
+
+        {outcome === 'playing' && overgrazedProducer && (
+          <p className="text-xs text-amber-300/80 font-sans leading-relaxed">
+            {SPECIES_LIBRARY[overgrazedProducer].name}'s carrying capacity has been grazed down to{' '}
+            {Math.round(display.kOverride[overgrazedProducer])} (from {SPECIES_LIBRARY[overgrazedProducer].K}) —
+            overgrazing lowers the ceiling itself, not just today's headcount.
+          </p>
         )}
 
         {outcome !== 'playing' && (

@@ -780,6 +780,11 @@ export default function Epicenter({ solvedLevels, onSolve }: EpicenterProps) {
                           <span className="text-white">{formatAmplitude(selectedReading.amplitudeMm)} mm</span>
                         </div>
                       )}
+                      <div className="text-zinc-500 pt-1 leading-relaxed">
+                        P-waves outrun S-waves, and the farther they both travel the more that lead grows — every
+                        extra second of gap here is about {(1 / K).toFixed(1)} more km to the quake. Drag a marker
+                        and watch its circle on the map breathe in and out with it.
+                      </div>
                     </>
                   ) : (
                     <div className="text-red-300 flex items-center gap-1.5">

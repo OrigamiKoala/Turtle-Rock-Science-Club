@@ -286,6 +286,16 @@ touching their level data or science model, since each level's numbers were
 tuned (some with scratch Node scripts, not just eyeballed) to make a specific
 lesson land.
 
+Every hosted game (all ten but `ChemTextAdventure`, which links out) carries a
+small always-visible "live note" — plain-language commentary on the science
+of whatever the player is currently doing (the selected atom's valence, the
+tool currently in hand, the species picked for an intervention, the reading
+under the ruler), distinct from the per-level `hint` text hidden behind the
+Hint toggle. It's derived from render-time state, not a toggle a player has
+to find, so it updates the instant a selection or slider changes. Follow that
+pattern — computed from current state, not gated behind a click — if you add
+an eleventh game or touch these.
+
 - `OrbitalSlingshot.tsx` — Newtonian gravity sim on canvas; drag *toward* the
   target to launch, speed scales with drag distance. Sim state lives in refs
   because 60fps React state would thrash.
@@ -301,7 +311,11 @@ lesson land.
 - `Lightbender.tsx` — real ray-traced optics on a grid (Snell's law, dispersion,
   total internal reflection). Beam is re-traced every drag frame; rays are
   nudged `1e-4` along their direction after each bounce to avoid re-intersecting
-  the surface they just left.
+  the surface they just left. Target radii matter: a target circle wide enough
+  to already overlap the emitter's un-refracted straight-line beam auto-solves
+  the level with zero components placed, as "Through the Glass" did before its
+  radius was tightened from 24 to 16 — check the unsolved default (no pieces on
+  the grid) actually fails before shipping a new target position.
 - `ShortCircuit.tsx` — an SVG breadboard backed by a hand-written nodal-analysis
   solver (Gaussian elimination with partial pivoting), not a series/parallel
   special case — that generality is what makes the Wheatstone-bridge level
@@ -338,6 +352,13 @@ lesson land.
   checked by comparing scaled reagent/product counts — coefficients are never
   hardcoded per level. The sim is a discrete tick (`min(available/ratio)`
   per reaction per tick), so a half-built line still produces something.
+  Silos keep pouring into the shared stock pool every tick regardless of node
+  balance, so hitting Run on an unbalanced node used to look completely inert
+  — no pipe glow, no silo countdown (infinite-cap silos just show a static
+  rate), tank frozen at zero. A red banner now appears whenever `running` is
+  true and an enabled node is still unbalanced, naming it explicitly; don't
+  remove it as "redundant" with the inline `unbalanced` tag next to the
+  steppers — that tag is easy to miss, the banner is the one players notice.
 - `ChemTextAdventure.tsx` — not hosted here. Links out to an external
   choose-your-own-path chemistry story; clicking the link *is* the win
   condition and the only way to earn its "Adventurer" badge.

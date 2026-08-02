@@ -567,6 +567,13 @@ export default function ReactorLine({ solvedLevels, onSolve }: ReactorLineProps)
   const budgetOk = level.budget === undefined || totalSpent <= level.budget;
   const solved = quotaMet && budgetOk;
 
+  /** Silos still feed the shared stock pool even when every node is stalled,
+   *  so nothing on the board visibly moves — this is the one thing a stalled
+   *  run needs to say out loud, or "Run" looks like it does nothing at all. */
+  const stalledReactions = level.reactions.filter(
+    (r) => nodeEnabled[r.id] && !isNodeBalanced(r, nodeCoeffs[r.id])
+  );
+
   useEffect(() => {
     if (solved) {
       onSolve(levelIndex);
@@ -855,6 +862,14 @@ export default function ReactorLine({ solvedLevels, onSolve }: ReactorLineProps)
       <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
         <div className="h-full bg-emerald-500 transition-all" style={{ width: `${fillFrac * 100}%` }} />
       </div>
+
+      {running && stalledReactions.length > 0 && (
+        <p className="text-xs text-red-300 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-2.5 font-sans leading-relaxed">
+          Running, but nothing is flowing yet — {stalledReactions.map((r) => r.label).join(', ')}{' '}
+          {stalledReactions.length === 1 ? 'is' : 'are'} still unbalanced. Silos keep filling the stock pool in the
+          background, but no product reaches the tank until every reagent and product count matches.
+        </p>
+      )}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">

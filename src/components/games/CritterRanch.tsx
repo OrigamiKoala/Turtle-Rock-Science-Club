@@ -924,6 +924,22 @@ export default function CritterRanch({ solvedLevels, onSolve }: CritterRanchProp
 
   const isLast = levelIndex === LEVELS.length - 1;
 
+  /** A casual read on whatever the last litter actually did, not the level's
+   *  static concept text — reacts to the real babies just born. */
+  const litterNote = (() => {
+    if (level.isTestCross || lastLitterIds.length === 0 || genes.length === 0) return null;
+    const lastLitter = barn.filter((c) => lastLitterIds.includes(c.id));
+    if (lastLitter.length === 0) return null;
+    const gene = genes[0];
+    const recessiveCount = lastLitter.filter(
+      (c) => resolveGenePhenotype(gene, c.genotype[gene.id]).state === 'recessive'
+    ).length;
+    if (recessiveCount === 0) {
+      return `None of this litter came out ${gene.recessiveLabel} — with a small litter like this, a recessive trait can easily just not turn up even when a parent is secretly carrying it.`;
+    }
+    return `${recessiveCount} of ${lastLitter.length} babies came out ${gene.recessiveLabel} — that means both parents just happened to pass down their hidden copy to the same critter.`;
+  })();
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
@@ -1017,6 +1033,8 @@ export default function CritterRanch({ solvedLevels, onSolve }: CritterRanchProp
             Genotype not fully known yet — breed to find out, or wait for a recessive baby to give it away.
           </p>
         ) : null}
+
+        {litterNote && <p className="text-xs text-zinc-400 font-sans leading-relaxed">{litterNote}</p>}
 
         {level.expectedRatioNote && !level.isTestCross && (
           <div className="text-[10px] font-mono text-zinc-500">

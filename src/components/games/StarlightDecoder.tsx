@@ -821,6 +821,11 @@ export default function StarlightDecoder({ solvedLevels, onSolve }: StarlightDec
             ))}
           </div>
           {solved && solvedOverlay('Class identified!')}
+          <p className="text-xs text-zinc-400 font-sans leading-relaxed">
+            Right now that slider peaks at {wienPeakNm(tempGuess).toFixed(0)} nm — Wien's law says a peak that short
+            puts the star around class {classifyTemperature(tempGuess)}. Hotter always means bluer, never the other
+            way around.
+          </p>
         </div>
       )}
 
@@ -863,6 +868,11 @@ export default function StarlightDecoder({ solvedLevels, onSolve }: StarlightDec
               />
             </div>
           </div>
+          <p className="text-xs text-zinc-400 font-sans leading-relaxed">
+            A {depthGuess.toFixed(2)}% dip implies a planet about {(Math.sqrt(depthGuess / 100) * 100).toFixed(0)}%
+            of the star's own radius — the light lost scales with the SQUARE of that ratio, so a small planet barely
+            dents the brightness at all.
+          </p>
         </div>
       )}
 
@@ -905,6 +915,11 @@ export default function StarlightDecoder({ solvedLevels, onSolve }: StarlightDec
               />
             </div>
           </div>
+          <p className="text-xs text-zinc-400 font-sans leading-relaxed">
+            You never see the planet here — only the star getting tugged {ampGuess.toFixed(0)} km/s side to side
+            every {wobblePeriodGuess.toFixed(1)} days by whatever's orbiting it. Gravity pulls both ways; the planet
+            just moves a lot more because it's so much lighter.
+          </p>
         </div>
       )}
 
