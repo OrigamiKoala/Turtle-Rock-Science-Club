@@ -214,6 +214,12 @@ has the remainder to do.
 
 ## Site conventions
 
+- **`STYLE.md` is the brand/style guide** — palette (with dark-mode
+  counterparts and measured contrast), type scale, component recipes, motion,
+  iconography, and voice. Read it before adding UI or writing visitor-facing
+  copy. It documents the same dark-mode hex-enumeration trap described under
+  "Theming" below, plus the fact that `dark:` utilities key off the OS rather
+  than the toggle (Tailwind v4, no `@custom-variant dark` declared).
 - Everything the visitor "owns" is `localStorage`, keyed `tr_sc_*`:
   `tr_sc_user_profile`, `tr_sc_gallery_photos`, `tr_sc_signed_up_ids`,
   `tr_sc_sheet_content_v1` (5-minute content cache), `tr_sc_last_school`,
