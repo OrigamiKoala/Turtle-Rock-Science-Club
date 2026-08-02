@@ -285,6 +285,14 @@ button.
   their own dark styling regardless of site theme, same as
   `OrbitalSlingshot.tsx` (which is intentionally always-dark). Wiring up the
   wrapper classes is unfinished work, not a regression.
+- `SFCave.tsx` is the one place that reads the toggle directly in JS
+  (`useTheme()`) instead of through the `:root.dark` CSS mechanism above —
+  its cave/ship colors are `<canvas>` fill styles, which CSS can't reach at
+  all, so there was never an option to add them to the enumerated hex list.
+  It's a second, independent call to the same hook `App.tsx`/`Header.tsx`
+  already own; that's safe because `applyTheme` is just an idempotent
+  `classList.toggle`, and both calls derive from the same
+  `localStorage`/`matchMedia` source, so there's nothing to keep in sync.
 
 ## Minigames
 
@@ -421,8 +429,20 @@ note behind a genuine mess-up or success, never a mere selection or drag.
   blocky per-column rectangles (not a smooth path) with green walls and a
   light passable interior, matching the original's actual (surprising, if
   you assumed black-background/white-walls) color relationship — only the
-  specific hex values were swapped to the site's palette. Free-floating
-  orange obstacle blocks (`BLOCK_H`, `CaveGen.blocks`) spawn mid-gap — the
+  specific hex values were swapped to the site's palette, and *those* are
+  real brand hexes, not arbitrary Tailwind shades: wall green is Forest
+  (`#2E7D46`), the interior is Cream (`#FBF7EC`), the ship is Gold
+  (`#F2C94C`), and the crashed ship / every obstacle block share Alert Red
+  (`#E4574B`) — see STYLE.md §2.1 for the full table. This is also the one
+  game of the twelve that is *not* an "always-dark instrument panel"
+  (STYLE.md §11) — its light interior is what makes it read as SF Cave, so
+  having already broken from the dark-canvas convention, it tracks the
+  site's light/dark toggle (`useTheme()`) using the two colors STYLE.md §2.1
+  actually documents a dark-mode pair for (Cream → `#12181A`, Forest →
+  `#8FE07A`) rather than sitting frozen in light mode; ship/hazard/HUD are
+  marked "unchanged" in that same table, so they don't get a second variant.
+  Free-floating red obstacle blocks (`BLOCK_H`, `CaveGen.blocks`) spawn
+  mid-gap — the
   original PalmOS game's "mines," reproduced from the same clone source
   rather than invented. The original spawns one on the exact same
   every-10-tick beat as the gap shrink, but that beat is *not* copied
@@ -438,17 +458,24 @@ note behind a genuine mess-up or success, never a mere selection or drag.
   the gap has already narrowed past `BLOCK_H` (the original has no such
   guard, so a late-game block there could poke past the wall it's next to —
   a real edge case in the source, not one worth copying).
-  The "ready" and "generating" phases render nothing but the background and
-  HUD strip — no cave, no ship. `beginRun` generates the whole cave (cheap:
-  just array pushes) the instant a hold is detected, but parks in a
-  `'generating'` phase for `GENERATING_TICKS` (a deliberately brief empty
-  pause) before flipping to `'flying'`, where the cave and ship actually
-  appear and start moving together. Drawing an idle ship floating on a blank
-  field before there's anything to fly through — or a stale previous run's
-  cave sitting frozen behind it — read as a rendering bug, not a "waiting to
-  play" state, which is why `draw()` gates the entire cave/ship/trail block
-  on `phase === 'flying' || phase === 'crashed'` rather than trying to make
-  the ready screen show something meaningful.
+  The "ready" phase renders nothing but the background and HUD strip — no
+  ship, nothing to fly. `beginRun` generates the whole cave up front (cheap:
+  just array pushes) and parks the ship at its first column's center the
+  instant a hold is detected, but doesn't reveal the cave yet — phase goes to
+  `'generating'`, not straight to `'flying'`. During that `GENERATING_TICKS`
+  window the ship *is* visible and already responds to thrust
+  (`stepGenerating` runs the same gravity/thrust integration as `stepFlying`,
+  clamped to the playfield bounds since there's nothing to collide with yet);
+  only the cave stays hidden, so it appears around an already-moving ship
+  instead of the whole scene snapping into existence the instant a hold
+  lands. `draw()` tracks this with two separate flags — `showShip` (any
+  phase but `'ready'`) and `showCave` (`'flying'` or `'crashed'` only) —
+  rather than one combined gate, which is what makes the free-flight window
+  possible: the ship needs to render and move before there's a cave to show
+  around it. A stale previous run's cave sitting frozen behind everything
+  would otherwise be a real risk too, since `caveGenRef` is never explicitly
+  cleared between runs — the phase gate is what keeps it off-screen until a
+  fresh `beginRun` overwrites it.
 
 `VirtualLab.tsx` is the shell that hosts them, keyed by `GameId` in
 `types.ts`, and awards XP once per level (`ChemTextAdventure` only ever has
@@ -459,10 +486,12 @@ into multiple rows by default CSS grid behaviour, no scroll container needed.
 All seven science-domain games are "always-dark" chrome like
 `OrbitalSlingshot`, the same choice the doc's integration notes call for —
 none of them try to hook into the `.game-*` wrapper-class theming scheme
-described below. `SFCave` matches that same site-theme-independent framing (a
-plain `bg-black` canvas wrapper, no `.game-*` hook either), but the play
-surface itself is *not* literally black — see above, its green-wall/light-gap
-color relationship is a real part of the original's look.
+described below. `SFCave` is the one exception among all twelve: its play
+surface is a genuinely light interior (see above), and unlike its siblings it
+actually tracks the site's light/dark toggle rather than ignoring it — see
+"Theming" above for how. Its outer wrapper is still a plain `bg-black` canvas
+frame like the other games (the canvas repaints over it every tick regardless
+of theme, so the wrapper's own color is essentially never visible).
 
 `Dashboard.tsx`'s `badgeCatalog` now lists all thirteen earnable badges
 (`Foundation Member` plus one per game, including `ChemTextAdventure`'s) instead

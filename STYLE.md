@@ -510,9 +510,9 @@ Stable icon → meaning pairings (keep these consistent):
 Icon tiles: `p-3 rounded-2xl bg-[#E4F5DA] text-[#2E7D46]` (or `w-12 h-12
 rounded-2xl` centered). Locked/inactive: `bg-[#1F3A42]/5 text-[#9AA6A6]`.
 
-Each of the eleven minigames owns a badge icon — `Orbit`, `FlaskConical`,
+Each of the twelve minigames owns a badge icon — `Orbit`, `FlaskConical`,
 `Bot`, `Eye`, `Zap`, `Activity`, `Dna`, `Leaf`, `Telescope`, `Factory`,
-`ScrollText`. If a game is added, its icon must match between
+`Flashlight`, `ScrollText`. If a game is added, its icon must match between
 `VirtualLab.tsx`'s `GAMES` and `Dashboard.tsx`'s `badgeCatalog`.
 
 ---
@@ -635,9 +635,10 @@ CSS.
 
 ## 11. The minigames are a deliberate exception
 
-`src/components/games/` does **not** follow the light brand. All eleven games
-render as always-dark instrument panels, on purpose — they read as lab
-equipment rather than page content.
+`src/components/games/` mostly does **not** follow the light brand. Ten of
+the twelve tabs (everything except `ChemTextAdventure`, a link-out with no
+panel of its own, and `SFCave`) render as always-dark instrument panels, on
+purpose — they read as lab equipment rather than page content.
 
 - **Surfaces:** `bg-[#0d0d12]` panels (also `#0a0a10`, `#070911`) with
   `border border-white/10` — note **1px** borders here, not the site's 2px.
@@ -650,7 +651,19 @@ equipment rather than page content.
 
 The site chrome *around* the games — the section heading, tab grid, and the
 `rounded-[28px]` white host panel in `VirtualLab.tsx` — **is** normal brand
-style. Only the interior is dark.
+style. Only the interior is dark — except in `SFCave`.
+
+**`SFCave` genuinely uses the light brand, and tracks the toggle.** Its
+`<canvas>` playfield is a light interior with green walls (matching the real
+original PalmOS game's actual look, not a stylistic choice made for this
+site), so unlike its eleven siblings it reads the light/dark toggle directly
+in JS (`useTheme()`) and swaps between the exact pairs §2.1 documents —
+Cream ↔ `#12181A`, Forest ↔ `#8FE07A` — rather than sitting frozen in light
+mode. Ship (Gold `#F2C94C`), hazard (Alert Red `#E4574B`), and the HUD strip
+(Deep Teal `#1F3A42` fill, white label) are marked "unchanged" in §2.1, so
+they don't get a second variant. Surrounding chrome (milestone pills,
+buttons, status text) still uses the same dark `zinc`/`amber`/`sky` game
+palette as every other game — only the canvas interior is light-brand.
 
 **Known unfinished work:** `src/index.css` contains `.game-molecule`,
 `.game-robot`, and `.game-adventure` scoped rules meant to flip those three

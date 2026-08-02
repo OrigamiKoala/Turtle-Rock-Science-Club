@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { RotateCcw, Play, Flashlight, Trophy } from 'lucide-react';
+import { useTheme } from '../../useTheme';
 
 /**
  * SF Cave
@@ -68,17 +69,18 @@ const CAVE_DELTA_SCALE = 1.4;
  *  or too sparse; it's a visual-density call, not a physics constant.) */
 const BLOCK_SPAWN_EVERY = CAVE_GAP_SHRINK_EVERY * 4;
 const BLOCK_H = 45;
-const BLOCK_COLOR = '#f97316';
 
 const INITIAL_COLUMNS = Math.ceil(WORLD_W / STEP_X) + 4;
 /** How many ticks the death ring animation plays before auto-returning to
  *  "ready" — matching the original's fixed 15-tick death screen. */
 const DEATH_TICKS = 15;
 const DEATH_RING_STEP = 9;
-/** How many ticks the screen stays genuinely empty — no cave, no ship —
- *  after a hold is detected before the freshly generated cave (and the
- *  ship inside it) actually appears and starts moving. */
-const GENERATING_TICKS = 6;
+/** How many ticks the ship spends flying in open space — thrust already
+ *  live, no walls yet — before the freshly generated cave appears around it.
+ *  Long enough to get a feel for the controls, brief enough not to be a
+ *  wait; the cave was already generated the instant the hold landed, only
+ *  the reveal is delayed. */
+const GENERATING_TICKS = 10;
 
 /** Distance thresholds that stand in for "levels" — crossing one in a single
  *  run unlocks its badge, same as solving a level does in every other game. */
@@ -149,12 +151,23 @@ function genNextColumn(gen: CaveGen) {
 
 const BEST_KEY = 'tr_sc_cave_best';
 
-const WALL_COLOR = '#2E7D46';
-const BG_COLOR = '#FBF7EC';
-const HUD_COLOR = '#1F3A42';
-const HUD_TEXT = '#FBF7EC';
-const SHIP_COLOR = '#fbbf24';
-const CRASH_COLOR = '#ef4444';
+/**
+ * Every hosted game is normally an "always-dark instrument panel" that
+ * ignores the site's light/dark toggle (STYLE.md §11) — but this one is
+ * already the exception, since its light interior/green-wall look (unlike
+ * its eleven siblings) is what makes it read as SF Cave rather than another
+ * dark canvas. Having committed to the light brand for this one, it should
+ * behave like the rest of the light brand: track the toggle using the exact
+ * light/dark pairs STYLE.md §2.1 documents, not sit frozen in light mode
+ * regardless of what the visitor chose. Ship, hazard, and HUD colors are
+ * marked "unchanged" in that same table, so they don't get a dark variant.
+ */
+const HUD_COLOR = '#1F3A42'; // Deep Teal — stays this exact hex as a *background* in dark mode too
+const HUD_TEXT = '#ffffff'; // "Deep Teal fill, white label" (STYLE.md §2.2)
+const SHIP_COLOR = '#F2C94C'; // Gold — reward/highlight color, unchanged in dark mode
+/** Alert Red, unchanged in dark mode — used identically for the crashed ship
+ *  and every mid-gap obstacle, since both read as "the thing that kills you." */
+const HAZARD_COLOR = '#E4574B';
 
 interface SFCaveProps {
   /** Milestone indices already reached in some past run, owned by the app. */
@@ -164,6 +177,13 @@ interface SFCaveProps {
 
 export default function SFCave({ solvedLevels, onSolve }: SFCaveProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const { theme } = useTheme();
+  // The two colors that actually have a documented dark-mode pair (STYLE.md
+  // §2.1: Cream → #12181A, Forest → #8FE07A); everything else in this game
+  // is marked "unchanged" in that table.
+  const bgColor = theme === 'dark' ? '#12181A' : '#FBF7EC';
+  const wallColor = theme === 'dark' ? '#8FE07A' : '#2E7D46';
+  const trailColor = theme === 'dark' ? 'rgba(231,237,233,0.25)' : 'rgba(31,58,66,0.25)';
 
   const [phase, setPhase] = useState<Phase>('ready');
   const [attempts, setAttempts] = useState(0);
@@ -216,10 +236,12 @@ export default function SFCave({ solvedLevels, onSolve }: SFCaveProps) {
     setPhaseSynced('ready');
   }, [setPhaseSynced]);
 
-  /** Generates the cave and parks the ship in it, but doesn't show any of it
-   *  yet — phase goes to 'generating', a brief empty pause, not straight to
-   *  'flying'. The cave data exists immediately (it's cheap, just array
-   *  pushes); what's delayed is the reveal. */
+  /** Generates the whole cave up front (cheap: just array pushes) and parks
+   *  the ship at its first column's center, but doesn't reveal any of it yet
+   *  — phase goes to 'generating', not straight to 'flying'. The ship itself
+   *  is visible and already responds to thrust during that window (see
+   *  `stepGenerating`); only the cave is held back, so it appears around an
+   *  already-moving ship instead of the whole scene snapping in at once. */
   const beginRun = useCallback(() => {
     const gen = freshCaveGen();
     for (let i = 0; i < INITIAL_COLUMNS; i++) genNextColumn(gen);
@@ -246,15 +268,18 @@ export default function SFCave({ solvedLevels, onSolve }: SFCaveProps) {
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx) return;
 
-    ctx.fillStyle = BG_COLOR;
+    ctx.fillStyle = bgColor;
     ctx.fillRect(0, 0, WORLD_W, PLAY_H);
 
-    // 'ready' and 'generating' are deliberately empty — no cave, no ship.
-    // The cave (and the ship inside it) only actually appears once flying
-    // starts; showing either mid-generation, or an idle ship floating on a
-    // blank field before there's anything to fly through, both read as a
-    // rendering bug rather than an intentional "not playing yet" state.
-    if (phaseRef.current === 'flying' || phaseRef.current === 'crashed') {
+    // 'ready' shows nothing at all — no ship, nothing to fly yet. Once a
+    // hold lands, the ship itself appears immediately ('generating' and
+    // beyond) so the player can feel out the controls in open space; only
+    // the cave waits for 'flying', so it doesn't just snap into existence
+    // around an already-idle ship.
+    const showShip = phaseRef.current !== 'ready';
+    const showCave = phaseRef.current === 'flying' || phaseRef.current === 'crashed';
+
+    if (showCave) {
       const gen = caveGenRef.current;
       const scroll = scrollRef.current;
       const firstCol = Math.max(0, Math.floor(scroll / STEP_X));
@@ -266,13 +291,13 @@ export default function SFCave({ solvedLevels, onSolve }: SFCaveProps) {
         const screenX = col * STEP_X - scroll;
         const top = gen.tops[col];
         const bottom = top + gen.gaps[col];
-        ctx.fillStyle = WALL_COLOR;
+        ctx.fillStyle = wallColor;
         ctx.fillRect(screenX, 0, STEP_X + 1, top);
         ctx.fillRect(screenX, bottom, STEP_X + 1, PLAY_H - bottom);
 
         const block = gen.blocks[col];
         if (block !== -1) {
-          ctx.fillStyle = BLOCK_COLOR;
+          ctx.fillStyle = HAZARD_COLOR;
           ctx.fillRect(screenX, block, STEP_X + 1, BLOCK_H);
         }
       }
@@ -292,14 +317,16 @@ export default function SFCave({ solvedLevels, onSolve }: SFCaveProps) {
             ctx.lineTo(sx, p.y);
           }
         }
-        ctx.strokeStyle = 'rgba(31,58,66,0.25)';
+        ctx.strokeStyle = trailColor;
         ctx.lineWidth = 2;
         ctx.stroke();
       }
+    }
 
+    if (showShip) {
       // The ship — a flat square, same as the original's blocky sprite.
       const shipY = yRef.current;
-      ctx.fillStyle = phaseRef.current === 'crashed' ? CRASH_COLOR : SHIP_COLOR;
+      ctx.fillStyle = phaseRef.current === 'crashed' ? HAZARD_COLOR : SHIP_COLOR;
       ctx.fillRect(SHIP_X - SHIP_R, shipY - SHIP_R, SHIP_R * 2, SHIP_R * 2);
 
       // Death ring — the original's expanding stroked circle from the crash
@@ -307,7 +334,7 @@ export default function SFCave({ solvedLevels, onSolve }: SFCaveProps) {
       if (phaseRef.current === 'crashed' && deathTickRef.current > 0) {
         ctx.beginPath();
         ctx.arc(SHIP_X, shipY, deathTickRef.current * DEATH_RING_STEP, 0, Math.PI * 2);
-        ctx.strokeStyle = CRASH_COLOR;
+        ctx.strokeStyle = HAZARD_COLOR;
         ctx.lineWidth = 2;
         ctx.stroke();
       }
@@ -325,9 +352,19 @@ export default function SFCave({ solvedLevels, onSolve }: SFCaveProps) {
       ctx.fillText(`best: ${best}`, WORLD_W - 12, PLAY_H + HUD_H / 2);
       ctx.textAlign = 'left';
     }
-  }, [best]);
+  }, [best, bgColor, wallColor, trailColor]);
 
   // --------------------------------------------------------------- simulation
+
+  /** Same gravity/thrust integration as `stepFlying`, but no scroll, no cave,
+   *  no collision — the ship is just finding its feet in open space before
+   *  the cave it's already generated (see `beginRun`) is revealed. Clamped
+   *  to the playfield bounds since there are no walls yet to stop it. */
+  const stepGenerating = useCallback(() => {
+    const accel = holdingRef.current ? -ACCEL : ACCEL;
+    vyRef.current = Math.max(-VELOCITY_CLAMP, Math.min(VELOCITY_CLAMP, vyRef.current + accel));
+    yRef.current = Math.max(WALL_MARGIN, Math.min(PLAY_H - WALL_MARGIN, yRef.current + vyRef.current));
+  }, []);
 
   const stepFlying = useCallback(() => {
     const accel = holdingRef.current ? -ACCEL : ACCEL;
@@ -386,6 +423,7 @@ export default function SFCave({ solvedLevels, onSolve }: SFCaveProps) {
       // press needed, same as the original's `if(down){setState(1);}` check.
       if (holdingRef.current) beginRun();
     } else if (phaseRef.current === 'generating') {
+      stepGenerating();
       genTickRef.current++;
       if (genTickRef.current >= GENERATING_TICKS) setPhaseSynced('flying');
     } else if (phaseRef.current === 'flying') {
@@ -395,7 +433,7 @@ export default function SFCave({ solvedLevels, onSolve }: SFCaveProps) {
       if (deathTickRef.current >= DEATH_TICKS) resetFlight();
     }
     draw();
-  }, [beginRun, stepFlying, resetFlight, draw, setPhaseSynced]);
+  }, [beginRun, stepGenerating, stepFlying, resetFlight, draw, setPhaseSynced]);
 
   useEffect(() => {
     const id = setInterval(tick, TICK_MS);
@@ -451,8 +489,8 @@ export default function SFCave({ solvedLevels, onSolve }: SFCaveProps) {
       <p className="text-xs text-zinc-400 leading-relaxed font-sans">
         Hold anywhere to thrust up, let go to fall — gravity and thrust are perfectly symmetric, so
         the game is never fighting you unevenly. The cave generates forever and its gap only ever
-        narrows; there's no end to reach, only a distance to beat. Watch for orange blocks floating
-        in the open gap — they aren't walls, but they kill just the same.
+        narrows; there's no end to reach, only a distance to beat. Watch for red blocks floating in
+        the open gap — they aren't walls, but they kill just the same.
       </p>
       {note && <p className="text-xs text-zinc-400 leading-relaxed font-sans">{note}</p>}
 
@@ -488,7 +526,7 @@ export default function SFCave({ solvedLevels, onSolve }: SFCaveProps) {
               Hold (or press Space) to launch and thrust
             </>
           ) : phase === 'generating' ? (
-            <span>Carving the cave&hellip;</span>
+            <span>Get a feel for it&hellip; the cave loads in a moment</span>
           ) : phase === 'flying' ? (
             <>
               <Play className="w-3.5 h-3.5 text-sky-400" />
