@@ -30,17 +30,33 @@ const SHIP_R = 8;
  *  exactly — the coarse, deliberate cadence is a real part of the feel. */
 const TICK_MS = 75;
 
+/** Original SFCave2 canvas playfield height (px) — the reference for scaling
+ *  all physics constants so they feel identical to the original on our larger
+ *  canvas. The HTML5 faithful port (jyuzawa.com/sfcave2) uses a 256×300
+ *  canvas; position=180 initial out of 300 total. */
+const ORIGINAL_PLAY_H = 300;
+/** Scale factor from original canvas to ours — applied uniformly to every
+ *  physics constant so the ship traverses the same *fraction* of screen per
+ *  tick as it did in the original. */
+const PHYS_SCALE = PLAY_H / ORIGINAL_PLAY_H; // ≈ 1.43
+
 /** World-px width of one generated cave column — also, deliberately, the
  *  velocity clamp below. The original enforces the same equality (its column
  *  width and velocity clamp are both exactly 8): it's what guarantees the
  *  ship can never cross an entire column — and so skip past a wall — in a
- *  single tick, without needing sub-step collision checks. */
-const STEP_X = 12;
+ *  single tick, without needing sub-step collision checks.
+ *  Original value: 8px. Scaled: 8 × PHYS_SCALE ≈ 11. */
+const STEP_X = Math.round(8 * PHYS_SCALE);  // = 11
+/** Original clamp: ±8px. Scaled: ±8 × PHYS_SCALE. Kept equal to STEP_X per
+ *  the original's invariant so the anti-skip guarantee holds here too. */
 const VELOCITY_CLAMP = STEP_X;
-/** The original's clamp is always 8x its per-tick accel (8 and 1) — same
- *  ratio here, so it still takes exactly 8 ticks (600ms) to reach top speed
- *  in either direction. */
-const ACCEL = VELOCITY_CLAMP / 8;
+/** Original: ±1px per tick (perfectly symmetric gravity and thrust).
+ *  Scaled: 1 × PHYS_SCALE. Still takes exactly 8 ticks (600 ms) to reach
+ *  top speed in either direction — identical cadence to the original. */
+const ACCEL = VELOCITY_CLAMP / 8; // = PHYS_SCALE × 1
+/** Original SFCave2 starts with velocity = -5 (already moving upward) so the
+ *  ship isn't dead-stopped at run start. Scaled the same way. */
+const VY_INITIAL = Math.round(-5 * PHYS_SCALE); // ≈ -7
 
 const WALL_MARGIN = 16;
 /** Gap the run starts at, and how much it loses every 10 ticks — both scaled
@@ -247,7 +263,7 @@ export default function SFCave({ solvedLevels, onSolve }: SFCaveProps) {
     for (let i = 0; i < INITIAL_COLUMNS; i++) genNextColumn(gen);
     caveGenRef.current = gen;
     yRef.current = gen.tops[0] + gen.gaps[0] / 2;
-    vyRef.current = 0;
+    vyRef.current = VY_INITIAL;
     scrollRef.current = 0;
     trailRef.current = [];
     crossedRef.current = new Set();
