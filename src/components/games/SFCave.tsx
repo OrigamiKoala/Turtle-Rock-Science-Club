@@ -56,10 +56,16 @@ const CAVE_DELTA_REROLL_CHANCE = 0.1;
 const CAVE_DELTA_SCALE = 1.4;
 
 /** Free-floating obstacle blocks inside the open gap — the "mines" from the
- *  original PalmOS SF Cave, not just top/bottom walls. The original spawns
- *  one on the exact same every-10-tick beat as the gap shrink (both driven
- *  by the same `time % 10 == 0` check), scaled here from its 32px block in a
- *  300-tall playfield. */
+ *  original PalmOS SF Cave, not just top/bottom walls. Sized from its 32px
+ *  block in a 300-tall playfield. The original spawns one on the exact same
+ *  every-10-tick beat as the gap shrink, but its 256px-wide canvas only ever
+ *  shows ~3 columns' worth of blocks at once (32 visible columns / 10); at
+ *  our much wider 800px canvas, the same 10-tick period would show roughly
+ *  twice as many blocks on screen simultaneously as the original ever did.
+ *  Spawning every other beat instead — still on-beat with the shrink, just
+ *  half as often — keeps it visually at ~3 blocks per screen, matching what
+ *  the original actually looked like rather than its literal tick count. */
+const BLOCK_SPAWN_EVERY = CAVE_GAP_SHRINK_EVERY * 2;
 const BLOCK_H = 45;
 const BLOCK_COLOR = '#f97316';
 
@@ -100,11 +106,10 @@ function freshCaveGen(): CaveGen {
 
 /** Appends exactly one more column, mutating `gen` in place. */
 function genNextColumn(gen: CaveGen) {
-  // The original checks `time % 10 == 0` twice, once for the gap shrink and
-  // once for the block spawn — the very same tick drives both, not two
-  // independent cadences.
-  const beatTick = gen.tops.length > 0 && gen.tops.length % CAVE_GAP_SHRINK_EVERY === 0;
-  if (beatTick) {
+  const columnsSoFar = gen.tops.length;
+  const shrinkTick = columnsSoFar > 0 && columnsSoFar % CAVE_GAP_SHRINK_EVERY === 0;
+  const blockTick = columnsSoFar > 0 && columnsSoFar % BLOCK_SPAWN_EVERY === 0;
+  if (shrinkTick) {
     gen.gapValue = Math.max(CAVE_GAP_FLOOR, gen.gapValue - CAVE_GAP_SHRINK_STEP);
   }
   if (Math.random() < CAVE_DELTA_REROLL_CHANCE) {
@@ -134,7 +139,7 @@ function genNextColumn(gen: CaveGen) {
   // just guarded against a gap that's already narrower than the block
   // (the original doesn't guard this, so a late-game block could poke past
   // the wall it's next to).
-  gen.blocks.push(beatTick && gen.gapValue > BLOCK_H ? nextTop + Math.random() * (gen.gapValue - BLOCK_H) : -1);
+  gen.blocks.push(blockTick && gen.gapValue > BLOCK_H ? nextTop + Math.random() * (gen.gapValue - BLOCK_H) : -1);
 }
 
 const BEST_KEY = 'tr_sc_cave_best';

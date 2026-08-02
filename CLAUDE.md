@@ -422,13 +422,19 @@ note behind a genuine mess-up or success, never a mere selection or drag.
   light passable interior, matching the original's actual (surprising, if
   you assumed black-background/white-walls) color relationship — only the
   specific hex values were swapped to the site's palette. Free-floating
-  orange obstacle blocks (`BLOCK_H`, `CaveGen.blocks`) spawn mid-gap on the
-  exact same every-10-tick beat as the gap shrink — the original PalmOS
-  game's "mines," reproduced from the same clone source rather than
-  invented, checked via the same `time % 10 == 0` condition driving both
-  effects instead of two independent cadences. A column's block is guarded
-  against spawning if the gap has already narrowed past `BLOCK_H` (the
-  original has no such guard, so a late-game block there could poke past the
+  orange obstacle blocks (`BLOCK_H`, `CaveGen.blocks`) spawn mid-gap — the
+  original PalmOS game's "mines," reproduced from the same clone source
+  rather than invented. The original spawns one on the exact same
+  every-10-tick beat as the gap shrink, but that beat is *not* copied
+  literally: its 256px canvas only ever shows ~3 columns' worth of blocks at
+  once (32 visible columns / 10), while our much wider 800px canvas at the
+  same 10-tick period would show roughly twice as many blocks on screen
+  simultaneously as the original ever did — `BLOCK_SPAWN_EVERY` spawns one
+  every other shrink-beat instead, restoring that same ~3-per-screen density
+  the original actually looked like rather than matching its raw tick count.
+  A column's block is guarded against spawning if the gap has already
+  narrowed past `BLOCK_H` (the original has no such guard, so a late-game
+  block there could poke past the
   wall it's next to — a real edge case in the source, not one worth copying).
 
 `VirtualLab.tsx` is the shell that hosts them, keyed by `GameId` in
