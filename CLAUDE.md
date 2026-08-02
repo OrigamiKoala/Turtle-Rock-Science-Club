@@ -382,24 +382,46 @@ note behind a genuine mess-up or success, never a mere selection or drag.
 - `ChemTextAdventure.tsx` — not hosted here. Links out to an external
   choose-your-own-path chemistry story; clicking the link *is* the win
   condition and the only way to earn its "Adventurer" badge.
-- `SFCave.tsx` — a faithful clone of the classic *SF Cave*: hold to thrust
-  against a constant gravity, let go to fall, thread a scrolling cave with no
-  steering axis besides up/down. Unlike every other game here it has **no
-  discrete levels** — the cave is generated forever (`extendCave` only ever
-  appends to the centerline array, called every frame to keep it ahead of the
-  ship) and gap/turniness/scroll-speed all ramp continuously with distance
-  before plateauing at a max difficulty, rather than jumping between
-  hand-tuned level configs. Because `VirtualLab`'s XP/badge plumbing expects a
-  `solvedLevels: number[]` + `onSolve(levelIndex)` per game, five fixed
-  distance thresholds (`MILESTONES`) stand in for levels — crossing one in a
-  single run awards XP and the "Spelunker" badge line, same mechanism as
-  every other game, even though there's no way to "select" milestone 3
-  without flying through 1 and 2 first. The RNG is *not* seeded (`Math.random`
-  per run, unlike `Epicenter`'s reproducible layouts) since an endless runner
-  is supposed to be different every attempt. Graphics are deliberately flat —
-  solid black background, unshaded flat-fill walls, a plain square ship — no
-  gradients or particle effects, matching the original's minimal look with
-  only the color swapped in.
+- `SFCave.tsx` — a port of the original game's *actual logic*, not just its
+  vibe, modeled on a faithful HTML5 clone
+  (github.com/yuzawa-san/sfcave2) rather than guessed at. The real game ticks
+  at a fixed 75ms (`TICK_MS`) — not 60fps — and every tick either does
+  `velocity -= ACCEL` (holding) or `velocity += ACCEL` (not holding), clamped
+  to `±VELOCITY_CLAMP`, position `+= velocity`. That symmetry (gravity and
+  thrust are the exact same magnitude, opposite sign — no separate "thrust
+  wins" constant) and the coarse tick cadence are the actual feel; an earlier
+  pass here used mismatched gravity/thrust constants at 60fps with
+  sub-stepped collision, which was both 4x too strong (accel was applied in
+  full every sub-step instead of divided across them) and just structurally
+  different from the source game. Only the cave's gap narrows over time,
+  checked every 10 ticks (`genNextColumn`) — scroll speed and turn sharpness
+  are constant for the whole run, matching the original exactly; they don't
+  ramp. `VELOCITY_CLAMP` is deliberately equal to the cave's column width
+  (`STEP_X`) because the original enforces that same equality — it's what
+  lets the ship never cross an entire column in one tick, so no per-tick
+  sub-stepping is needed to catch a thin wall.
+  Unlike every other game here it has **no discrete levels** — the cave
+  generates forever (`genNextColumn` appends exactly one column per tick
+  while flying, seeded once with `INITIAL_COLUMNS` up front) and there is no
+  floor on the gap beyond a render-safety clamp, so — like the original —
+  every run necessarily ends eventually, however skilled the player. Because
+  `VirtualLab`'s XP/badge plumbing expects a `solvedLevels: number[]` +
+  `onSolve(levelIndex)` per game, five fixed distance thresholds
+  (`MILESTONES`) stand in for levels — crossing one in a single run awards XP
+  and the "Spelunker" badge, same mechanism as every other game, even though
+  there's no way to "select" milestone 3 without flying through 1 and 2
+  first. Input is polled once per tick from a plain `holdingRef` set by
+  pointer/key events, not triggered from the input handler itself — same as
+  the original's global `down` boolean — which is what lets a hold still
+  down when a run ends (or the "ready" screen returns) just start working on
+  the very next tick with no extra click. `resetFlight` explicitly zeroes
+  `holdingRef`, again mirroring the original's `down = false` the instant it
+  returns to its start screen, so holding through the whole death animation
+  does *not* auto-relaunch — a fresh press is always required. Graphics are
+  blocky per-column rectangles (not a smooth path) with green walls and a
+  light passable interior, matching the original's actual (surprising, if
+  you assumed black-background/white-walls) color relationship — only the
+  specific hex values were swapped to the site's palette.
 
 `VirtualLab.tsx` is the shell that hosts them, keyed by `GameId` in
 `types.ts`, and awards XP once per level (`ChemTextAdventure` only ever has
@@ -410,9 +432,10 @@ into multiple rows by default CSS grid behaviour, no scroll container needed.
 All seven science-domain games are "always-dark" chrome like
 `OrbitalSlingshot`, the same choice the doc's integration notes call for —
 none of them try to hook into the `.game-*` wrapper-class theming scheme
-described below. `SFCave` is also always-dark (a literal black background is
-part of the original game's identity, not just a style match for its
-siblings).
+described below. `SFCave` matches that same site-theme-independent framing (a
+plain `bg-black` canvas wrapper, no `.game-*` hook either), but the play
+surface itself is *not* literally black — see above, its green-wall/light-gap
+color relationship is a real part of the original's look.
 
 `Dashboard.tsx`'s `badgeCatalog` now lists all thirteen earnable badges
 (`Foundation Member` plus one per game, including `ChemTextAdventure`'s) instead

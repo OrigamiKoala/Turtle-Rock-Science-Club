@@ -4,52 +4,66 @@ import { RotateCcw, Play, Flashlight, Trophy } from 'lucide-react';
 /**
  * SF Cave
  * -------
- * A faithful clone of the classic: hold to fire a thruster, let go to fall.
- * Two constant accelerations — gravity down, thrust up harder — are the
- * entire game, no steering. The cave is generated on the fly, forever, and
- * gets narrower and faster the further you get, so unlike the site's other
- * puzzle games there is no "solved" state, only how far you got. Distance
- * milestones stand in for levels so it can still hook into the same XP/badge
- * plumbing every other game uses.
+ * A port of the original's actual logic, not just its vibe. The real game
+ * (see e.g. github.com/yuzawa-san/sfcave2, a faithful HTML5 port) ticks at a
+ * fixed 75ms — not 60fps — and every tick either does `velocity--` (holding)
+ * or `velocity++` (not holding), clamped to ±8, position += velocity. That's
+ * it: perfectly symmetric gravity and thrust, no separate "stronger thrust"
+ * constant, and no sub-stepping. Only the cave's gap narrows over time
+ * (checked every 10 ticks); scroll speed and turn sharpness never ramp.
+ * Everything below is that same tick, scaled to our larger canvas.
  */
 
 const WORLD_W = 800;
 const WORLD_H = 460;
+/** A dedicated HUD strip at the bottom, same as the original's separate score
+ *  bar below the cave — score text needs guaranteed contrast, which reading it
+ *  directly off the (color-shifting) playfield can't promise. */
+const HUD_H = 30;
+const PLAY_H = WORLD_H - HUD_H;
 
 const SHIP_X = 160;
-/** Half-extent of the flat square ship, matching the original's blocky look. */
-const SHIP_R = 6;
+const SHIP_R = 8;
 
-/** Constant downward pull, every frame, whether or not the player is holding. */
-const GRAVITY = 0.26;
-/** Added upward accel while held. Bigger than GRAVITY so holding wins the tug-of-war. */
-const THRUST = 0.58;
-const MAX_VSPEED = 6.2;
-/** Sub-steps per rendered frame so a fast fall can't tunnel through a thin wall. */
-const SUBSTEPS = 4;
+/** One game tick, matching the original's `window.setInterval(drawFrame, 75)`
+ *  exactly — the coarse, deliberate cadence is a real part of the feel. */
+const TICK_MS = 75;
 
-/** World-space spacing between random-walk cave samples. */
-const STEP_X = 20;
-/** Kept off the very top/bottom of the canvas so a wall never touches the edge. */
-const WALL_MARGIN = 24;
-/** How far past the ship the cave must already exist before it's extended. */
-const GEN_LOOKAHEAD = WORLD_W + 200;
+/** World-px width of one generated cave column — also, deliberately, the
+ *  velocity clamp below. The original enforces the same equality (its column
+ *  width and velocity clamp are both exactly 8): it's what guarantees the
+ *  ship can never cross an entire column — and so skip past a wall — in a
+ *  single tick, without needing sub-step collision checks. */
+const STEP_X = 12;
+const VELOCITY_CLAMP = STEP_X;
+/** The original's clamp is always 8x its per-tick accel (8 and 1) — same
+ *  ratio here, so it still takes exactly 8 ticks (600ms) to reach top speed
+ *  in either direction. */
+const ACCEL = VELOCITY_CLAMP / 8;
+
+const WALL_MARGIN = 16;
+/** Gap the run starts at, and how much it loses every 10 ticks — both scaled
+ *  from the original's 260-start/300-tall playfield to ours. There is no
+ *  floor beyond a render-safety clamp: like the original, the cave truly can
+ *  narrow past what's passable, so every run ends eventually. */
+const CAVE_GAP_INITIAL = 370;
+const CAVE_GAP_SHRINK_STEP = 1.5;
+const CAVE_GAP_SHRINK_EVERY = 10;
+const CAVE_GAP_FLOOR = 4;
+/** Same 10% reroll chance as the original, so a turn holds for several
+ *  columns in a row instead of zigzagging every single one. */
+const CAVE_DELTA_REROLL_CHANCE = 0.1;
+const CAVE_DELTA_SCALE = 1.4;
+
+const INITIAL_COLUMNS = Math.ceil(WORLD_W / STEP_X) + 4;
+/** How many ticks the death ring animation plays before auto-returning to
+ *  "ready" — matching the original's fixed 15-tick death screen. */
+const DEATH_TICKS = 15;
+const DEATH_RING_STEP = 9;
 
 /** Distance thresholds that stand in for "levels" — crossing one in a single
  *  run unlocks its badge, same as solving a level does in every other game. */
 const MILESTONES = [800, 2000, 4000, 7000, 12000];
-
-/** Gap, turniness and scroll speed all ramp with distance and then plateau —
- *  the cave never actually ends, it just stops getting harder. */
-function gapForDistance(d: number): number {
-  return Math.max(92, 190 - d / 45);
-}
-function turnForDistance(d: number): number {
-  return Math.min(24, 8 + d / 260);
-}
-function speedForDistance(d: number): number {
-  return Math.min(4.8, 2.2 + d / 2600);
-}
 
 type Phase = 'ready' | 'flying' | 'crashed';
 
@@ -58,32 +72,57 @@ interface Vec {
   y: number;
 }
 
-/** Extends the cave centerline in place, up to (at least) `uptoX`. Called every
- *  frame — the array only ever grows, so generation has no fixed end. */
-function extendCave(centers: number[], rng: () => number, uptoX: number) {
-  let idx = centers.length - 1;
-  while (idx * STEP_X < uptoX) {
-    idx++;
-    const d = idx * STEP_X;
-    const halfGap = gapForDistance(d) / 2;
-    const minCenter = halfGap + WALL_MARGIN;
-    const maxCenter = WORLD_H - halfGap - WALL_MARGIN;
-    const delta = (rng() - 0.5) * 2 * turnForDistance(d);
-    const next = Math.min(maxCenter, Math.max(minCenter, centers[idx - 1] + delta));
-    centers.push(next);
-  }
+/** All state needed to keep generating cave columns forever. One column is
+ *  appended per tick while flying — never precomputed to some fixed end. */
+interface CaveGen {
+  tops: number[];
+  gaps: number[];
+  /** Current per-column drift; persists across many columns, like the
+   *  original's `caveDelta`, instead of rerolling every single column. */
+  delta: number;
+  gapValue: number;
 }
 
-/** Cave centerline at an arbitrary world x, linearly interpolated between samples. */
-function centerAt(worldX: number, centers: number[]): number {
-  const idx = Math.max(0, Math.floor(worldX / STEP_X));
-  const frac = (worldX - idx * STEP_X) / STEP_X;
-  const a = centers[Math.min(idx, centers.length - 1)];
-  const b = centers[Math.min(idx + 1, centers.length - 1)];
-  return a + (b - a) * frac;
+function freshCaveGen(): CaveGen {
+  return { tops: [], gaps: [], delta: 0, gapValue: CAVE_GAP_INITIAL };
+}
+
+/** Appends exactly one more column, mutating `gen` in place. */
+function genNextColumn(gen: CaveGen) {
+  if (gen.tops.length > 0 && gen.tops.length % CAVE_GAP_SHRINK_EVERY === 0) {
+    gen.gapValue = Math.max(CAVE_GAP_FLOOR, gen.gapValue - CAVE_GAP_SHRINK_STEP);
+  }
+  if (Math.random() < CAVE_DELTA_REROLL_CHANCE) {
+    gen.delta = (Math.random() * 10 - 5) * CAVE_DELTA_SCALE;
+  }
+
+  const prevTop = gen.tops.length > 0 ? gen.tops[gen.tops.length - 1] : (PLAY_H - gen.gapValue) / 2;
+  let nextTop = prevTop + gen.delta;
+  const minTop = WALL_MARGIN;
+  const maxTop = PLAY_H - WALL_MARGIN - gen.gapValue;
+  // Bounce off the edges rather than clamp-and-stick — same as the original,
+  // which flips caveDelta's sign on hitting a bound instead of freezing it
+  // there while delta keeps pointing further into the wall.
+  if (nextTop < minTop) {
+    nextTop = minTop;
+    gen.delta = Math.abs(gen.delta);
+  } else if (nextTop > maxTop) {
+    nextTop = maxTop;
+    gen.delta = -Math.abs(gen.delta);
+  }
+
+  gen.tops.push(nextTop);
+  gen.gaps.push(gen.gapValue);
 }
 
 const BEST_KEY = 'tr_sc_cave_best';
+
+const WALL_COLOR = '#2E7D46';
+const BG_COLOR = '#FBF7EC';
+const HUD_COLOR = '#1F3A42';
+const HUD_TEXT = '#FBF7EC';
+const SHIP_COLOR = '#fbbf24';
+const CRASH_COLOR = '#ef4444';
 
 interface SFCaveProps {
   /** Milestone indices already reached in some past run, owned by the app. */
@@ -93,7 +132,6 @@ interface SFCaveProps {
 
 export default function SFCave({ solvedLevels, onSolve }: SFCaveProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const frameRef = useRef<number | null>(null);
 
   const [phase, setPhase] = useState<Phase>('ready');
   const [attempts, setAttempts] = useState(0);
@@ -104,39 +142,59 @@ export default function SFCave({ solvedLevels, onSolve }: SFCaveProps) {
   });
   const [note, setNote] = useState<string | null>(null);
 
-  // Mutable simulation state lives in refs — React state at 60fps would thrash.
-  const yRef = useRef(WORLD_H / 2);
+  // Mutable simulation state lives in refs — a 13Hz interval still shouldn't
+  // fight React's render cycle for it.
+  const yRef = useRef(PLAY_H / 2);
   const vyRef = useRef(0);
   const scrollRef = useRef(0);
+  /** Physical hold state, driven only by pointer/key events — polled once per
+   *  tick, exactly like the original's global `down` boolean, rather than
+   *  triggering a transition directly from the input handler. That polling
+   *  is what lets a hold that's still down when a run ends (or begins) just
+   *  keep working next tick with no extra click required. */
   const holdingRef = useRef(false);
   const phaseRef = useRef<Phase>('ready');
-  const centersRef = useRef<number[]>([WORLD_H / 2]);
-  const rngRef = useRef<() => number>(Math.random);
+  const caveGenRef = useRef<CaveGen>(freshCaveGen());
   const trailRef = useRef<Vec[]>([]);
   const crossedRef = useRef<Set<number>>(new Set());
+  const deathTickRef = useRef(0);
 
   const setPhaseSynced = useCallback((next: Phase) => {
     phaseRef.current = next;
     setPhase(next);
   }, []);
 
+  /** Back to the idle screen. Explicitly zeroes `holdingRef` — the original
+   *  does the same (`down = false`) the instant it returns to the start
+   *  screen, so a mouse button held through the whole death animation does
+   *  NOT auto-relaunch; a fresh press is always required. */
   const resetFlight = useCallback(() => {
-    yRef.current = WORLD_H / 2;
+    yRef.current = PLAY_H / 2;
     vyRef.current = 0;
     scrollRef.current = 0;
     holdingRef.current = false;
-    centersRef.current = [WORLD_H / 2];
-    rngRef.current = Math.random;
-    extendCave(centersRef.current, rngRef.current, GEN_LOOKAHEAD);
     trailRef.current = [];
-    crossedRef.current = new Set();
+    deathTickRef.current = 0;
     setDistance(0);
     setNote(null);
     setPhaseSynced('ready');
   }, [setPhaseSynced]);
 
-  // Only on mount — resetFlight is a stable useCallback and is called again
-  // directly (not through this effect) on every subsequent restart.
+  const beginRun = useCallback(() => {
+    const gen = freshCaveGen();
+    for (let i = 0; i < INITIAL_COLUMNS; i++) genNextColumn(gen);
+    caveGenRef.current = gen;
+    yRef.current = gen.tops[0] + gen.gaps[0] / 2;
+    vyRef.current = 0;
+    scrollRef.current = 0;
+    trailRef.current = [];
+    crossedRef.current = new Set();
+    setDistance(0);
+    setNote(null);
+    setAttempts((n) => n + 1);
+    setPhaseSynced('flying');
+  }, [setPhaseSynced]);
+
   useEffect(() => {
     resetFlight();
   }, [resetFlight]);
@@ -146,38 +204,26 @@ export default function SFCave({ solvedLevels, onSolve }: SFCaveProps) {
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
-    const centers = centersRef.current;
-    if (!canvas || !ctx || centers.length === 0) return;
+    if (!canvas || !ctx) return;
 
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(0, 0, WORLD_W, WORLD_H);
+    ctx.fillStyle = BG_COLOR;
+    ctx.fillRect(0, 0, WORLD_W, PLAY_H);
 
+    const gen = caveGenRef.current;
     const scroll = scrollRef.current;
-    const sampleStep = 6;
+    const firstCol = Math.max(0, Math.floor(scroll / STEP_X));
+    const lastCol = Math.min(gen.tops.length - 1, Math.ceil((scroll + WORLD_W) / STEP_X));
 
-    // Flat, unshaded walls — the classic look, just recoloured to the site's
-    // palette. The boundary drawn is exactly the boundary that kills you.
-    ctx.fillStyle = '#e7e5e4';
-
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    for (let sx = 0; sx <= WORLD_W; sx += sampleStep) {
-      const c = centerAt(scroll + sx, centers);
-      ctx.lineTo(sx, c - gapForDistance(scroll + sx) / 2);
+    // Flat, blocky columns — the original's actual look (solid rects per
+    // column, not a smooth path), just with the wall/passable colors swapped.
+    ctx.fillStyle = WALL_COLOR;
+    for (let col = firstCol; col <= lastCol; col++) {
+      const screenX = col * STEP_X - scroll;
+      const top = gen.tops[col];
+      const bottom = top + gen.gaps[col];
+      ctx.fillRect(screenX, 0, STEP_X + 1, top);
+      ctx.fillRect(screenX, bottom, STEP_X + 1, PLAY_H - bottom);
     }
-    ctx.lineTo(WORLD_W, 0);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.moveTo(0, WORLD_H);
-    for (let sx = 0; sx <= WORLD_W; sx += sampleStep) {
-      const c = centerAt(scroll + sx, centers);
-      ctx.lineTo(sx, c + gapForDistance(scroll + sx) / 2);
-    }
-    ctx.lineTo(WORLD_W, WORLD_H);
-    ctx.closePath();
-    ctx.fill();
 
     // Motion trail — a faint line of where the ship has actually been.
     const trail = trailRef.current;
@@ -194,126 +240,119 @@ export default function SFCave({ solvedLevels, onSolve }: SFCaveProps) {
           ctx.lineTo(sx, p.y);
         }
       }
-      ctx.strokeStyle = 'rgba(251,191,36,0.4)';
+      ctx.strokeStyle = 'rgba(31,58,66,0.25)';
       ctx.lineWidth = 2;
       ctx.stroke();
     }
 
-    // The ship itself — a flat square, same as the original.
+    // The ship — a flat square, same as the original's blocky sprite.
     const shipY = yRef.current;
-    ctx.fillStyle = phaseRef.current === 'crashed' ? '#ef4444' : '#fbbf24';
+    ctx.fillStyle = phaseRef.current === 'crashed' ? CRASH_COLOR : SHIP_COLOR;
     ctx.fillRect(SHIP_X - SHIP_R, shipY - SHIP_R, SHIP_R * 2, SHIP_R * 2);
 
-    // Score, drawn directly on the playfield like the original's HUD.
-    ctx.fillStyle = '#e7e5e4';
-    ctx.font = '600 20px monospace';
-    ctx.textBaseline = 'top';
-    ctx.fillText(`${Math.round(scrollRef.current)}`, 16, 14);
+    // Death ring — the original's expanding stroked circle from the crash
+    // point, playing out over its fixed 15-tick death screen.
+    if (phaseRef.current === 'crashed' && deathTickRef.current > 0) {
+      ctx.beginPath();
+      ctx.arc(SHIP_X, shipY, deathTickRef.current * DEATH_RING_STEP, 0, Math.PI * 2);
+      ctx.strokeStyle = CRASH_COLOR;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    // Dedicated HUD strip, same as the original's separate score bar.
+    ctx.fillStyle = HUD_COLOR;
+    ctx.fillRect(0, PLAY_H, WORLD_W, HUD_H);
+    ctx.fillStyle = HUD_TEXT;
+    ctx.font = '600 14px monospace';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`score: ${Math.round(scrollRef.current)}`, 12, PLAY_H + HUD_H / 2);
     if (best > 0) {
-      ctx.font = '600 12px monospace';
-      ctx.fillStyle = 'rgba(231,229,228,0.55)';
-      ctx.fillText(`best ${best}`, 16, 40);
+      ctx.textAlign = 'right';
+      ctx.fillText(`best: ${best}`, WORLD_W - 12, PLAY_H + HUD_H / 2);
+      ctx.textAlign = 'left';
     }
   }, [best]);
 
   // --------------------------------------------------------------- simulation
 
-  const step = useCallback(() => {
-    if (phaseRef.current !== 'flying') return;
-    const centers = centersRef.current;
+  const stepFlying = useCallback(() => {
+    const accel = holdingRef.current ? -ACCEL : ACCEL;
+    vyRef.current = Math.max(-VELOCITY_CLAMP, Math.min(VELOCITY_CLAMP, vyRef.current + accel));
+    yRef.current += vyRef.current;
 
-    for (let i = 0; i < SUBSTEPS; i++) {
-      // GRAVITY/THRUST are tuned as per-frame values; divide by SUBSTEPS so
-      // sub-stepping (needed for collision precision) doesn't also multiply
-      // the actual acceleration the player feels by 4x.
-      const accel = (holdingRef.current ? GRAVITY - THRUST : GRAVITY) / SUBSTEPS;
-      vyRef.current = Math.max(-MAX_VSPEED, Math.min(MAX_VSPEED, vyRef.current + accel));
-      yRef.current += vyRef.current;
+    scrollRef.current += STEP_X;
+    const gen = caveGenRef.current;
+    genNextColumn(gen);
 
-      const speed = speedForDistance(scrollRef.current);
-      scrollRef.current += speed / SUBSTEPS;
-      extendCave(centers, rngRef.current, scrollRef.current + GEN_LOOKAHEAD);
+    const colIndex = Math.min(gen.tops.length - 1, Math.floor((scrollRef.current + SHIP_X) / STEP_X));
+    const top = gen.tops[colIndex];
+    const bottom = top + gen.gaps[colIndex];
 
-      const worldX = scrollRef.current + SHIP_X;
-      const c = centerAt(worldX, centers);
-      const gap = gapForDistance(worldX);
-      const top = c - gap / 2;
-      const bottom = c + gap / 2;
-
-      if (yRef.current - SHIP_R < top || yRef.current + SHIP_R > bottom) {
-        setBest((prevBest) => {
-          const finalDistance = Math.round(scrollRef.current);
-          if (finalDistance > prevBest) {
-            localStorage.setItem(BEST_KEY, String(finalDistance));
-            return finalDistance;
-          }
-          return prevBest;
-        });
-        setNote(
-          "Gravity never paused while you were deciding — the wall you hit is just where the tug-of-war between it and your thruster landed. Letting go doesn't hold your altitude, it hands the acceleration straight back to gravity."
-        );
-        setPhaseSynced('crashed');
-        return;
-      }
-
-      trailRef.current.push({ x: worldX, y: yRef.current });
-      if (trailRef.current.length > 240) trailRef.current.shift();
-
-      MILESTONES.forEach((m, idx) => {
-        if (scrollRef.current >= m && !crossedRef.current.has(idx)) {
-          crossedRef.current.add(idx);
-          onSolve(idx);
-          setNote(
-            'The cave keeps narrowing and the scroll keeps speeding up as you go — the same two accelerations are just doing more work in less space, which is why later stretches feel so much twitchier than this one did.'
-          );
+    if (yRef.current - SHIP_R < top || yRef.current + SHIP_R > bottom) {
+      setBest((prevBest) => {
+        const finalDistance = Math.round(scrollRef.current);
+        if (finalDistance > prevBest) {
+          localStorage.setItem(BEST_KEY, String(finalDistance));
+          return finalDistance;
         }
+        return prevBest;
       });
+      setNote(
+        "Gravity and thrust are perfectly symmetric here — every tick either adds or subtracts the exact same amount from your velocity. The wall you hit is just where that back-and-forth landed; there's no separate 'stronger' force doing the actual killing."
+      );
+      deathTickRef.current = 0;
+      setPhaseSynced('crashed');
+      return;
     }
+
+    trailRef.current.push({ x: scrollRef.current + SHIP_X, y: yRef.current });
+    if (trailRef.current.length > 240) trailRef.current.shift();
+
+    MILESTONES.forEach((m, idx) => {
+      if (scrollRef.current >= m && !crossedRef.current.has(idx)) {
+        crossedRef.current.add(idx);
+        onSolve(idx);
+        setNote(
+          "The cave only ever narrows here — scroll speed and how sharply it turns both stay constant the whole run. One shrinking number is enough to guarantee every run ends eventually, no matter how good you get."
+        );
+      }
+    });
 
     setDistance(Math.round(scrollRef.current));
   }, [onSolve, setPhaseSynced]);
 
+  const tick = useCallback(() => {
+    if (phaseRef.current === 'ready') {
+      // Polled, not event-triggered — a hold that was already down when we
+      // returned to 'ready' launches on the very next tick with no fresh
+      // press needed, same as the original's `if(down){setState(1);}` check.
+      if (holdingRef.current) beginRun();
+    } else if (phaseRef.current === 'flying') {
+      stepFlying();
+    } else {
+      deathTickRef.current++;
+      if (deathTickRef.current >= DEATH_TICKS) resetFlight();
+    }
+    draw();
+  }, [beginRun, stepFlying, resetFlight, draw]);
+
   useEffect(() => {
-    const loop = () => {
-      step();
-      draw();
-      frameRef.current = requestAnimationFrame(loop);
-    };
-    frameRef.current = requestAnimationFrame(loop);
-    return () => {
-      if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
-    };
-  }, [step, draw]);
+    const id = setInterval(tick, TICK_MS);
+    return () => clearInterval(id);
+  }, [tick]);
 
   // ------------------------------------------------------------------- input
-
-  // Launching and thrusting are the same gesture, but only from 'ready' — a
-  // 'crashed' ship must go through the "Try again" button first. Otherwise a
-  // click on that button (down+up on the button, never on the canvas) would
-  // set holdingRef true with no matching release, leaving the ship thrusting
-  // forever with nothing held down.
-  const startOrThrust = useCallback(() => {
-    if (phaseRef.current === 'crashed') return;
-    if (phaseRef.current === 'ready') {
-      setAttempts((n) => n + 1);
-      setPhaseSynced('flying');
-    }
-    holdingRef.current = true;
-  }, [setPhaseSynced]);
-
-  const releaseThrust = useCallback(() => {
-    holdingRef.current = false;
-  }, []);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.code !== 'Space') return;
       e.preventDefault();
-      startOrThrust();
+      holdingRef.current = true;
     };
     const onKeyUp = (e: KeyboardEvent) => {
       if (e.code !== 'Space') return;
-      releaseThrust();
+      holdingRef.current = false;
     };
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
@@ -321,11 +360,14 @@ export default function SFCave({ solvedLevels, onSolve }: SFCaveProps) {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
     };
-  }, [startOrThrust, releaseThrust]);
+  }, []);
 
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     e.currentTarget.setPointerCapture(e.pointerId);
-    startOrThrust();
+    holdingRef.current = true;
+  };
+  const releaseThrust = () => {
+    holdingRef.current = false;
   };
 
   return (
@@ -347,10 +389,9 @@ export default function SFCave({ solvedLevels, onSolve }: SFCaveProps) {
       </div>
 
       <p className="text-xs text-zinc-400 leading-relaxed font-sans">
-        Hold anywhere to thrust up, let go to fall. Gravity never stops pulling — you are always
-        accelerating one way or the other, never just coasting level. The cave generates forever
-        and gets narrower and faster the further you get; there's no end to reach, only a
-        distance to beat.
+        Hold anywhere to thrust up, let go to fall — gravity and thrust are perfectly symmetric, so
+        the game is never fighting you unevenly. The cave generates forever and its gap only ever
+        narrows; there's no end to reach, only a distance to beat.
       </p>
       {note && <p className="text-xs text-zinc-400 leading-relaxed font-sans">{note}</p>}
 
@@ -367,16 +408,12 @@ export default function SFCave({ solvedLevels, onSolve }: SFCaveProps) {
         />
 
         {phase === 'crashed' && (
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center gap-3 text-center px-6">
-            <h4 className="font-display font-bold text-xl text-red-400">Ship lost</h4>
-            <p className="text-xs text-zinc-300 font-mono">
-              Distance: {distance}px {distance >= best && distance > 0 ? '— new best!' : `(best ${best}px)`}
-            </p>
+          <div className="absolute top-2 right-2 flex items-center gap-2">
             <button
               onClick={resetFlight}
-              className="px-5 py-2 rounded-full bg-sky-500 hover:bg-sky-400 text-xs font-bold text-stone-950 cursor-pointer transition flex items-center gap-1.5"
+              className="px-3 py-1.5 rounded-full bg-sky-500 hover:bg-sky-400 text-[11px] font-bold text-stone-950 cursor-pointer transition flex items-center gap-1.5"
             >
-              <RotateCcw className="w-3.5 h-3.5" /> Try again
+              <RotateCcw className="w-3 h-3" /> Skip to ready
             </button>
           </div>
         )}
@@ -395,7 +432,10 @@ export default function SFCave({ solvedLevels, onSolve }: SFCaveProps) {
               Distance: {distance}px
             </>
           ) : (
-            <span>&nbsp;</span>
+            <span>
+              Crashed at {distance}px {distance >= best && distance > 0 ? '— new best!' : `(best ${best}px)`} —
+              back to ready shortly
+            </span>
           )}
         </span>
         <span>Attempts: {attempts}</span>
