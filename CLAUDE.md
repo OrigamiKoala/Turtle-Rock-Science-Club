@@ -421,7 +421,15 @@ note behind a genuine mess-up or success, never a mere selection or drag.
   blocky per-column rectangles (not a smooth path) with green walls and a
   light passable interior, matching the original's actual (surprising, if
   you assumed black-background/white-walls) color relationship — only the
-  specific hex values were swapped to the site's palette.
+  specific hex values were swapped to the site's palette. Free-floating
+  orange obstacle blocks (`BLOCK_H`, `CaveGen.blocks`) spawn mid-gap on the
+  exact same every-10-tick beat as the gap shrink — the original PalmOS
+  game's "mines," reproduced from the same clone source rather than
+  invented, checked via the same `time % 10 == 0` condition driving both
+  effects instead of two independent cadences. A column's block is guarded
+  against spawning if the gap has already narrowed past `BLOCK_H` (the
+  original has no such guard, so a late-game block there could poke past the
+  wall it's next to — a real edge case in the source, not one worth copying).
 
 `VirtualLab.tsx` is the shell that hosts them, keyed by `GameId` in
 `types.ts`, and awards XP once per level (`ChemTextAdventure` only ever has

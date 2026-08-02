@@ -55,6 +55,14 @@ const CAVE_GAP_FLOOR = 4;
 const CAVE_DELTA_REROLL_CHANCE = 0.1;
 const CAVE_DELTA_SCALE = 1.4;
 
+/** Free-floating obstacle blocks inside the open gap — the "mines" from the
+ *  original PalmOS SF Cave, not just top/bottom walls. The original spawns
+ *  one on the exact same every-10-tick beat as the gap shrink (both driven
+ *  by the same `time % 10 == 0` check), scaled here from its 32px block in a
+ *  300-tall playfield. */
+const BLOCK_H = 45;
+const BLOCK_COLOR = '#f97316';
+
 const INITIAL_COLUMNS = Math.ceil(WORLD_W / STEP_X) + 4;
 /** How many ticks the death ring animation plays before auto-returning to
  *  "ready" — matching the original's fixed 15-tick death screen. */
@@ -77,6 +85,9 @@ interface Vec {
 interface CaveGen {
   tops: number[];
   gaps: number[];
+  /** Top y of a mid-gap obstacle block in this column, or -1 for none —
+   *  the original's `gameMatrix[2][col]`. */
+  blocks: number[];
   /** Current per-column drift; persists across many columns, like the
    *  original's `caveDelta`, instead of rerolling every single column. */
   delta: number;
@@ -84,12 +95,16 @@ interface CaveGen {
 }
 
 function freshCaveGen(): CaveGen {
-  return { tops: [], gaps: [], delta: 0, gapValue: CAVE_GAP_INITIAL };
+  return { tops: [], gaps: [], blocks: [], delta: 0, gapValue: CAVE_GAP_INITIAL };
 }
 
 /** Appends exactly one more column, mutating `gen` in place. */
 function genNextColumn(gen: CaveGen) {
-  if (gen.tops.length > 0 && gen.tops.length % CAVE_GAP_SHRINK_EVERY === 0) {
+  // The original checks `time % 10 == 0` twice, once for the gap shrink and
+  // once for the block spawn — the very same tick drives both, not two
+  // independent cadences.
+  const beatTick = gen.tops.length > 0 && gen.tops.length % CAVE_GAP_SHRINK_EVERY === 0;
+  if (beatTick) {
     gen.gapValue = Math.max(CAVE_GAP_FLOOR, gen.gapValue - CAVE_GAP_SHRINK_STEP);
   }
   if (Math.random() < CAVE_DELTA_REROLL_CHANCE) {
@@ -113,6 +128,13 @@ function genNextColumn(gen: CaveGen) {
 
   gen.tops.push(nextTop);
   gen.gaps.push(gen.gapValue);
+
+  // Placed anywhere in the gap that leaves it fully inside — same
+  // `Math.random() * (caveHeight - 32) + caveTop` formula as the original,
+  // just guarded against a gap that's already narrower than the block
+  // (the original doesn't guard this, so a late-game block could poke past
+  // the wall it's next to).
+  gen.blocks.push(beatTick && gen.gapValue > BLOCK_H ? nextTop + Math.random() * (gen.gapValue - BLOCK_H) : -1);
 }
 
 const BEST_KEY = 'tr_sc_cave_best';
@@ -216,13 +238,19 @@ export default function SFCave({ solvedLevels, onSolve }: SFCaveProps) {
 
     // Flat, blocky columns — the original's actual look (solid rects per
     // column, not a smooth path), just with the wall/passable colors swapped.
-    ctx.fillStyle = WALL_COLOR;
     for (let col = firstCol; col <= lastCol; col++) {
       const screenX = col * STEP_X - scroll;
       const top = gen.tops[col];
       const bottom = top + gen.gaps[col];
+      ctx.fillStyle = WALL_COLOR;
       ctx.fillRect(screenX, 0, STEP_X + 1, top);
       ctx.fillRect(screenX, bottom, STEP_X + 1, PLAY_H - bottom);
+
+      const block = gen.blocks[col];
+      if (block !== -1) {
+        ctx.fillStyle = BLOCK_COLOR;
+        ctx.fillRect(screenX, block, STEP_X + 1, BLOCK_H);
+      }
     }
 
     // Motion trail — a faint line of where the ship has actually been.
@@ -288,8 +316,10 @@ export default function SFCave({ solvedLevels, onSolve }: SFCaveProps) {
     const colIndex = Math.min(gen.tops.length - 1, Math.floor((scrollRef.current + SHIP_X) / STEP_X));
     const top = gen.tops[colIndex];
     const bottom = top + gen.gaps[colIndex];
+    const block = gen.blocks[colIndex];
+    const hitBlock = block !== -1 && yRef.current + SHIP_R > block && yRef.current - SHIP_R < block + BLOCK_H;
 
-    if (yRef.current - SHIP_R < top || yRef.current + SHIP_R > bottom) {
+    if (yRef.current - SHIP_R < top || yRef.current + SHIP_R > bottom || hitBlock) {
       setBest((prevBest) => {
         const finalDistance = Math.round(scrollRef.current);
         if (finalDistance > prevBest) {
@@ -299,7 +329,9 @@ export default function SFCave({ solvedLevels, onSolve }: SFCaveProps) {
         return prevBest;
       });
       setNote(
-        "Gravity and thrust are perfectly symmetric here — every tick either adds or subtracts the exact same amount from your velocity. The wall you hit is just where that back-and-forth landed; there's no separate 'stronger' force doing the actual killing."
+        hitBlock
+          ? "That block was just floating in otherwise-open cave — the same gravity/thrust tug-of-war applies whether what you're dodging is a wall or something in between the walls. More obstacles doesn't change the physics, just how much room you have to work with."
+          : "Gravity and thrust are perfectly symmetric here — every tick either adds or subtracts the exact same amount from your velocity. The wall you hit is just where that back-and-forth landed; there's no separate 'stronger' force doing the actual killing."
       );
       deathTickRef.current = 0;
       setPhaseSynced('crashed');
@@ -391,7 +423,8 @@ export default function SFCave({ solvedLevels, onSolve }: SFCaveProps) {
       <p className="text-xs text-zinc-400 leading-relaxed font-sans">
         Hold anywhere to thrust up, let go to fall — gravity and thrust are perfectly symmetric, so
         the game is never fighting you unevenly. The cave generates forever and its gap only ever
-        narrows; there's no end to reach, only a distance to beat.
+        narrows; there's no end to reach, only a distance to beat. Watch for orange blocks floating
+        in the open gap — they aren't walls, but they kill just the same.
       </p>
       {note && <p className="text-xs text-zinc-400 leading-relaxed font-sans">{note}</p>}
 
