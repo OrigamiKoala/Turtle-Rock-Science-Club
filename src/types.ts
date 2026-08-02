@@ -74,7 +74,8 @@ export type GameId =
   | 'genetics'
   | 'ecology'
   | 'spectra'
-  | 'reactor';
+  | 'reactor'
+  | 'cave';
 
 /**
  * Which level indices of each minigame have been solved. Persisted, because an
@@ -94,7 +95,8 @@ export const EMPTY_GAME_PROGRESS: GameProgress = {
   genetics: [],
   ecology: [],
   spectra: [],
-  reactor: []
+  reactor: [],
+  cave: []
 };
 
 export interface Announcement {

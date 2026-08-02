@@ -18,7 +18,8 @@ import {
   Dna,
   Leaf,
   Telescope,
-  Factory
+  Factory,
+  Flashlight
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -63,7 +64,8 @@ export default function Dashboard({ userProfile, missions, signedUpIds, onUpdate
     { name: 'Geneticist', desc: 'Bred a customer order in Critter Ranch.', icon: Dna },
     { name: 'Ecologist', desc: "Kept an island's food web alive in Island Keeper.", icon: Leaf },
     { name: 'Astrophysicist', desc: "Decoded a star's spectrum in Starlight Decoder.", icon: Telescope },
-    { name: 'Chemical Engineer', desc: 'Ran a balanced production line in Reactor Line.', icon: Factory }
+    { name: 'Chemical Engineer', desc: 'Ran a balanced production line in Reactor Line.', icon: Factory },
+    { name: 'Spelunker', desc: 'Threaded a narrow scrolling cave in SF Cave.', icon: Flashlight }
   ];
 
   const xpInCurrentLevel = userProfile.xp % 100;

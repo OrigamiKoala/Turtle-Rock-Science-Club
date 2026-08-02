@@ -229,7 +229,10 @@ has the remainder to do.
 - Everything the visitor "owns" is `localStorage`, keyed `tr_sc_*`:
   `tr_sc_user_profile`, `tr_sc_gallery_photos`, `tr_sc_signed_up_ids`,
   `tr_sc_sheet_content_v1` (5-minute content cache), `tr_sc_last_school`,
-  `tr_sc_theme` (manual light/dark override — see "Theming" below).
+  `tr_sc_theme` (manual light/dark override — see "Theming" below),
+  `tr_sc_game_progress` (per-game solved-level indices, see "Minigames"
+  below), `tr_sc_cave_best` (SF Cave's personal-best distance — that game has
+  no discrete levels, so its high score lives outside `tr_sc_game_progress`).
   Clear `tr_sc_sheet_content_v1` when testing a fresh publish.
 - FAQ copy, press mentions, and the seed gallery photos are static site
   content unrelated to the Sheet. They live inline as local constants in
@@ -285,28 +288,28 @@ button.
 
 ## Minigames
 
-`src/components/games/` — ten real puzzle games, not click toys, plus one
+`src/components/games/` — eleven real puzzle games, not click toys, plus one
 link-out. `docs/game-ideas.md` is the original design doc for the seven
 science-domain games (Lightbender through Reactor Line); read it before
 touching their level data or science model, since each level's numbers were
 tuned (some with scratch Node scripts, not just eyeballed) to make a specific
-lesson land.
+lesson land. SF Cave postdates that doc and isn't in it.
 
-Every hosted game (all ten but `ChemTextAdventure`, which links out) carries a
-small "live note" — plain-language commentary on the science behind an actual
-*outcome* — distinct from the per-level `hint` text hidden behind the Hint
-toggle, and deliberately **not** shown while the player is still exploring.
-It only appears once there's something to react to: a crash
-(`RobotProgrammer`, `OrbitalSlingshot`), a burnt-out part (`ShortCircuit`), a
-molecule that's fully bonded but split into two disconnected pieces
-(`MoleculeBuilder`), an unbalanced equation someone hit Run on anyway
-(`ReactorLine`), overgrazing that's already happened (`IslandKeeper`), a
-just-submitted guess (`Epicenter`), or the level being solved
-(`StarlightDecoder` and the win state everywhere else). The first pass at
-this showed commentary continuously as state changed — tool selected, slider
-dragged, atom picked — which amounted to narrating the solving method before
-the player had even tried it; don't regress back to that. Gate any new note
-behind a genuine mess-up or success, never a mere selection or drag.
+Every hosted game (all eleven but `ChemTextAdventure`, which links out)
+carries a small "live note" — plain-language commentary on the science behind
+an actual *outcome* — distinct from the per-level `hint` text hidden behind
+the Hint toggle, and deliberately **not** shown while the player is still
+exploring. It only appears once there's something to react to: a crash
+(`RobotProgrammer`, `OrbitalSlingshot`, `SFCave`), a burnt-out part
+(`ShortCircuit`), a molecule that's fully bonded but split into two
+disconnected pieces (`MoleculeBuilder`), an unbalanced equation someone hit
+Run on anyway (`ReactorLine`), overgrazing that's already happened
+(`IslandKeeper`), a just-submitted guess (`Epicenter`), or the level being
+solved (`StarlightDecoder` and the win state everywhere else). The first pass
+at this showed commentary continuously as state changed — tool selected,
+slider dragged, atom picked — which amounted to narrating the solving method
+before the player had even tried it; don't regress back to that. Gate any new
+note behind a genuine mess-up or success, never a mere selection or drag.
 
 - `OrbitalSlingshot.tsx` — Newtonian gravity sim on canvas; drag *toward* the
   target to launch, speed scales with drag distance. Sim state lives in refs
@@ -379,18 +382,40 @@ behind a genuine mess-up or success, never a mere selection or drag.
 - `ChemTextAdventure.tsx` — not hosted here. Links out to an external
   choose-your-own-path chemistry story; clicking the link *is* the win
   condition and the only way to earn its "Adventurer" badge.
+- `SFCave.tsx` — a faithful clone of the classic *SF Cave*: hold to thrust
+  against a constant gravity, let go to fall, thread a scrolling cave with no
+  steering axis besides up/down. Unlike every other game here it has **no
+  discrete levels** — the cave is generated forever (`extendCave` only ever
+  appends to the centerline array, called every frame to keep it ahead of the
+  ship) and gap/turniness/scroll-speed all ramp continuously with distance
+  before plateauing at a max difficulty, rather than jumping between
+  hand-tuned level configs. Because `VirtualLab`'s XP/badge plumbing expects a
+  `solvedLevels: number[]` + `onSolve(levelIndex)` per game, five fixed
+  distance thresholds (`MILESTONES`) stand in for levels — crossing one in a
+  single run awards XP and the "Spelunker" badge line, same mechanism as
+  every other game, even though there's no way to "select" milestone 3
+  without flying through 1 and 2 first. The RNG is *not* seeded (`Math.random`
+  per run, unlike `Epicenter`'s reproducible layouts) since an endless runner
+  is supposed to be different every attempt. Graphics are deliberately flat —
+  solid black background, unshaded flat-fill walls, a plain square ship — no
+  gradients or particle effects, matching the original's minimal look with
+  only the color swapped in.
 
 `VirtualLab.tsx` is the shell that hosts them, keyed by `GameId` in
 `types.ts`, and awards XP once per level (`ChemTextAdventure` only ever has
-level 0). The tab grid is `sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4` —
-with eleven tabs it wraps into multiple rows by default CSS grid behaviour,
-no scroll container needed.
+level 0; SF Cave's "levels" are its milestones). The tab grid is
+`sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4` — with twelve tabs it wraps
+into multiple rows by default CSS grid behaviour, no scroll container needed.
 
-All seven newer games are "always-dark" chrome like `OrbitalSlingshot`, the
-same choice the doc's integration notes call for — none of them try to hook
-into the `.game-*` wrapper-class theming scheme described below.
+All seven science-domain games are "always-dark" chrome like
+`OrbitalSlingshot`, the same choice the doc's integration notes call for —
+none of them try to hook into the `.game-*` wrapper-class theming scheme
+described below. `SFCave` is also always-dark (a literal black background is
+part of the original game's identity, not just a style match for its
+siblings).
 
-`Dashboard.tsx`'s `badgeCatalog` now lists all eleven earnable badges
-(`Foundation Member` plus one per game) instead of the leftover AI-Studio-era
-placeholder names it used to have. If you add another game, add its badge
-here too, or the achievements grid will silently drift out of sync again.
+`Dashboard.tsx`'s `badgeCatalog` now lists all thirteen earnable badges
+(`Foundation Member` plus one per game, including `ChemTextAdventure`'s) instead
+of the leftover AI-Studio-era placeholder names it used to have. If you add
+another game, add its badge here too, or the achievements grid will silently
+drift out of sync again.
