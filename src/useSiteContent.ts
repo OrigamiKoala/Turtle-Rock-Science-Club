@@ -308,13 +308,20 @@ function toResources(raw: unknown): Resource[] {
       url = 'https://' + url;
     }
 
+    // The sheet's Level dropdown (RESOURCE_LEVELS in Code.gs) offers the operator
+    // "All Levels" as its wildcard option, not "all" — normalize it to the "all"
+    // sentinel the frontend filters on, or it leaks in as a second, non-matching
+    // "All Levels" pill alongside the real one.
+    const rawLevel = asString(row.level, 'all').toLowerCase();
+    const level = rawLevel === 'all levels' ? 'all' : rawLevel;
+
     return [
       {
         id: asString(row.id) || `sheet-resource-${index}`,
         title,
         description: asString(row.description),
         category: asString(row.category, 'general').toLowerCase(),
-        level: asString(row.level, 'all').toLowerCase(),
+        level,
         url,
         type: asString(row.type, 'website').toLowerCase()
       }
