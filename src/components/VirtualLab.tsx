@@ -30,7 +30,7 @@ const GAMES: { id: GameId; title: string; tagline: string; field: string; icon: 
   { id: 'ecology', title: 'Island Keeper', tagline: 'Keep a coupled predator-prey food web alive for 100 years without silencing your instincts.', field: 'Biology · Ecology', icon: Leaf, badge: 'Ecologist' },
   { id: 'spectra', title: 'Starlight Decoder', tagline: "Read a star's absorption lines to find its composition, temperature, and motion.", field: 'Astronomy · Spectroscopy', icon: Telescope, badge: 'Astrophysicist' },
   { id: 'reactor', title: 'Reactor Line', tagline: 'Balance equations and pipe reagents through a factory that obeys conservation of mass.', field: 'Chemistry · Math', icon: Factory, badge: 'Chemical Engineer' },
-  { id: 'cave', title: 'SF Cave', tagline: 'Hold to thrust against gravity, let go to fall, and thread a narrow scrolling cave.', field: 'Physics · Reflexes', icon: Flashlight, badge: 'Spelunker' },
+  { id: 'cave', title: 'SFCave', tagline: 'The original Flappy Bird, on Windows 3.1.', field: 'Physics · Reflexes', icon: Flashlight, badge: 'Spelunker' },
   { id: 'adventure', title: 'Chemistry Text Adventure', tagline: 'A choose-your-own-path chemistry story hosted on its own site.', field: 'Chemistry · Storytelling', icon: ScrollText, badge: 'Adventurer' }
 ];
 
@@ -66,10 +66,7 @@ export default function VirtualLab({ userProfile, onUpdateXp }: VirtualLabProps)
         <p className="text-[11px] font-display font-bold text-[#4C9A3A]">Virtual Lab</p>
         <h2 className="font-display font-bold text-3xl sm:text-4xl text-[#1F3A42] tracking-tight">Science Minigames</h2>
         <p className="text-sm text-[#4B6169] max-w-2xl leading-relaxed">
-          Eleven puzzle games built on real science — optics, electronics, geophysics, genetics,
-          ecology, spectroscopy, stoichiometry, orbital mechanics, chemical bonding, thrust and
-          gravity, and programming logic — plus a text adventure hosted elsewhere. Levels get
-          genuinely harder.
+          A dozen mini-games based on science. Enjoy!
         </p>
       </div>
 
