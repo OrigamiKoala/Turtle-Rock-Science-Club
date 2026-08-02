@@ -133,8 +133,8 @@ const NETWORK_A: StationDef[] = [
 const LEVELS: LevelDef[] = [
   {
     name: 'First Tremor',
-    brief: '3 stations, already paid for — just find where the circles meet.',
-    hint: 'Drag the yellow crosshair around the map. It only belongs in one spot: inside all three glowing circles at once. Press Submit when you find it.',
+    brief: 'An earthquake just happened. Your job is to figure out exactly where it struck.',
+    hint: 'Each station gives you a distance (shown as a circle on the map) — not a direction. The epicenter is wherever all three circles overlap. Drag the yellow crosshair there, then press Submit.',
     rounds: [101],
     magRange: [4.5, 5.5],
     stations: NETWORK_A.slice(0, 3),
@@ -143,8 +143,8 @@ const LEVELS: LevelDef[] = [
   },
   {
     name: 'Buy Your Own',
-    brief: 'Budget: 4 of 6 stations. Buy readings, read the ruler, place your pin.',
-    hint: 'Click a station on the map to buy its reading — each one costs 1 of your 4 credits. Then drag the amber A and pink B markers on its seismogram onto the two wave-bursts. The gap between them (Δt) is bigger the farther away the quake was.',
+    brief: 'You have 4 credits. Click stations on the map to buy their readings, then use the seismogram to measure the quake distance.',
+    hint: 'Click a station dot on the map to buy its reading. Then, in the seismogram panel, drag the amber A marker onto the first wave burst (the P-wave) and the pink B marker onto the second, bigger burst (the S-wave). The gap between A and B is bigger when the quake was farther away — that gap gets converted into a distance circle on the map.',
     rounds: [202],
     magRange: [4.0, 5.0],
     stations: NETWORK_A,
@@ -152,8 +152,8 @@ const LEVELS: LevelDef[] = [
   },
   {
     name: 'How Big Was It?',
-    brief: 'Same deal, plus: how big was it? Estimate the magnitude too.',
-    hint: 'Distance changes how big a wave needs to be to register the same size quake. Try: magnitude ≈ log10(amplitude in mm) + 2.56 × log10(distance in km) − 1.67. Your ± 0.3 estimate counts as correct.',
+    brief: 'Find the epicenter and estimate the earthquake\'s magnitude (how powerful it was).',
+    hint: 'Bigger quakes make bigger waves, but farther-away quakes make smaller waves — so you need both the amplitude and the distance to work out the magnitude. The formula is: magnitude ≈ log₁₀(amplitude in mm) + 2.56 × log₁₀(distance in km) − 1.67. Your estimate just needs to be within ±0.3 to count.',
     rounds: [303],
     magRange: [4.5, 6.0],
     stations: NETWORK_A,
@@ -162,8 +162,8 @@ const LEVELS: LevelDef[] = [
   },
   {
     name: 'Tight Budget',
-    brief: 'Only 3 readings’ worth of credits. The cheap stations are clustered — spreading out costs more.',
-    hint: 'The four Cluster stations are almost on top of each other — cheap, but a tight cluster makes it hard to pin down exactly where the circles cross. A pricier Far station on the other side of the map buys you a much sharper intersection.',
+    brief: 'Only 3 readings fit in your budget. Pick wisely — your station placement matters.',
+    hint: 'The four Cluster stations are bunched up in one corner. Cheap, sure, but when stations are close together their circles all cross at almost the same angle — it\'s really hard to pin down where they actually meet. A pricier Far station on the opposite side of the map gives you a circle that cuts across from a completely different direction, making the intersection way sharper.',
     rounds: [404],
     magRange: [4.0, 5.5],
     budget: 5,
@@ -181,8 +181,8 @@ const LEVELS: LevelDef[] = [
   },
   {
     name: 'The Broken Clock',
-    brief: '4 readings, but one station’s clock is broken. Find the liar.',
-    hint: 'Three circles will meet neatly in one spot. The fourth won’t — no matter how carefully you drag its ruler. That station is miscalibrated. Trust the three that agree, place your pin there, and ignore the outlier.',
+    brief: 'One of these 4 stations has a broken clock. Its reading will be wrong — find the liar.',
+    hint: 'When you use three correct stations, their circles will meet neatly in one spot. The bad station\'s circle will always be off, no matter how carefully you line up the ruler. Process of elimination: find which one doesn\'t fit.',
     rounds: [505],
     magRange: [4.5, 6.0],
     budget: 4,
@@ -198,8 +198,8 @@ const LEVELS: LevelDef[] = [
   },
   {
     name: 'Shadow Zone',
-    brief: 'A big, distant quake. Two stations show no S-wave at all — why?',
-    hint: 'No matter how you drag the ruler, two of these stations only ever show one burst. That’s not broken equipment — those stations sit beyond Earth’s real S-wave shadow zone, where the liquid outer core blocks the S-wave from arriving directly. Skip them and triangulate from the rest.',
+    brief: 'A big, distant quake. Two stations show no S-wave at all — what\'s going on?',
+    hint: 'Two of these stations only ever show one wave burst, no matter how you drag the ruler. This isn\'t broken equipment — those stations sit in Earth\'s real S-wave shadow zone. S-waves can\'t travel through liquid, and the Earth\'s outer core is liquid, so it blocks them from reaching stations on the far side. Just skip those two stations and triangulate with the rest.',
     rounds: [606],
     magRange: [6.0, 7.2],
     budget: 5,
@@ -216,8 +216,8 @@ const LEVELS: LevelDef[] = [
   },
   {
     name: 'Aftershock Sequence',
-    brief: 'Three aftershocks in a row, one shared budget, and the clock is ticking.',
-    hint: 'The same station network reports all three quakes. Your budget carries over between them, so don’t blow it all on the first one — but each quake needs its own three good readings, since the ruler resets when a new quake starts.',
+    brief: 'Three aftershocks, one shared budget, and the clock is ticking. Locate all three.',
+    hint: 'All three quakes use the same station network, but each one gets its own seismogram and ruler. Your credit budget carries over between quakes, so don\'t blow it all on the first one. Once you locate a quake and hit Submit, you\'ll move on to the next.',
     rounds: [707, 708, 709],
     magRange: [4.5, 6.2],
     budget: 10,
@@ -606,11 +606,10 @@ export default function Epicenter({ solvedLevels, onSolve }: EpicenterProps) {
           <button
             key={lvl.name}
             onClick={() => setLevelIndex(i)}
-            className={`px-3 py-1.5 rounded-full text-[11px] font-mono border transition cursor-pointer flex items-center gap-1.5 ${
-              i === levelIndex
-                ? 'bg-orange-500/20 border-orange-500/40 text-orange-300'
-                : 'bg-white/5 border-white/10 text-zinc-400 hover:text-white'
-            }`}
+            className={`px-3 py-1.5 rounded-full text-[11px] font-mono border transition cursor-pointer flex items-center gap-1.5 ${i === levelIndex
+              ? 'bg-orange-500/20 border-orange-500/40 text-orange-300'
+              : 'bg-white/5 border-white/10 text-zinc-400 hover:text-white'
+              }`}
           >
             {solvedLevels.includes(i) && <Trophy className="w-3 h-3 text-amber-400" />}
             {i + 1}. {lvl.name}
@@ -784,14 +783,14 @@ export default function Epicenter({ solvedLevels, onSolve }: EpicenterProps) {
                   ) : (
                     <div className="text-red-300 flex items-center gap-1.5">
                       <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                      Only one burst arrives here — beyond the S-wave shadow zone.
+                      Only one wave burst arrives here — this station is in the S-wave shadow zone (the Earth's liquid core blocks S-waves from reaching it).
                     </div>
                   )}
                 </div>
               </>
             ) : (
               <p className="text-xs text-zinc-500 font-sans py-8 text-center">
-                Buy a station reading on the map to see its seismogram here.
+                Click a station on the map to buy its reading — then its seismogram will show up here.
               </p>
             )}
           </div>
@@ -833,11 +832,10 @@ export default function Epicenter({ solvedLevels, onSolve }: EpicenterProps) {
 
         {submitted && (
           <div
-            className={`rounded-xl px-3 py-2 text-xs font-sans flex flex-wrap items-center justify-between gap-2 ${
-              submitted.distanceOk && submitted.magnitudeOk
-                ? 'bg-emerald-500/10 border border-emerald-500/25 text-emerald-200'
-                : 'bg-red-500/10 border border-red-500/25 text-red-200'
-            }`}
+            className={`rounded-xl px-3 py-2 text-xs font-sans flex flex-wrap items-center justify-between gap-2 ${submitted.distanceOk && submitted.magnitudeOk
+              ? 'bg-emerald-500/10 border border-emerald-500/25 text-emerald-200'
+              : 'bg-red-500/10 border border-red-500/25 text-red-200'
+              }`}
           >
             <span>
               Off by {submitted.distanceErrorKm.toFixed(0)} km
@@ -872,8 +870,8 @@ export default function Epicenter({ solvedLevels, onSolve }: EpicenterProps) {
         {submitted && (
           <p className="text-xs text-zinc-400 font-sans leading-relaxed">
             {submitted.distanceOk
-              ? "That's the whole trick — the S-P gap alone pins down distance from each station; three overlapping circles is what nails down direction too."
-              : `P-waves outrun S-waves more the farther they travel, so a bigger gap means farther out. Off by ${submitted.distanceErrorKm.toFixed(0)} km — recheck your ruler markers against where the bursts actually start.`}
+              ? "Exactly right! The S-P gap tells you distance from each station; three circles overlapping is what nails down the direction too."
+              : `S-waves travel slower than P-waves, so the gap between them grows the farther you are from the quake. You were off by ${submitted.distanceErrorKm.toFixed(0)} km — try re-dragging the markers to where the wave bursts actually start.`}
           </p>
         )}
 

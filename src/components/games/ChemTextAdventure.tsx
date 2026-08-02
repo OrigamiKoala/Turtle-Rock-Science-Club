@@ -28,7 +28,7 @@ export default function ChemTextAdventure({ solvedLevels, onSolve }: ChemTextAdv
       <div className="space-y-2 max-w-lg mx-auto">
         <h4 className="font-display font-bold text-lg text-white">Chemistry Text Adventure</h4>
         <p className="text-xs text-zinc-400 font-sans leading-relaxed">
-          A choose-your-own adventure game, where you explore - and learn chemistry along the way!
+          A choose-your-own-adventure story where every decision you make is rooted in real chemistry. No prior knowledge needed — just pick an option and see where it takes you.
         </p>
       </div>
 

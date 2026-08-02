@@ -473,7 +473,6 @@ interface LevelDef {
   makeBarn: (rng: RNG) => Critter[];
   checkSolved: (barn: Critter[]) => boolean;
   isTestCross?: boolean;
-  expectedRatioNote?: string;
 }
 
 const TEST_CROSS_TARGET = 6;
@@ -483,24 +482,23 @@ const LEVELS: LevelDef[] = [
     id: 'L1',
     title: 'The Obvious Order',
     concept:
-      'Every critter carries two copies of each gene, one from each parent. Tangerine coat beats Blueberry, so Blueberry only shows up when a critter inherits it from both sides.',
-    order: 'A customer wants ANY Blueberry critter. Breed the pair below and see what turns up.',
-    hint: 'Both starting critters secretly carry one Tangerine and one Blueberry copy (Hh). About 1 in 4 babies gets Blueberry-Blueberry (hh) and shows it — the classic 3:1 ratio of dominant to recessive.',
+      'Every critter has two copies of the coat color gene — one from mom, one from dad. Tangerine beats Blueberry, so a critter only shows Blueberry if it got the Blueberry copy from both parents at once.',
+    order: 'A customer wants any Blueberry critter. Click Breed and see what comes out!',
+    hint: 'Both parents are secretly Tangerine + Blueberry (written as Hh). On average, 1 in every 4 babies gets Blueberry from both sides and actually shows it. Keep breeding until one pops up.',
     genes: [GENE_HUE],
     makeBarn: () => [
       mkCritter('f0', 'F', { hue: pair('H', 'h') }, { provenHet: ['hue'] }),
       mkCritter('m0', 'M', { hue: pair('H', 'h') }, { provenHet: ['hue'] })
     ],
     checkSolved: (barn) => barn.some((c) => resolveGenePhenotype(GENE_HUE, c.genotype.hue).state === 'recessive'),
-    expectedRatioNote: '~3 Tangerine : 1 Blueberry'
   },
   {
     id: 'L2',
     title: 'Two Traits',
     concept:
-      'Coat color and ear shape are controlled by separate genes that shuffle independently. Track two traits at once and the ratios get richer.',
-    order: 'Deliver a Blueberry, Perky-eared critter — the rarest combo in the litter.',
-    hint: 'Two Hh Ee parents make a 9:3:3:1 spread: 9 Tangerine-Floppy, 3 Tangerine-Perky, 3 Blueberry-Floppy, 1 Blueberry-Perky. You need that last, rarest box.',
+      'Coat color and ear shape are separate genes that get shuffled around completely independently. When you track two traits at once, you can get four different combos — some way more common than others.',
+    order: 'Deliver a Blueberry, Perky-eared critter. It\'s the rarest combo, so it might take a few litters.',
+    hint: 'With two hidden traits in both parents, the odds break down like this: about 9 out of 16 babies are Tangerine + Floppy, 3 are Tangerine + Perky, 3 are Blueberry + Floppy, and only 1 is Blueberry + Perky. That last one is what you need — just keep breeding.',
     genes: [GENE_HUE, GENE_EARS],
     makeBarn: () => [
       mkCritter('f0', 'F', { hue: pair('H', 'h'), ears: pair('E', 'e') }, { provenHet: ['hue', 'ears'] }),
@@ -512,16 +510,15 @@ const LEVELS: LevelDef[] = [
           resolveGenePhenotype(GENE_HUE, c.genotype.hue).state === 'recessive' &&
           resolveGenePhenotype(GENE_EARS, c.genotype.ears).state === 'recessive'
       ),
-    expectedRatioNote: '~9 : 3 : 3 : 1 across the four combos'
   },
   {
     id: 'L3',
     title: 'Out of Stock',
     concept:
-      "Sometimes a recessive trait isn't visible anywhere in the barn — it's hiding, carried by parents who don't show it themselves.",
+      "Sometimes a hidden trait doesn't show up anywhere in the barn — it's just being carried silently by parents who look totally normal. It's only hiding, not gone.",
     order:
-      'Somewhere in this barn is a hidden Blueberry gene. Find a pair that carries it and breed a Blueberry critter — not every pair can.',
-    hint: "Every critter here looks Tangerine. Some are secretly HH (can never make Blueberry) and some are secretly Hh (a 1-in-4 chance each litter). You'll have to breed and watch to work out which is which — that's what 'carrier' means.",
+      'Somewhere in this barn is a hidden Blueberry gene. Figure out which pair carries it and breed a Blueberry critter — but not every pair can do it.',
+    hint: "All four critters look Tangerine, but some secretly carry a Blueberry copy underneath. The only way to tell is to breed them and watch the babies. If two critters both carry the hidden copy, about 1 in 4 of their babies will come out Blueberry and give the game away. Critters that carry a hidden copy without showing it are called carriers.",
     genes: [GENE_HUE],
     makeBarn: (rng) => {
       const femaleHet = rng() < 0.5;
@@ -539,10 +536,10 @@ const LEVELS: LevelDef[] = [
     id: 'L4',
     title: 'Certified True-Breeding',
     concept:
-      'A Tangerine critter could be HH or Hh — they look identical. The only way to know for sure is a test cross: breed the mystery critter with a known Blueberry (hh) tester and see what the babies reveal.',
+      'Two Tangerine critters can look exactly alike but have totally different genetics underneath — one might be "pure" Tangerine (HH) while the other secretly carries a hidden Blueberry copy (Hh). The only way to tell them apart is a test cross.',
     order:
-      'The customer wants a critter CERTIFIED true-breeding orange, not just orange-looking. Pick a candidate, cross it with the Recessive Tester, and prove it with the babies.',
-    hint: `If a candidate is secretly Hh, about half its test-cross babies will be Blueberry — even one is enough to disqualify it. If it's truly HH, every test-cross baby will be Tangerine. We require at least ${TEST_CROSS_TARGET} clean babies before calling it certified — a small sample could get lucky by chance, a big one can't.`,
+      'The customer wants a critter that\'s guaranteed pure Tangerine — not just Tangerine-looking. Pick a candidate, breed it with the Recessive Tester, and prove it\'s the real deal.',
+    hint: `A test cross works like this: breed your mystery critter with a known Blueberry (hh) critter. If even one baby comes out Blueberry, your candidate is secretly carrying a hidden copy — disqualified. If it's truly pure Tangerine (HH), every single baby will be Tangerine. We need at least ${TEST_CROSS_TARGET} clean Tangerine babies before we're confident — a small sample could just get lucky.`,
     genes: [GENE_HUE],
     isTestCross: true,
     makeBarn: (rng) => {
@@ -569,24 +566,23 @@ const LEVELS: LevelDef[] = [
     id: 'L5',
     title: 'Pink Ones Only',
     concept:
-      "Not every gene has a clear winner. For Fur Shade, Red and White blend into Pink — neither hides the other. That's incomplete dominance.",
-    order: 'The customer wants a Bubblegum Pink critter.',
-    hint: 'Pink critters are always Rr. Crossing two pinks together gives 1 Red : 2 Pink : 1 White — never all pink — so there is no such thing as a true-breeding pink. Try it and see for yourself.',
+      "With coat color, one shade usually beats the other — but not always. For fur shade, Red and White don't fight for dominance, they just blend. A critter with one Red copy and one White copy comes out Bubblegum Pink.",
+    order: 'The customer wants a Bubblegum Pink critter. Start from the Red and White parents in the barn.',
+    hint: 'The only way to get Pink is to have exactly one Red copy and one White copy. Breed the Red and White parents to get Pink babies. If you then breed two Pink critters together, you get a mix of Red, Pink, and White — never all Pink, because Pink can\'t "breed true".',
     genes: [GENE_SHADE],
     makeBarn: () => [
       mkCritter('f0', 'F', { shade: pair('R', 'R') }),
       mkCritter('m0', 'M', { shade: pair('r', 'r') })
     ],
     checkSolved: (barn) => barn.some((c) => resolveGenePhenotype(GENE_SHADE, c.genotype.shade).state === 'hetero'),
-    expectedRatioNote: '~1 Red : 2 Pink : 1 White (from two Pinks) — never all Pink'
   },
   {
     id: 'L6',
     title: "The Prince's Cats",
     concept:
-      'The Speckle gene rides along the same chromosome that decides sex. Sons only need one copy to show a recessive trait; daughters need two — so Speckled shows up far more often in sons.',
-    order: 'The customer specifically wants a Speckled DAUGHTER — a Speckled son does not count.',
-    hint: "Dad is visibly Speckled. Mom looks Plain but might secretly carry one Speckled copy. A Speckled son only needs Mom's hidden copy; a Speckled DAUGHTER needs Dad's copy *and* Mom's hidden copy together — rarer, and only possible at all if Mom turns out to be a carrier.",
+      'The Speckle gene is stuck on the same chromosome that determines sex. This matters because sons only carry one copy of it (from mom), while daughters carry two. That means sons show recessive traits way more often than daughters do.',
+    order: 'The customer wants a Speckled DAUGHTER specifically — a Speckled son does not count.',
+    hint: "Dad is Speckled. Mom looks Plain, but she might secretly carry a hidden Speckled copy. A son only needs to inherit that one hidden copy from Mom to show Speckled — easy. A daughter needs to inherit Dad's Speckled copy AND Mom's hidden copy at the same time — much rarer, and only possible if Mom is a carrier in the first place.",
     genes: [GENE_SPOTS],
     makeBarn: () => [
       mkCritter('f0', 'F', { spots: pair('S', 's') }),
@@ -599,10 +595,10 @@ const LEVELS: LevelDef[] = [
     id: 'L7',
     title: 'The Masked Gene',
     concept:
-      'A second gene, Pigment, can switch coat color off completely. A critter with no working Pigment gene (pp) is Albino no matter what its Coat Color gene says underneath.',
+      'Sometimes one gene completely overrides another. The Pigment gene is like a master switch — if a critter has no working Pigment gene at all (pp), it turns out Albino no matter what color it would have been otherwise.',
     order:
-      "Deliver an Albino critter. Careful — an Albino critter's hidden Coat Color gene could be anything. You can't tell by looking.",
-    hint: "Both parents are Pigmented and Tangerine but carry hidden Pigment (Pp) and Coat Color (Hh) copies. 1 in 4 babies is pp — pigment off — and shows up Albino regardless of its H or h. One gene masking another like this is called epistasis.",
+      "Deliver an Albino critter. Just so you know — an Albino critter's hidden coat color gene could be anything underneath. You genuinely can't tell by looking at it.",
+    hint: "Both parents look Tangerine and are fully pigmented, but they each secretly carry one hidden copy of the Pigment gene (Pp) and one hidden Blueberry copy (Hh). About 1 in 4 of their babies will end up with no working Pigment gene at all (pp) and come out Albino, regardless of whatever color was hiding underneath. When one gene completely shuts down another like this, it's called epistasis.",
     genes: [GENE_PIGMENT, GENE_HUE],
     makeBarn: () => [
       mkCritter(
@@ -619,7 +615,6 @@ const LEVELS: LevelDef[] = [
       )
     ],
     checkSolved: (barn) => barn.some((c) => resolveGenePhenotype(GENE_PIGMENT, c.genotype.pigment).state === 'recessive'),
-    expectedRatioNote: '~9 Tangerine : 3 Blueberry : 4 Albino — epistasis bends the usual 9:3:3:1'
   }
 ];
 
@@ -668,9 +663,8 @@ const CritterCard: React.FC<CritterCardProps> = ({ critter, genes, selected, onS
       animate={{ opacity: 1, scale: 1 }}
       transition={{ type: 'spring', stiffness: 260, damping: 20 }}
       onClick={onSelect}
-      className={`relative rounded-xl border p-2 cursor-pointer transition select-none ${
-        selected ? 'border-amber-400 bg-amber-500/10' : 'border-white/10 bg-white/5 hover:border-white/25'
-      }`}
+      className={`relative rounded-xl border p-2 cursor-pointer transition select-none ${selected ? 'border-amber-400 bg-amber-500/10' : 'border-white/10 bg-white/5 hover:border-white/25'
+        }`}
     >
       {!critter.fixed && (
         <button
@@ -722,7 +716,7 @@ function TestCrossPanel({
   if (!candidate) {
     return (
       <p className="text-[11px] text-zinc-500 font-mono">
-        Select one candidate and the opposite-sex Recessive Tester, then run the test cross.
+        Click one candidate and the opposite-sex Recessive Tester to select them, then hit "Run test cross".
       </p>
     );
   }
@@ -762,8 +756,7 @@ function TestCrossPanel({
       )}
       {failed && !certified && (
         <p className="text-xs text-red-400 font-mono">
-          Disqualified — at least one {gene.recessiveLabel} baby means this candidate is secretly {gene.dominantAllele}
-          {gene.recessiveAllele}. Pick another candidate.
+          Disqualified — a {gene.recessiveLabel} baby appeared, which means this critter was secretly carrying a hidden copy all along. Pick a different candidate and try again.
         </p>
       )}
     </div>
@@ -847,7 +840,7 @@ export default function CritterRanch({ solvedLevels, onSolve }: CritterRanchProp
   const barnFull = !isTestCrossPair && barn.length >= BARN_CAP;
   const canBreed = !!mother && !!father && !barnFull;
 
-  const breedHint = !p1 || !p2 ? null : p1.sex === p2.sex ? 'Pick one of each sex to breed.' : barnFull ? 'Barn is full — release a critter to make room.' : null;
+  const breedHint = !p1 || !p2 ? null : p1.sex === p2.sex ? 'You need one female and one male to breed.' : barnFull ? 'The barn is full — click the ✕ on a critter to release it and make room.' : null;
 
   const punnettReady = !level.isTestCross && !!mother && !!father && isGenotypeKnown(mother, genes) && isGenotypeKnown(father, genes);
 
@@ -935,9 +928,9 @@ export default function CritterRanch({ solvedLevels, onSolve }: CritterRanchProp
       (c) => resolveGenePhenotype(gene, c.genotype[gene.id]).state === 'recessive'
     ).length;
     if (recessiveCount === 0) {
-      return `None of this litter came out ${gene.recessiveLabel} — with a small litter like this, a recessive trait can easily just not turn up even when a parent is secretly carrying it.`;
+      return `No ${gene.recessiveLabel} babies this time — that doesn't mean nobody's carrying the hidden copy. With a small litter, the odds just didn't pan out. Try again!`;
     }
-    return `${recessiveCount} of ${lastLitter.length} babies came out ${gene.recessiveLabel} — that means both parents just happened to pass down their hidden copy to the same critter.`;
+    return `${recessiveCount} out of ${lastLitter.length} babies came out ${gene.recessiveLabel}! That happened because both parents passed their hidden copy to the same lucky (or unlucky) baby.`;
   })();
 
   return (
@@ -947,9 +940,8 @@ export default function CritterRanch({ solvedLevels, onSolve }: CritterRanchProp
           <button
             key={lvl.id}
             onClick={() => selectLevel(i)}
-            className={`px-3 py-1.5 rounded-full text-[11px] font-mono border transition cursor-pointer flex items-center gap-1.5 ${
-              i === levelIndex ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300' : 'bg-white/5 border-white/10 text-zinc-400 hover:text-white'
-            }`}
+            className={`px-3 py-1.5 rounded-full text-[11px] font-mono border transition cursor-pointer flex items-center gap-1.5 ${i === levelIndex ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300' : 'bg-white/5 border-white/10 text-zinc-400 hover:text-white'
+              }`}
           >
             {solvedLevels.includes(i) && <Trophy className="w-3 h-3 text-amber-400" />}
             L{i + 1}
@@ -1030,20 +1022,11 @@ export default function CritterRanch({ solvedLevels, onSolve }: CritterRanchProp
           </div>
         ) : mother && father ? (
           <p className="text-[11px] text-zinc-500 font-mono">
-            Genotype not fully known yet — breed to find out, or wait for a recessive baby to give it away.
+            We don't know both parents' full genetics yet. Breed them — if a recessive baby shows up, it'll reveal what the parents were hiding.
           </p>
         ) : null}
 
         {litterNote && <p className="text-xs text-zinc-400 font-sans leading-relaxed">{litterNote}</p>}
-
-        {level.expectedRatioNote && !level.isTestCross && (
-          <div className="text-[10px] font-mono text-zinc-500">
-            Expected ratio: {level.expectedRatioNote}
-            {Object.keys(tally).length > 0 && (
-              <span className="text-zinc-400"> — so far: {Object.entries(tally).map(([k, v]) => `${k} ×${v}`).join(', ')}</span>
-            )}
-          </div>
-        )}
       </div>
 
       <div>
