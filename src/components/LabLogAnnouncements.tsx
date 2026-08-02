@@ -47,8 +47,7 @@ export default function LabLogAnnouncements({ logs, announcements }: LabLogAnnou
 
         {logs.length === 0 ? (
           <div className="p-8 rounded-[28px] border-2 border-[#1F3A42]/8 bg-white text-center space-y-2">
-            <p className="font-display font-bold text-base text-[#1F3A42]">No lab log entries yet.</p>
-            <p className="text-xs text-[#4B6169]">Check back soon for new posts!</p>
+            <p className="font-display font-bold text-base text-[#1F3A42]">Loading...</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -83,8 +82,7 @@ export default function LabLogAnnouncements({ logs, announcements }: LabLogAnnou
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {announcements.length === 0 ? (
             <div className="col-span-full p-6 rounded-2xl border-2 border-[#1F3A42]/8 bg-white text-center space-y-1">
-              <p className="font-display font-bold text-sm text-[#1F3A42]">No club announcements right now.</p>
-              <p className="text-xs text-[#4B6169]">Check back soon for updates!</p>
+              <p className="font-display font-bold text-sm text-[#1F3A42]">Loading...</p>
             </div>
           ) : (
             announcements.map((ann) => (
@@ -111,9 +109,6 @@ export default function LabLogAnnouncements({ logs, announcements }: LabLogAnnou
           <div id="log-detail-modal" className="w-full max-w-2xl rounded-[28px] overflow-hidden shadow-2xl bg-[#FBF7EC] dark:bg-gray-800 dark:text-white flex flex-col justify-between max-h-[85vh] my-auto">
             <div className="relative h-60">
               <img src={activeLog.image} alt={activeLog.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-              <button id="close-log-modal-btn" onClick={() => setActiveLogId(null)} className="absolute top-4 right-4 p-2 text-[#1F3A42] rounded-full transition-all cursor-pointer">
-                <X className="w-4 h-4" />
-              </button>
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent flex items-end p-6">
                 <div className="text-white space-y-1">
                   <span className="bg-[#1F3A42] text-white dark:bg-[#6CC24A] dark:text-[#14351F] text-[10px] font-display font-bold px-2.5 py-1 rounded-full capitalize">{activeLog.category}</span>
