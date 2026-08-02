@@ -428,14 +428,27 @@ note behind a genuine mess-up or success, never a mere selection or drag.
   every-10-tick beat as the gap shrink, but that beat is *not* copied
   literally: its 256px canvas only ever shows ~3 columns' worth of blocks at
   once (32 visible columns / 10), while our much wider 800px canvas at the
-  same 10-tick period would show roughly twice as many blocks on screen
-  simultaneously as the original ever did — `BLOCK_SPAWN_EVERY` spawns one
-  every other shrink-beat instead, restoring that same ~3-per-screen density
-  the original actually looked like rather than matching its raw tick count.
-  A column's block is guarded against spawning if the gap has already
-  narrowed past `BLOCK_H` (the original has no such guard, so a late-game
-  block there could poke past the
-  wall it's next to — a real edge case in the source, not one worth copying).
+  same period would show far more blocks on screen simultaneously than the
+  original ever did. `BLOCK_SPAWN_EVERY` (currently every 4th shrink-beat,
+  i.e. every 40 columns) is tuned purely by feel to keep it visually sparse
+  like the original rather than derived from any exact ratio — it's been
+  turned down twice already as still "too many blocks," so treat it as a
+  density dial to keep adjusting directly rather than something with a
+  supposedly-correct value. A column's block is guarded against spawning if
+  the gap has already narrowed past `BLOCK_H` (the original has no such
+  guard, so a late-game block there could poke past the wall it's next to —
+  a real edge case in the source, not one worth copying).
+  The "ready" and "generating" phases render nothing but the background and
+  HUD strip — no cave, no ship. `beginRun` generates the whole cave (cheap:
+  just array pushes) the instant a hold is detected, but parks in a
+  `'generating'` phase for `GENERATING_TICKS` (a deliberately brief empty
+  pause) before flipping to `'flying'`, where the cave and ship actually
+  appear and start moving together. Drawing an idle ship floating on a blank
+  field before there's anything to fly through — or a stale previous run's
+  cave sitting frozen behind it — read as a rendering bug, not a "waiting to
+  play" state, which is why `draw()` gates the entire cave/ship/trail block
+  on `phase === 'flying' || phase === 'crashed'` rather than trying to make
+  the ready screen show something meaningful.
 
 `VirtualLab.tsx` is the shell that hosts them, keyed by `GameId` in
 `types.ts`, and awards XP once per level (`ChemTextAdventure` only ever has

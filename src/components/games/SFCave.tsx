@@ -60,12 +60,13 @@ const CAVE_DELTA_SCALE = 1.4;
  *  block in a 300-tall playfield. The original spawns one on the exact same
  *  every-10-tick beat as the gap shrink, but its 256px-wide canvas only ever
  *  shows ~3 columns' worth of blocks at once (32 visible columns / 10); at
- *  our much wider 800px canvas, the same 10-tick period would show roughly
- *  twice as many blocks on screen simultaneously as the original ever did.
- *  Spawning every other beat instead — still on-beat with the shrink, just
- *  half as often — keeps it visually at ~3 blocks per screen, matching what
- *  the original actually looked like rather than its literal tick count. */
-const BLOCK_SPAWN_EVERY = CAVE_GAP_SHRINK_EVERY * 2;
+ *  our much wider 800px canvas, matching that tick period showed far more
+ *  blocks on screen at once than the original ever did. Spawning every 4th
+ *  beat instead — still on-beat with the shrink, just a quarter as often —
+ *  keeps it visually sparse like the original, rather than matching its
+ *  literal tick count. (Tune this directly if it still reads as too dense
+ *  or too sparse; it's a visual-density call, not a physics constant.) */
+const BLOCK_SPAWN_EVERY = CAVE_GAP_SHRINK_EVERY * 4;
 const BLOCK_H = 45;
 const BLOCK_COLOR = '#f97316';
 
@@ -74,12 +75,16 @@ const INITIAL_COLUMNS = Math.ceil(WORLD_W / STEP_X) + 4;
  *  "ready" — matching the original's fixed 15-tick death screen. */
 const DEATH_TICKS = 15;
 const DEATH_RING_STEP = 9;
+/** How many ticks the screen stays genuinely empty — no cave, no ship —
+ *  after a hold is detected before the freshly generated cave (and the
+ *  ship inside it) actually appears and starts moving. */
+const GENERATING_TICKS = 6;
 
 /** Distance thresholds that stand in for "levels" — crossing one in a single
  *  run unlocks its badge, same as solving a level does in every other game. */
 const MILESTONES = [800, 2000, 4000, 7000, 12000];
 
-type Phase = 'ready' | 'flying' | 'crashed';
+type Phase = 'ready' | 'generating' | 'flying' | 'crashed';
 
 interface Vec {
   x: number;
@@ -185,6 +190,7 @@ export default function SFCave({ solvedLevels, onSolve }: SFCaveProps) {
   const trailRef = useRef<Vec[]>([]);
   const crossedRef = useRef<Set<number>>(new Set());
   const deathTickRef = useRef(0);
+  const genTickRef = useRef(0);
 
   const setPhaseSynced = useCallback((next: Phase) => {
     phaseRef.current = next;
@@ -210,6 +216,10 @@ export default function SFCave({ solvedLevels, onSolve }: SFCaveProps) {
     setPhaseSynced('ready');
   }, [setPhaseSynced]);
 
+  /** Generates the cave and parks the ship in it, but doesn't show any of it
+   *  yet — phase goes to 'generating', a brief empty pause, not straight to
+   *  'flying'. The cave data exists immediately (it's cheap, just array
+   *  pushes); what's delayed is the reveal. */
   const beginRun = useCallback(() => {
     const gen = freshCaveGen();
     for (let i = 0; i < INITIAL_COLUMNS; i++) genNextColumn(gen);
@@ -219,9 +229,10 @@ export default function SFCave({ solvedLevels, onSolve }: SFCaveProps) {
     scrollRef.current = 0;
     trailRef.current = [];
     crossedRef.current = new Set();
+    genTickRef.current = 0;
     setDistance(0);
     setAttempts((n) => n + 1);
-    setPhaseSynced('flying');
+    setPhaseSynced('generating');
   }, [setPhaseSynced]);
 
   useEffect(() => {
@@ -238,61 +249,68 @@ export default function SFCave({ solvedLevels, onSolve }: SFCaveProps) {
     ctx.fillStyle = BG_COLOR;
     ctx.fillRect(0, 0, WORLD_W, PLAY_H);
 
-    const gen = caveGenRef.current;
-    const scroll = scrollRef.current;
-    const firstCol = Math.max(0, Math.floor(scroll / STEP_X));
-    const lastCol = Math.min(gen.tops.length - 1, Math.ceil((scroll + WORLD_W) / STEP_X));
+    // 'ready' and 'generating' are deliberately empty — no cave, no ship.
+    // The cave (and the ship inside it) only actually appears once flying
+    // starts; showing either mid-generation, or an idle ship floating on a
+    // blank field before there's anything to fly through, both read as a
+    // rendering bug rather than an intentional "not playing yet" state.
+    if (phaseRef.current === 'flying' || phaseRef.current === 'crashed') {
+      const gen = caveGenRef.current;
+      const scroll = scrollRef.current;
+      const firstCol = Math.max(0, Math.floor(scroll / STEP_X));
+      const lastCol = Math.min(gen.tops.length - 1, Math.ceil((scroll + WORLD_W) / STEP_X));
 
-    // Flat, blocky columns — the original's actual look (solid rects per
-    // column, not a smooth path), just with the wall/passable colors swapped.
-    for (let col = firstCol; col <= lastCol; col++) {
-      const screenX = col * STEP_X - scroll;
-      const top = gen.tops[col];
-      const bottom = top + gen.gaps[col];
-      ctx.fillStyle = WALL_COLOR;
-      ctx.fillRect(screenX, 0, STEP_X + 1, top);
-      ctx.fillRect(screenX, bottom, STEP_X + 1, PLAY_H - bottom);
+      // Flat, blocky columns — the original's actual look (solid rects per
+      // column, not a smooth path), just with the wall/passable colors swapped.
+      for (let col = firstCol; col <= lastCol; col++) {
+        const screenX = col * STEP_X - scroll;
+        const top = gen.tops[col];
+        const bottom = top + gen.gaps[col];
+        ctx.fillStyle = WALL_COLOR;
+        ctx.fillRect(screenX, 0, STEP_X + 1, top);
+        ctx.fillRect(screenX, bottom, STEP_X + 1, PLAY_H - bottom);
 
-      const block = gen.blocks[col];
-      if (block !== -1) {
-        ctx.fillStyle = BLOCK_COLOR;
-        ctx.fillRect(screenX, block, STEP_X + 1, BLOCK_H);
-      }
-    }
-
-    // Motion trail — a faint line of where the ship has actually been.
-    const trail = trailRef.current;
-    if (trail.length > 1) {
-      ctx.beginPath();
-      let started = false;
-      for (const p of trail) {
-        const sx = p.x - scroll;
-        if (sx < -20 || sx > WORLD_W + 20) continue;
-        if (!started) {
-          ctx.moveTo(sx, p.y);
-          started = true;
-        } else {
-          ctx.lineTo(sx, p.y);
+        const block = gen.blocks[col];
+        if (block !== -1) {
+          ctx.fillStyle = BLOCK_COLOR;
+          ctx.fillRect(screenX, block, STEP_X + 1, BLOCK_H);
         }
       }
-      ctx.strokeStyle = 'rgba(31,58,66,0.25)';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-    }
 
-    // The ship — a flat square, same as the original's blocky sprite.
-    const shipY = yRef.current;
-    ctx.fillStyle = phaseRef.current === 'crashed' ? CRASH_COLOR : SHIP_COLOR;
-    ctx.fillRect(SHIP_X - SHIP_R, shipY - SHIP_R, SHIP_R * 2, SHIP_R * 2);
+      // Motion trail — a faint line of where the ship has actually been.
+      const trail = trailRef.current;
+      if (trail.length > 1) {
+        ctx.beginPath();
+        let started = false;
+        for (const p of trail) {
+          const sx = p.x - scroll;
+          if (sx < -20 || sx > WORLD_W + 20) continue;
+          if (!started) {
+            ctx.moveTo(sx, p.y);
+            started = true;
+          } else {
+            ctx.lineTo(sx, p.y);
+          }
+        }
+        ctx.strokeStyle = 'rgba(31,58,66,0.25)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
 
-    // Death ring — the original's expanding stroked circle from the crash
-    // point, playing out over its fixed 15-tick death screen.
-    if (phaseRef.current === 'crashed' && deathTickRef.current > 0) {
-      ctx.beginPath();
-      ctx.arc(SHIP_X, shipY, deathTickRef.current * DEATH_RING_STEP, 0, Math.PI * 2);
-      ctx.strokeStyle = CRASH_COLOR;
-      ctx.lineWidth = 2;
-      ctx.stroke();
+      // The ship — a flat square, same as the original's blocky sprite.
+      const shipY = yRef.current;
+      ctx.fillStyle = phaseRef.current === 'crashed' ? CRASH_COLOR : SHIP_COLOR;
+      ctx.fillRect(SHIP_X - SHIP_R, shipY - SHIP_R, SHIP_R * 2, SHIP_R * 2);
+
+      // Death ring — the original's expanding stroked circle from the crash
+      // point, playing out over its fixed 15-tick death screen.
+      if (phaseRef.current === 'crashed' && deathTickRef.current > 0) {
+        ctx.beginPath();
+        ctx.arc(SHIP_X, shipY, deathTickRef.current * DEATH_RING_STEP, 0, Math.PI * 2);
+        ctx.strokeStyle = CRASH_COLOR;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
     }
 
     // Dedicated HUD strip, same as the original's separate score bar.
@@ -367,6 +385,9 @@ export default function SFCave({ solvedLevels, onSolve }: SFCaveProps) {
       // returned to 'ready' launches on the very next tick with no fresh
       // press needed, same as the original's `if(down){setState(1);}` check.
       if (holdingRef.current) beginRun();
+    } else if (phaseRef.current === 'generating') {
+      genTickRef.current++;
+      if (genTickRef.current >= GENERATING_TICKS) setPhaseSynced('flying');
     } else if (phaseRef.current === 'flying') {
       stepFlying();
     } else {
@@ -374,7 +395,7 @@ export default function SFCave({ solvedLevels, onSolve }: SFCaveProps) {
       if (deathTickRef.current >= DEATH_TICKS) resetFlight();
     }
     draw();
-  }, [beginRun, stepFlying, resetFlight, draw]);
+  }, [beginRun, stepFlying, resetFlight, draw, setPhaseSynced]);
 
   useEffect(() => {
     const id = setInterval(tick, TICK_MS);
@@ -466,6 +487,8 @@ export default function SFCave({ solvedLevels, onSolve }: SFCaveProps) {
               <Flashlight className="w-3.5 h-3.5 text-amber-400" />
               Hold (or press Space) to launch and thrust
             </>
+          ) : phase === 'generating' ? (
+            <span>Carving the cave&hellip;</span>
           ) : phase === 'flying' ? (
             <>
               <Play className="w-3.5 h-3.5 text-sky-400" />
