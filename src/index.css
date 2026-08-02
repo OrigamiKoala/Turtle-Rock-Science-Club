@@ -1,6 +1,16 @@
 @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800;900&display=swap');
 @import "tailwindcss";
 
+/* Bind Tailwind's `dark:` utilities to the same `.dark` class that
+   src/useTheme.ts toggles. Without this, Tailwind v4 compiles `dark:` to
+   `@media (prefers-color-scheme: dark)`, which reads the OS setting only — so
+   the header's manual toggle moved the hand-written `:root.dark` overrides
+   below while every `dark:bg-gray-800`-style utility stayed put. Anyone whose
+   stored preference disagreed with their OS got half a dark page (the
+   Resources filter bar was the worst of it). The two systems must key off the
+   same signal. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --font-sans: "Nunito", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Baloo 2", sans-serif;
