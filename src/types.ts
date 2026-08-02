@@ -63,7 +63,18 @@ export interface UserProfile {
   newsletterSubscribed: boolean;
 }
 
-export type GameId = 'orbit' | 'molecule' | 'robot' | 'adventure';
+export type GameId =
+  | 'orbit'
+  | 'molecule'
+  | 'robot'
+  | 'adventure'
+  | 'optics'
+  | 'circuit'
+  | 'seismo'
+  | 'genetics'
+  | 'ecology'
+  | 'spectra'
+  | 'reactor';
 
 /**
  * Which level indices of each minigame have been solved. Persisted, because an
@@ -72,7 +83,19 @@ export type GameId = 'orbit' | 'molecule' | 'robot' | 'adventure';
  */
 export type GameProgress = Record<GameId, number[]>;
 
-export const EMPTY_GAME_PROGRESS: GameProgress = { orbit: [], molecule: [], robot: [], adventure: [] };
+export const EMPTY_GAME_PROGRESS: GameProgress = {
+  orbit: [],
+  molecule: [],
+  robot: [],
+  adventure: [],
+  optics: [],
+  circuit: [],
+  seismo: [],
+  genetics: [],
+  ecology: [],
+  spectra: [],
+  reactor: []
+};
 
 export interface Announcement {
   id: string;

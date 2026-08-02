@@ -1,6 +1,25 @@
 import React, { useState } from 'react';
 import { Mission, UserProfile } from '../types';
-import { Trophy, Award, Ticket, Sparkles, ShieldCheck, CheckCircle, Clock, Calendar } from 'lucide-react';
+import {
+  Trophy,
+  Award,
+  Ticket,
+  ShieldCheck,
+  CheckCircle,
+  Clock,
+  Calendar,
+  Orbit,
+  FlaskConical,
+  Bot,
+  ScrollText,
+  Eye,
+  Zap,
+  Activity,
+  Dna,
+  Leaf,
+  Telescope,
+  Factory
+} from 'lucide-react';
 
 interface DashboardProps {
   userProfile: UserProfile;
@@ -8,15 +27,6 @@ interface DashboardProps {
   signedUpIds: string[];
   onUpdateProfileName: (newName: string) => void;
   setCurrentTab: (tab: string) => void;
-}
-
-function FlameIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5" {...props}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15.362 5.214A8.252 8.252 0 0 1 12 21 8.25 8.25 0 0 1 6.038 7.047 8.287 8.287 0 0 0 9 9.601a8.983 8.983 0 0 1 3.361-6.867 8.21 8.21 0 0 0 3 2.48Z" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 18a3.75 3.75 0 0 0 .495-7.467 5.99 5.99 0 0 0-1.925 3.546 5.974 5.974 0 0 1-2.133-1A3.75 3.75 0 0 0 12 18Z" />
-    </svg>
-  );
 }
 
 export default function Dashboard({ userProfile, missions, signedUpIds, onUpdateProfileName, setCurrentTab }: DashboardProps) {
@@ -43,9 +53,17 @@ export default function Dashboard({ userProfile, missions, signedUpIds, onUpdate
 
   const badgeCatalog = [
     { name: 'Foundation Member', desc: 'Officially joined the Turtle Rock crew.', icon: ShieldCheck },
-    { name: 'Lava Lamp Alchemist', desc: 'Calibrated a lava lamp reaction.', icon: Award },
-    { name: 'Volcano Catalyst', desc: 'Triggered a high-intensity reaction.', icon: FlameIcon },
-    { name: 'Stargazing Scout', desc: 'Mapped constellation coordinates.', icon: Sparkles }
+    { name: 'Navigator', desc: 'Slingshotted a probe around gravity to reach the beacon.', icon: Orbit },
+    { name: 'Chemist', desc: 'Built every molecule in the Molecule Builder kit.', icon: FlaskConical },
+    { name: 'Engineer', desc: "Programmed a robot through the Robot Programmer's mazes.", icon: Bot },
+    { name: 'Adventurer', desc: 'Finished the Chemistry Text Adventure.', icon: ScrollText },
+    { name: 'Optician', desc: 'Bent light through mirrors, lenses and prisms in Lightbender.', icon: Eye },
+    { name: 'Sparky', desc: 'Wired a working circuit in Short Circuit.', icon: Zap },
+    { name: 'Seismologist', desc: 'Triangulated an earthquake in Epicenter.', icon: Activity },
+    { name: 'Geneticist', desc: 'Bred a customer order in Critter Ranch.', icon: Dna },
+    { name: 'Ecologist', desc: "Kept an island's food web alive in Island Keeper.", icon: Leaf },
+    { name: 'Astrophysicist', desc: "Decoded a star's spectrum in Starlight Decoder.", icon: Telescope },
+    { name: 'Chemical Engineer', desc: 'Ran a balanced production line in Reactor Line.', icon: Factory }
   ];
 
   const xpInCurrentLevel = userProfile.xp % 100;

@@ -273,8 +273,12 @@ button.
 
 ## Minigames
 
-`src/components/games/` — three real puzzle games, not click toys, plus one
-link-out:
+`src/components/games/` — ten real puzzle games, not click toys, plus one
+link-out. `docs/game-ideas.md` is the original design doc for the seven
+science-domain games (Lightbender through Reactor Line); read it before
+touching their level data or science model, since each level's numbers were
+tuned (some with scratch Node scripts, not just eyeballed) to make a specific
+lesson land.
 
 - `OrbitalSlingshot.tsx` — Newtonian gravity sim on canvas; drag *toward* the
   target to launch, speed scales with drag distance. Sim state lives in refs
@@ -288,19 +292,61 @@ link-out:
   back to an evenly spaced ring.
 - `RobotProgrammer.tsx` — write a program, then run it. Later mazes give too
   few main slots on purpose, forcing the F1 subroutine to call itself.
+- `Lightbender.tsx` — real ray-traced optics on a grid (Snell's law, dispersion,
+  total internal reflection). Beam is re-traced every drag frame; rays are
+  nudged `1e-4` along their direction after each bounce to avoid re-intersecting
+  the surface they just left.
+- `ShortCircuit.tsx` — an SVG breadboard backed by a hand-written nodal-analysis
+  solver (Gaussian elimination with partial pivoting), not a series/parallel
+  special case — that generality is what makes the Wheatstone-bridge level
+  solvable at all. Pure-wire branches are union-found together before the
+  matrix is built, or shorted nodes make it singular.
+- `Epicenter.tsx` — P/S-wave arrival-gap trilateration. Each level is generated
+  from a hidden true epicenter + magnitude via a seeded RNG (mulberry32), so
+  the puzzle is internally consistent and reproducible rather than random per
+  load.
+- `CritterRanch.tsx` — Mendelian breeding puzzle. Genotype is a
+  `Record<GeneId, [Allele, Allele]>`; phenotype is a pure resolver function per
+  gene (dominant / incomplete / epistatic-on:X). The test-cross level requires
+  an actual statistical proof of homozygosity (zero recessive offspring across
+  a sample), not just producing the right-looking critter.
+- `IslandKeeper.tsx` — coupled Lotka-Volterra food web,
+  `dN_i/dt = N_i·(r_i − damp_i·(N_i/K_i) + Σ a_ij·N_j)`, stepped in a
+  `requestAnimationFrame` loop (sim state in a ref, pushed to React state at a
+  throttled rate, same reasoning as `OrbitalSlingshot`). Producers use the
+  textbook logistic form (`damp_i = r_i`); consumers get a *negative* baseline
+  `r_i` (they starve without food) plus a `damp_i` that is always positive
+  regardless of `r_i`'s sign — conflating the two for consumers is what makes
+  the simulation blow up to `Infinity`, since a negative `r_i` flips the
+  logistic brake into a throttle once population exceeds `K_i`. Removing the
+  hawk from the Keystone level's five-species web is a genuine emergent
+  cascade (voles boom, overgraze the grass, and drag rabbits and foxes down
+  with them), not scripted.
+- `StarlightDecoder.tsx` — spectral-line matching with a real wavelength→RGB
+  gradient (Bruton's approximation) and actual element line wavelengths
+  (Balmer, sodium D, calcium H&K). The Doppler levels apply
+  `λ_obs = λ_rest·(1+v/c)` as one multiplicative shift to a whole line pattern
+  at once — that simultaneity, not any single line, is what the puzzle tests.
+- `ReactorLine.tsx` — stoichiometry factory. Formulas are tokenized into
+  element-count maps (handles `Fe2O3`, `Ca(OH)2`-style nesting) and balance is
+  checked by comparing scaled reagent/product counts — coefficients are never
+  hardcoded per level. The sim is a discrete tick (`min(available/ratio)`
+  per reaction per tick), so a half-built line still produces something.
 - `ChemTextAdventure.tsx` — not hosted here. Links out to an external
   choose-your-own-path chemistry story; clicking the link *is* the win
   condition and the only way to earn its "Adventurer" badge.
 
 `VirtualLab.tsx` is the shell that hosts them, keyed by `GameId` in
 `types.ts`, and awards XP once per level (`ChemTextAdventure` only ever has
-level 0).
+level 0). The tab grid is `sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4` —
+with eleven tabs it wraps into multiple rows by default CSS grid behaviour,
+no scroll container needed.
 
-Note: the badges games award (`Navigator`/`Chemist`/`Engineer`/`Adventurer`,
-passed as strings into `userProfile.unlockedBadges`) are **not** the same
-badges shown on the Dashboard's achievements grid — `Dashboard.tsx` has its
-own hardcoded `badgeCatalog` (`Foundation Member`, `Lava Lamp Alchemist`,
-`Volcano Catalyst`, `Stargazing Scout`) left over from the AI-Studio-era
-template, none of which the running app can actually unlock except
-`Foundation Member` on join. This mismatch predates the current games and is
-not something recent minigame work introduced.
+All seven newer games are "always-dark" chrome like `OrbitalSlingshot`, the
+same choice the doc's integration notes call for — none of them try to hook
+into the `.game-*` wrapper-class theming scheme described below.
+
+`Dashboard.tsx`'s `badgeCatalog` now lists all eleven earnable badges
+(`Foundation Member` plus one per game) instead of the leftover AI-Studio-era
+placeholder names it used to have. If you add another game, add its badge
+here too, or the achievements grid will silently drift out of sync again.
