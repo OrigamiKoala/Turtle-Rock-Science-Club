@@ -223,7 +223,10 @@ export default function SFCave({ solvedLevels, onSolve }: SFCaveProps) {
     const centers = centersRef.current;
 
     for (let i = 0; i < SUBSTEPS; i++) {
-      const accel = holdingRef.current ? GRAVITY - THRUST : GRAVITY;
+      // GRAVITY/THRUST are tuned as per-frame values; divide by SUBSTEPS so
+      // sub-stepping (needed for collision precision) doesn't also multiply
+      // the actual acceleration the player feels by 4x.
+      const accel = (holdingRef.current ? GRAVITY - THRUST : GRAVITY) / SUBSTEPS;
       vyRef.current = Math.max(-MAX_VSPEED, Math.min(MAX_VSPEED, vyRef.current + accel));
       yRef.current += vyRef.current;
 
