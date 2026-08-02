@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { LabLog, Announcement } from '../types';
+import { ContentStatus } from '../useSiteContent';
 import { Clock, User, X, MessageSquare } from 'lucide-react';
 import SafeHtml from './SafeHtml';
 
 interface LabLogAnnouncementsProps {
   logs: LabLog[];
   announcements: Announcement[];
+  contentStatus: ContentStatus;
 }
 
-export default function LabLogAnnouncements({ logs, announcements }: LabLogAnnouncementsProps) {
+export default function LabLogAnnouncements({ logs, announcements, contentStatus }: LabLogAnnouncementsProps) {
   const [activeLogId, setActiveLogId] = useState<string | null>(null);
 
   const [comments, setComments] = useState<Record<string, Array<{ name: string; text: string; date: string }>>>({
@@ -47,7 +49,12 @@ export default function LabLogAnnouncements({ logs, announcements }: LabLogAnnou
 
         {logs.length === 0 ? (
           <div className="p-8 rounded-[28px] border-2 border-[#1F3A42]/8 bg-white text-center space-y-2">
-            <p className="font-display font-bold text-base text-[#1F3A42]">Loading...</p>
+            <p className="font-display font-bold text-base text-[#1F3A42]">
+              {contentStatus === 'loading' ? 'Loading...' : 'No lab entries yet...'}
+            </p>
+            {contentStatus !== 'loading' && (
+              <p className="text-xs text-[#4B6169] font-sans">Check back later!</p>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -82,7 +89,12 @@ export default function LabLogAnnouncements({ logs, announcements }: LabLogAnnou
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {announcements.length === 0 ? (
             <div className="col-span-full p-6 rounded-2xl border-2 border-[#1F3A42]/8 bg-white text-center space-y-1">
-              <p className="font-display font-bold text-sm text-[#1F3A42]">Loading...</p>
+              <p className="font-display font-bold text-sm text-[#1F3A42]">
+                {contentStatus === 'loading' ? 'Loading...' : 'No announcements yet...'}
+              </p>
+              {contentStatus !== 'loading' && (
+                <p className="text-xs text-[#4B6169] font-sans">Check back later!</p>
+              )}
             </div>
           ) : (
             announcements.map((ann) => (

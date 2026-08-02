@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { EventPhoto, GalleryPhoto, UserProfile } from '../types';
+import { ContentStatus } from '../useSiteContent';
 import SafeHtml from './SafeHtml';
 import { Camera, Image as ImageIcon, Filter, CheckCircle, Upload, AlertCircle, ExternalLink, FolderHeart } from 'lucide-react';
 
@@ -7,6 +8,7 @@ interface PhotoGalleryProps {
   photos: GalleryPhoto[];
   sheetPhotos?: GalleryPhoto[];
   eventPhotos?: EventPhoto[];
+  contentStatus: ContentStatus;
   userProfile: UserProfile;
   onAddPhoto: (newPhoto: GalleryPhoto) => void;
   onOpenJoin: () => void;
@@ -58,7 +60,7 @@ function HtmlEmbedCard({ embedHtml }: { embedHtml: string }) {
   );
 }
 
-export default function PhotoGallery({ photos, sheetPhotos = [], eventPhotos = [], userProfile, onAddPhoto, onOpenJoin }: PhotoGalleryProps) {
+export default function PhotoGallery({ photos, sheetPhotos = [], eventPhotos = [], contentStatus, userProfile, onAddPhoto, onOpenJoin }: PhotoGalleryProps) {
   const [activeFilter, setActiveFilter] = useState<string>('all');
   const [showSubmitForm, setShowSubmitForm] = useState(false);
 
@@ -301,8 +303,14 @@ export default function PhotoGallery({ photos, sheetPhotos = [], eventPhotos = [
         ) : (
           <div className="text-center py-12 border-2 border-dashed border-[#1F3A42]/12 rounded-[28px] bg-white">
             <ImageIcon className="w-9 h-9 text-[#9AA6A6] mx-auto mb-2" />
-            <p className="font-bold text-xs text-[#4B6169]">No photo snapshots yet</p>
-            <p className="text-xs text-[#9AA6A6] mt-1">Check back soon!</p>
+            {contentStatus === 'loading' ? (
+              <p className="font-bold text-xs text-[#4B6169]">Loading...</p>
+            ) : (
+              <>
+                <p className="font-bold text-xs text-[#4B6169]">No photos yet...</p>
+                <p className="text-xs text-[#9AA6A6] mt-1">Check back later!</p>
+              </>
+            )}
           </div>
         )}
       </div>
@@ -359,8 +367,14 @@ export default function PhotoGallery({ photos, sheetPhotos = [], eventPhotos = [
         ) : (
           <div className="text-center py-12 border-2 border-dashed border-[#1F3A42]/12 rounded-[28px] bg-white">
             <FolderHeart className="w-9 h-9 text-[#9AA6A6] mx-auto mb-2" />
-            <p className="font-bold text-xs text-[#4B6169]">No event albums published yet</p>
-            <p className="text-xs text-[#9AA6A6] mt-1">Check back soon!</p>
+            {contentStatus === 'loading' ? (
+              <p className="font-bold text-xs text-[#4B6169]">Loading...</p>
+            ) : (
+              <>
+                <p className="font-bold text-xs text-[#4B6169]">No event albums yet...</p>
+                <p className="text-xs text-[#9AA6A6] mt-1">Check back later!</p>
+              </>
+            )}
           </div>
         )}
       </div>

@@ -206,11 +206,11 @@ export default function App() {
         {currentTab === 'resources' && <CuratedResources resources={content.resources} />}
 
         {currentTab === 'logs' && (
-          <LabLogAnnouncements logs={content.labLogs} announcements={content.announcements} />
+          <LabLogAnnouncements logs={content.labLogs} announcements={content.announcements} contentStatus={content.status} />
         )}
 
         {currentTab === 'gallery' && (
-          <PhotoGallery photos={photos} sheetPhotos={content.photos} eventPhotos={content.eventPhotos} userProfile={userProfile} onAddPhoto={handleAddPhoto} onOpenJoin={() => setShowJoinModal(true)} />
+          <PhotoGallery photos={photos} sheetPhotos={content.photos} eventPhotos={content.eventPhotos} contentStatus={content.status} userProfile={userProfile} onAddPhoto={handleAddPhoto} onOpenJoin={() => setShowJoinModal(true)} />
         )}
 
         {currentTab === 'about' && <AboutUs />}
