@@ -211,6 +211,12 @@ has the remainder to do.
 - Event ids are row-derived (`sheet-event-<rowNumber>`). Rows move when you
   insert or delete above them, so `resolveEventRow_` also verifies the title and
   falls back to a title search.
+- **Renaming a `*_HEADERS` entry does not rename the live column.**
+  `ensureSheet_` rewrites row 1 unconditionally, but the write paths only call
+  it when the tab is *missing* — an existing tab keeps its old header until
+  someone runs 🐢 Website ▸ ⚙️ Set Up / Repair Sheets. The Members tab's 7th column
+  went from `Age` to `Grade` this way, so a sheet that predates that change
+  still reads `Age` over grade values until it is repaired.
 
 ## Site conventions
 

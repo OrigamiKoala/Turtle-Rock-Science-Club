@@ -5,14 +5,24 @@ import { X, ShieldAlert, Smile, CheckSquare, Square, CheckCircle } from 'lucide-
 interface JoinModalProps {
   onClose: () => void;
   onJoinSuccess: (profile: UserProfile) => void;
-  onJoinSubmit?: (details: { name: string; school: string; role: string; parentName: string; email: string; studentEmail?: string; childAge: string; newsletterOptIn: boolean }) => void;
+  onJoinSubmit?: (details: { name: string; school: string; role: string; parentName: string; email: string; studentEmail?: string; childGrade: string; newsletterOptIn: boolean }) => void;
 }
+
+// The field means grade, not age — the label always said so, while the old
+// `childAge` name and its min="4" were AI-Studio-template leftovers (4–18 is an
+// age span). A number input cannot express kindergarten, and that min silently
+// blocked every K–3 family from submitting at all, so this is a fixed list.
+const GRADE_OPTIONS = ['K', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
+
+// Slightly stricter than type="email", which accepts a dotless "a@b" — a real
+// guardian address has a dot. Needed because the form is noValidate now.
+const isEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 
 export default function JoinModal({ onClose, onJoinSuccess, onJoinSubmit }: JoinModalProps) {
   const [childName, setChildName] = useState('');
   const [school, setSchool] = useState('');
   const [parentName, setParentName] = useState('');
-  const [childAge, setChildAge] = useState('');
+  const [childGrade, setChildGrade] = useState('');
   const [email, setEmail] = useState('');
   const [studentEmail, setStudentEmail] = useState('');
   // Defaults to false on purpose: joining the club is not consent to a weekly
@@ -24,8 +34,22 @@ export default function JoinModal({ onClose, onJoinSuccess, onJoinSubmit }: Join
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!childName || !school || !parentName || !email || !childAge) {
+    // The form is noValidate, so every check below reports through the errorMsg
+    // paragraph instead of a browser bubble. Constraint attributes fail here in
+    // a way that reads as "the button is broken" — min="4" on the grade field
+    // rejected K–3 with nothing visible on screen to explain it.
+    if (!childName.trim() || !school.trim() || !parentName.trim() || !email.trim() || !childGrade) {
       setErrorMsg('Please fill in every field.');
+      return;
+    }
+
+    if (!isEmail(email)) {
+      setErrorMsg("That guardian email doesn't look right — check for a typo.");
+      return;
+    }
+
+    if (studentEmail.trim() && !isEmail(studentEmail)) {
+      setErrorMsg("That student email doesn't look right — check for a typo.");
       return;
     }
 
@@ -40,7 +64,7 @@ export default function JoinModal({ onClose, onJoinSuccess, onJoinSubmit }: Join
         parentName,
         email,
         studentEmail,
-        childAge,
+        childGrade,
         newsletterOptIn
       });
     }
@@ -102,7 +126,7 @@ export default function JoinModal({ onClose, onJoinSuccess, onJoinSubmit }: Join
               )}
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-4 font-sans">
+            <form onSubmit={handleSubmit} noValidate className="space-y-4 font-sans">
               <div className="space-y-1">
                 <label className="text-[11px] font-extrabold text-[#4B6169]">Child Name</label>
                 <input id="join-child-name" type="text" placeholder="e.g. Timothy" value={childName} onChange={(e) => setChildName(e.target.value)}
@@ -117,9 +141,19 @@ export default function JoinModal({ onClose, onJoinSuccess, onJoinSubmit }: Join
 
               <div className="grid grid-cols-3 gap-3">
                 <div className="col-span-1 space-y-1">
-                  <label className="text-[11px] font-extrabold text-[#4B6169]">Grade</label>
-                  <input id="join-child-age" type="number" min="4" max="18" placeholder="5" value={childAge} onChange={(e) => setChildAge(e.target.value)}
-                    className="w-full p-2.5 rounded-xl text-sm border-2 border-[#1F3A42]/12 bg-white text-[#1F3A42] focus:outline-none" required />
+                  <label htmlFor="join-child-grade" className="text-[11px] font-extrabold text-[#4B6169]">Grade</label>
+                  <select
+                    id="join-child-grade"
+                    value={childGrade}
+                    onChange={(e) => setChildGrade(e.target.value)}
+                    className="w-full p-2.5 rounded-xl text-sm border-2 border-[#1F3A42]/12 bg-white text-[#1F3A42] focus:outline-none"
+                    required
+                  >
+                    <option value="">Pick one</option>
+                    {GRADE_OPTIONS.map((grade) => (
+                      <option key={grade} value={grade}>{grade}</option>
+                    ))}
+                  </select>
                 </div>
                 <div className="col-span-2 space-y-1">
                   <label className="text-[11px] font-extrabold text-[#4B6169]">Guardian Name</label>

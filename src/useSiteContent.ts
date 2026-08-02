@@ -26,7 +26,8 @@ export interface MemberJoinDetails {
   parentName?: string;
   email?: string;
   studentEmail?: string;
-  childAge?: string;
+  /** School grade as `K` or `1`–`12`. Lands in the Members tab's Grade column. */
+  childGrade?: string;
   /** Guardian ticked the newsletter box. Absent/false means do not subscribe. */
   newsletterOptIn?: boolean;
 }
