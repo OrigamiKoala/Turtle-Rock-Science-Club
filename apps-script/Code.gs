@@ -83,7 +83,7 @@ var MEMBER_HEADERS = [
   'Role',
   'Guardian Name',
   'Parent Email',
-  'Age',
+  'Grade',
   'Level',
   'XP',
   'Unlocked Badges',
@@ -865,7 +865,10 @@ function handleJoin_(body) {
   var parentName = String(body.parentName || '').trim();
   var email = String(body.email || body.parentEmail || '').trim();
   var studentEmail = String(body.studentEmail || '').trim();
-  var childAge = String(body.childAge || '').trim();
+  // The field has always meant grade; `childAge` is the old wire name. Keep
+  // reading it — the script and the site deploy independently, so a visitor on
+  // a cached bundle would otherwise write a blank cell.
+  var childGrade = String(body.childGrade || body.childAge || '').trim();
   // JSON gives a real boolean, but be tolerant of a stringified one so a
   // hand-built POST or an older client can't accidentally read as consent.
   var newsletterOptIn =
@@ -881,7 +884,7 @@ function handleJoin_(body) {
     styleMembersSheet_(members);
   }
 
-  members.appendRow([new Date(), name, school, role, parentName, email, childAge, 1, 15, 'Foundation Member', '', studentEmail, newsletterOptIn]);
+  members.appendRow([new Date(), name, school, role, parentName, email, childGrade, 1, 15, 'Foundation Member', '', studentEmail, newsletterOptIn]);
 
   // Joining the club is NOT consent to the newsletter — only the opt-in box is.
   // The member row is written either way so the club still has the contact.
