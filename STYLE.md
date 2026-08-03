@@ -151,13 +151,17 @@ Two known live consequences:
   Read Entry cue. On the dark card (`#1B2426`) it measures **4.51:1** — passes
   AA for normal text, but it's the weakest brand color in dark mode. Prefer
   `text-[#2E7D46]` (→ `#8FE07A`, 9.88:1) for anything that must be legible.
-- **`dark:` utilities don't follow the toggle.** This is Tailwind v4 with no
-  `@custom-variant dark` declared, so `dark:*` compiles to
-  `@media (prefers-color-scheme: dark)` while the `.dark` class overrides
-  follow the button. There are ~70 `dark:` utilities in the codebase
-  (`LabLogAnnouncements`, `CuratedResources` category chips). A visitor on a
-  light OS who toggles dark gets the `.dark` overrides but *not* those. New
-  work should use the enumerated-override mechanism, not `dark:`.
+- **`dark:` utilities follow the toggle — but only because `index.css` says
+  so.** Tailwind v4 compiles `dark:*` to `@media (prefers-color-scheme: dark)`
+  by default, which reads the OS and ignores the button. `src/index.css`
+  declares `@custom-variant dark (&:where(.dark, .dark *));` right after the
+  `@import "tailwindcss"` to rebind it to the same `.dark` class the
+  enumerated overrides use. Without that line the two systems disagree
+  whenever a visitor's stored preference differs from their OS — the
+  Resources filter bar shipped that way, rendering a light-gray card with
+  washed-out pills on an otherwise dark page. Don't remove it, and check the
+  compiled CSS has no `prefers-color-scheme` rules if you suspect a
+  regression.
 
 ### 2.6 Measured contrast
 

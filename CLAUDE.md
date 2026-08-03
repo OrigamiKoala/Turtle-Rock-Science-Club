@@ -224,8 +224,7 @@ has the remainder to do.
   counterparts and measured contrast), type scale, component recipes, motion,
   iconography, and voice. Read it before adding UI or writing visitor-facing
   copy. It documents the same dark-mode hex-enumeration trap described under
-  "Theming" below, plus the fact that `dark:` utilities key off the OS rather
-  than the toggle (Tailwind v4, no `@custom-variant dark` declared).
+  "Theming" below.
 - Everything the visitor "owns" is `localStorage`, keyed `tr_sc_*`:
   `tr_sc_user_profile`, `tr_sc_gallery_photos`, `tr_sc_signed_up_ids`,
   `tr_sc_sheet_content_v1` (5-minute content cache), `tr_sc_last_school`,
@@ -268,6 +267,19 @@ button.
   (`!important`) on the site's hardcoded `bg-[#hex]` / `text-[#hex]` classes,
   scoped under a plain class rather than `@media (prefers-color-scheme)` so
   the manual toggle can drive it independent of the OS setting.
+- **Both dark-mode mechanisms must key off that same `.dark` class.** The
+  site styles dark mode two ways — the enumerated `:root.dark` overrides
+  above, and plain Tailwind `dark:` utilities (`CuratedResources`,
+  `LabLogAnnouncements`, `SafeHtml`). Tailwind v4 compiles `dark:` to
+  `@media (prefers-color-scheme: dark)` by default, so the two disagreed
+  whenever a visitor's stored preference differed from their OS: the toggle
+  moved the overrides but not the utilities, and the Resources filter bar
+  rendered as a light-gray card of washed-out pills on an otherwise dark
+  page. `index.css` now declares
+  `@custom-variant dark (&:where(.dark, .dark *));` immediately after
+  `@import "tailwindcss"` to bind them together. A compiled bundle
+  (`dist/assets/*.css`) containing any `prefers-color-scheme` rule means that
+  line was lost and the split is back.
 - **Only use hex values that already have an override.** The dark rules are
   enumerated per hex, so a new `text-[#hex]` that isn't in that list renders
   identically in both themes — which usually means dark text on a dark
