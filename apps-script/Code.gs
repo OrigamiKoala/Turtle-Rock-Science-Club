@@ -826,6 +826,26 @@ function doGet(e) {
   return serve_(json, e);
 }
 
+var ALLOWED_MEMBER_READ_DOMAINS = ['trscienceclub.org', 'www.trscienceclub.org'];
+
+/**
+ * Validates whether the request comes from an authorized domain for member list reads.
+ */
+function isDomainAllowed_(body, e) {
+  var origin = '';
+  if (body) {
+    origin = body.origin || body.domain || body.referrer || '';
+  }
+  if (!origin && e && e.parameter) {
+    origin = e.parameter.origin || e.parameter.domain || e.parameter.referrer || '';
+  }
+  origin = String(origin || '').toLowerCase().trim();
+  if (!origin) return false;
+
+  var host = origin.replace(/^https?:\/\//, '').split('/')[0].split(':')[0];
+  return ALLOWED_MEMBER_READ_DOMAINS.indexOf(host) !== -1;
+}
+
 /**
  * Signups arrive here.
  *
@@ -843,8 +863,14 @@ function doPost(e) {
     } else if (body.action === 'join') {
       result = handleJoin_(body);
     } else if (body.action === 'login') {
+      if (!isDomainAllowed_(body, e)) {
+        throw new Error('Unauthorized: reading member data is only allowed from trscienceclub.org.');
+      }
       result = handleLogin_(body);
     } else if (body.action === 'syncProfile') {
+      if (!isDomainAllowed_(body, e)) {
+        throw new Error('Unauthorized: profile sync is only allowed from trscienceclub.org.');
+      }
       result = handleSyncProfile_(body);
     } else if (body.action === 'subscribe') {
       result = handleSubscribe_(body);
@@ -1206,18 +1232,6 @@ function subscribeEmail_(ss, email, name, source, audience) {
   }
 
   var titles = groupsForAudience_(audience);
-  var existing = findNewsletterRow_(ss, email);
-
-  // Already handled only if every group this audience needs was reached — a
-  // parent who used the footer box first is in Newsletter but not Parents.
-  if (existing && existing.status.indexOf(STATUS_SUBSCRIBED) === 0 && hasAllGroups_(existing.groups, titles)) {
-    return { ok: true, alreadySubscribed: true, status: existing.status };
-  }
-
-  // Capture before calling out: if UrlFetch throws or the run times out here,
-  // the address is already on the sheet and the sync will retry it.
-  var row = upsertNewsletterRow_(ss, email, name, source, existing, 'Queued…', existing ? existing.groups : []);
-
   var outcome;
   try {
     outcome = senderSubscribe_(email, name, audience);
@@ -1225,10 +1239,11 @@ function subscribeEmail_(ss, email, name, source, audience) {
     outcome = { ok: false, status: 'Error: ' + (err && err.message ? err.message : 'unknown'), groups: [] };
   }
 
-  var groups = mergeGroups_(existing ? existing.groups : [], outcome.groups);
+  var groupsStr = (outcome.groups && outcome.groups.length ? outcome.groups : titles).join(', ');
+  var sheet = newsletterSheet_(ss);
+  var now = new Date();
+  sheet.appendRow([now, email, name, source, groupsStr, outcome.status, now]);
 
-  setNewsletterResult_(ss, row, outcome.status, groups);
-  outcome.alreadySubscribed = !!existing;
   return outcome;
 }
 
@@ -1433,45 +1448,6 @@ function newsletterSheet_(ss) {
   return sheet;
 }
 
-/**
- * Finds an address already on the Newsletter tab.
- * Returns { row, status, groups, name } or null.
- */
-function findNewsletterRow_(ss, email) {
-  var sheet = newsletterSheet_(ss);
-  var rows = bodyRows_(sheet, NEWSLETTER_HEADERS.length);
-
-  for (var i = 0; i < rows.length; i++) {
-    if (normaliseEmail_(rows[i][NL_COL_EMAIL - 1]) === email) {
-      return {
-        row: i + 2,
-        status: String(rows[i][NL_COL_STATUS - 1] || '').trim(),
-        groups: splitGroups_(rows[i][NL_COL_GROUPS - 1]),
-        name: String(rows[i][NL_COL_NAME - 1] || '').trim()
-      };
-    }
-  }
-  return null;
-}
-
-/** Adds or refreshes one Newsletter row. Returns its row number. */
-function upsertNewsletterRow_(ss, email, name, source, existing, status, groups) {
-  var sheet = newsletterSheet_(ss);
-  var now = new Date();
-
-  if (existing) {
-    if (name) sheet.getRange(existing.row, NL_COL_NAME).setValue(name);
-    sheet.getRange(existing.row, NL_COL_SOURCE).setValue(source);
-    sheet.getRange(existing.row, NL_COL_GROUPS).setValue(groups.join(', '));
-    sheet.getRange(existing.row, NL_COL_STATUS).setValue(status);
-    sheet.getRange(existing.row, NL_COL_ATTEMPT).setValue(now);
-    return existing.row;
-  }
-
-  sheet.appendRow([now, email, name, source, groups.join(', '), status, now]);
-  return sheet.getLastRow();
-}
-
 function setNewsletterResult_(ss, row, status, groups) {
   var sheet = newsletterSheet_(ss);
   sheet.getRange(row, NL_COL_GROUPS).setValue(groups.join(', '));
@@ -1494,13 +1470,6 @@ function hasGroup_(groups, title) {
     if (String(groups[i]).toLowerCase() === wanted) return true;
   }
   return false;
-}
-
-function hasAllGroups_(groups, titles) {
-  for (var i = 0; i < titles.length; i++) {
-    if (!hasGroup_(groups, titles[i])) return false;
-  }
-  return true;
 }
 
 /** Union of two group-title lists, keeping the order already on the sheet. */

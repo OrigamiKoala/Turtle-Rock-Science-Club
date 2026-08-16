@@ -486,7 +486,12 @@ export function useSiteContent(): SiteContent {
           method: 'POST',
           redirect: 'follow',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'login', identifier })
+          body: JSON.stringify({
+            action: 'login',
+            identifier,
+            origin: typeof window !== 'undefined' ? window.location.origin : '',
+            domain: typeof window !== 'undefined' ? window.location.hostname : ''
+          })
         });
 
         if (!response.ok) return { ok: false, error: `Server error HTTP ${response.status}` };
@@ -516,7 +521,9 @@ export function useSiteContent(): SiteContent {
           level: profile.level,
           xp: profile.xp,
           unlockedBadges: profile.unlockedBadges,
-          reservedMissionIds: profile.reservedMissionIds
+          reservedMissionIds: profile.reservedMissionIds,
+          origin: typeof window !== 'undefined' ? window.location.origin : '',
+          domain: typeof window !== 'undefined' ? window.location.hostname : ''
         })
       });
     } catch {
