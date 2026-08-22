@@ -13,6 +13,7 @@ import AboutUs from './components/AboutUs';
 import LabLogAnnouncements from './components/LabLogAnnouncements';
 import Dashboard from './components/Dashboard';
 import CuratedResources from './components/CuratedResources';
+import TitrationLab from './components/TitrationLab';
 import JoinModal from './components/JoinModal';
 import ConfirmEmailModal from './components/ConfirmEmailModal';
 import LoginModal from './components/LoginModal';
@@ -202,6 +203,8 @@ export default function App() {
         )}
 
         {currentTab === 'lab' && <VirtualLab userProfile={userProfile} onUpdateXp={handleUpdateXp} />}
+
+        {currentTab === 'titration' && <TitrationLab userProfile={userProfile} onUpdateXp={handleUpdateXp} />}
 
         {currentTab === 'resources' && <CuratedResources resources={content.resources} />}
 

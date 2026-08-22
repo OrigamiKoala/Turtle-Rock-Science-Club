@@ -676,6 +676,12 @@ wrapper classes, so the rules never fire and those games stay dark like the
 rest. That's a gap, not a regression — leave it alone unless you're finishing
 the feature.
 
+**Titration Lab is a full-page feature, not a minigame.** Unlike the dark
+minigames in `VirtualLab`, the Titration Lab top-level page follows the light brand
+(§1–10) with complete dark-mode support via `:root.dark` overrides on white cards,
+cream panels, and mint active pills, rendering glassware and titration curves
+with high contrast in both themes.
+
 ---
 
 ## 12. Accessibility

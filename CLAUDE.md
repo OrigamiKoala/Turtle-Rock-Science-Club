@@ -231,7 +231,8 @@ has the remainder to do.
   `tr_sc_theme` (manual light/dark override — see "Theming" below),
   `tr_sc_game_progress` (per-game solved-level indices, see "Minigames"
   below), `tr_sc_cave_best` (SF Cave's personal-best distance — that game has
-  no discrete levels, so its high score lives outside `tr_sc_game_progress`).
+  no discrete levels, so its high score lives outside `tr_sc_game_progress`),
+  `tr_sc_titration_progress` (per-module progress, trials notebook, and mystery samples).
   Clear `tr_sc_sheet_content_v1` when testing a fresh publish.
 - FAQ copy, press mentions, and the seed gallery photos are static site
   content unrelated to the Sheet. They live inline as local constants in
@@ -505,8 +506,30 @@ actually tracks the site's light/dark toggle rather than ignoring it — see
 frame like the other games (the canvas repaints over it every tick regardless
 of theme, so the wrapper's own color is essentially never visible).
 
-`Dashboard.tsx`'s `badgeCatalog` now lists all thirteen earnable badges
-(`Foundation Member` plus one per game, including `ChemTextAdventure`'s) instead
-of the leftover AI-Studio-era placeholder names it used to have. If you add
-another game, add its badge here too, or the achievements grid will silently
-drift out of sync again.
+`Dashboard.tsx`'s `badgeCatalog` now lists all fourteen earnable badges
+(`Foundation Member` plus one per game, including `ChemTextAdventure`'s and
+Titration Lab's `Analytical Chemist` badge) instead of the leftover
+AI-Studio-era placeholder names it used to have. If you add another game or
+badge, add its badge here too, or the achievements grid will silently drift out
+of sync again.
+
+## Titration Lab
+
+`src/components/TitrationLab.tsx` — a standalone top-level tab (not a
+`VirtualLab` minigame) providing an acid–base titration simulator and 10-module
+curriculum backed by an exact polyprotic charge-balance equilibrium solver
+(`src/components/titration/chem.ts`, verified by `scripts/check-titration.mjs`).
+The apparatus laboratory view is a unified physical setup (`src/components/titration/Apparatus.tsx`)
+with a graduated burette clamped to a retort stand directly above a realistically proportioned ungraduated tall Erlenmeyer flask.
+Two experimental methods are available (defaulting to Visual Indicator):
+1. **Visual Indicator Mode (Default)**: Pure glassware setup without pH probe; the titration curve is hidden, requiring the student to observe the color change and read the burette meniscus visually.
+2. **pH Probe Mode**: Submerges the glass electrode probe and plots the live pH titration curve (`CurvePlot.tsx`).
+Interactivity is purely direct-manipulation without external button trays or hint popups:
+clicking/holding the stopcock valve delivers drops or continuous stream; holding and physically
+shaking the mouse on the flask swirls and mixes the solution (dispersing static unmixed indicator plumes);
+hovering over the fluid meniscus opens an enlarged precision optical magnifier with high-resolution
+graduation lines and meniscus concave curve for pure visual reading (no text tags or number readouts).
+Progress is stored in `tr_sc_titration_progress`. Guests can access all modules;
+members earn Discovery XP and the "Analytical Chemist" badge on correctly identifying mystery samples.
+
+

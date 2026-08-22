@@ -19,7 +19,8 @@ import {
   Leaf,
   Telescope,
   Factory,
-  Flashlight
+  Flashlight,
+  TestTube
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -65,7 +66,8 @@ export default function Dashboard({ userProfile, missions, signedUpIds, onUpdate
     { name: 'Ecologist', desc: "Kept an island's food web alive in Island Keeper.", icon: Leaf },
     { name: 'Astrophysicist', desc: "Decoded a star's spectrum in Starlight Decoder.", icon: Telescope },
     { name: 'Chemical Engineer', desc: 'Ran a balanced production line in Reactor Line.', icon: Factory },
-    { name: 'Spelunker', desc: 'Threaded a narrow scrolling cave in SF Cave.', icon: Flashlight }
+    { name: 'Spelunker', desc: 'Threaded a narrow scrolling cave in SF Cave.', icon: Flashlight },
+    { name: 'Analytical Chemist', desc: 'Identified a mystery solution by titration.', icon: TestTube }
   ];
 
   const xpInCurrentLevel = userProfile.xp % 100;

@@ -97,7 +97,8 @@ textarea:focus {
    selector rather than a @media query. */
 
 :root.dark .bg-\[\#FBF7EC\],
-:root.dark .bg-\[\#FBF7EC\]\/90 {
+:root.dark .bg-\[\#FBF7EC\]\/90,
+:root.dark .bg-\[\#FBF7EC\]\/60 {
   background-color: #12181A !important;
 }
 
@@ -105,11 +106,17 @@ textarea:focus {
   background-color: #0D1213 !important;
 }
 
-:root.dark .bg-white {
+:root.dark .bg-white,
+:root.dark .bg-white\/70,
+:root.dark .bg-white\/95 {
   background-color: #1B2426 !important;
 }
 
-:root.dark .bg-\[\#E4F5DA\] {
+:root.dark .bg-\[\#E4F5DA\],
+:root.dark .bg-\[\#E4F5DA\]\/70,
+:root.dark .bg-\[\#E4F5DA\]\/60,
+:root.dark .bg-\[\#E4F5DA\]\/40,
+:root.dark .bg-\[\#E4F5DA\]\/30 {
   background-color: rgba(108, 194, 74, 0.18) !important;
 }
 
@@ -135,6 +142,7 @@ textarea:focus {
 
 /* button label stays dark-on-green */
 
+:root.dark .border-\[\#1F3A42\]\/15,
 :root.dark .border-\[\#1F3A42\]\/10,
 :root.dark .border-\[\#1F3A42\]\/8 {
   border-color: rgba(255, 255, 255, 0.09) !important;

@@ -62,6 +62,7 @@ export default function Footer({ setCurrentTab, onSubscribe }: FooterProps) {
             <ul className="space-y-2 text-xs font-sans font-bold">
               <li><button onClick={() => setCurrentTab('missions')} className="hover:text-[#1F3A42] transition cursor-pointer text-[#4B6169]">Events</button></li>
               <li><button onClick={() => setCurrentTab('lab')} className="hover:text-[#1F3A42] transition cursor-pointer text-[#4B6169]">Games</button></li>
+              <li><button onClick={() => setCurrentTab('titration')} className="hover:text-[#1F3A42] transition cursor-pointer text-[#4B6169]">Titration Lab</button></li>
               <li><button onClick={() => setCurrentTab('resources')} className="hover:text-[#1F3A42] transition cursor-pointer text-[#4B6169]">Resources</button></li>
               <li><button onClick={() => setCurrentTab('logs')} className="hover:text-[#1F3A42] transition cursor-pointer text-[#4B6169]">Announcements</button></li>
               <li><button onClick={() => setCurrentTab('gallery')} className="hover:text-[#1F3A42] transition cursor-pointer text-[#4B6169]">Gallery</button></li>
