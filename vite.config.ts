@@ -1,7 +1,26 @@
-import tailwindcss from '@tailwindcss/vite';
-import react from '@vitejs/plugin-react';
+import fs from 'fs';
 import path from 'path';
-import {defineConfig} from 'vite';
+import {defineConfig, Plugin} from 'vite';
+import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
+
+function spaFallbackPlugin(): Plugin {
+  return {
+    name: 'spa-fallback-plugin',
+    closeBundle() {
+      const distDir = path.resolve(__dirname, 'dist');
+      const indexHtml = path.join(distDir, 'index.html');
+      if (fs.existsSync(indexHtml)) {
+        fs.copyFileSync(indexHtml, path.join(distDir, '404.html'));
+        const titrationDir = path.join(distDir, 'titration');
+        if (!fs.existsSync(titrationDir)) {
+          fs.mkdirSync(titrationDir, { recursive: true });
+        }
+        fs.copyFileSync(indexHtml, path.join(titrationDir, 'index.html'));
+      }
+    },
+  };
+}
 
 export default defineConfig(() => {
   return {
@@ -9,7 +28,7 @@ export default defineConfig(() => {
     // GitHub Pages settings, not a checked-in CNAME file) at the domain root, not
     // a /Turtle-Rock-Science-Club/ subpath, so built asset URLs must be root-relative.
     base: '/',
-    plugins: [react(), tailwindcss()],
+    plugins: [react(), tailwindcss(), spaFallbackPlugin()],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),

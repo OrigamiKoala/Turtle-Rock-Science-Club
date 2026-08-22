@@ -13,8 +13,7 @@ import {
   Image as ImageIcon,
   Moon,
   Sun,
-  BookMarked,
-  TestTube
+  BookMarked
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -41,7 +40,6 @@ export default function Header({
   const navItems = [
     { id: 'missions', label: 'Events', icon: Calendar },
     { id: 'lab', label: 'Games', icon: FlaskConical },
-    { id: 'titration', label: 'Titration', icon: TestTube },
     { id: 'resources', label: 'Resources', icon: BookMarked },
     { id: 'logs', label: 'Announcements', icon: BookOpen },
     { id: 'gallery', label: 'Gallery', icon: ImageIcon },

@@ -4,6 +4,7 @@ import { useSiteContent, SignupResult } from './useSiteContent';
 import { useTheme } from './useTheme';
 
 import Header from './components/Header';
+import TitrationHeader from './components/TitrationHeader';
 import Footer from './components/Footer';
 import HeroSection from './components/HeroSection';
 import UpcomingMissions from './components/UpcomingMissions';
@@ -22,6 +23,7 @@ import SignupModal from './components/SignupModal';
 import { Trophy, Star, MailCheck, X } from 'lucide-react';
 
 export default function App() {
+  const [pathname, setPathname] = useState<string>(() => window.location.pathname);
   const [currentTab, setCurrentTab] = useState<string>('missions');
   const [showJoinModal, setShowJoinModal] = useState<boolean>(false);
   const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
@@ -39,6 +41,39 @@ export default function App() {
   // after a successful join, which unmounts it — and would take a modal
   // rendered inside it along too, so the reminder only flashed on screen.
   const [showConfirmEmailModal, setShowConfirmEmailModal] = useState<boolean>(false);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setPathname(window.location.pathname);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const navigateTo = (path: string, tab?: string) => {
+    if (window.location.pathname !== path) {
+      window.history.pushState({}, '', path);
+      setPathname(path);
+    }
+    if (tab) {
+      setCurrentTab(tab);
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const isTitrationPage = pathname === '/titration' || pathname === '/titration/' || pathname.startsWith('/titration');
+
+  const handleTabChange = (tab: string) => {
+    if (tab === 'titration') {
+      navigateTo('/titration');
+    } else {
+      if (isTitrationPage) {
+        navigateTo('/', tab);
+      } else {
+        setCurrentTab(tab);
+      }
+    }
+  };
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -192,38 +227,63 @@ export default function App() {
         </div>
       )}
 
-      <Header currentTab={currentTab} setCurrentTab={setCurrentTab} userProfile={userProfile} onOpenJoin={() => setShowJoinModal(true)} onOpenLogin={() => setShowLoginModal(true)} theme={theme} onToggleTheme={toggleTheme} />
+      {isTitrationPage ? (
+        <>
+          <TitrationHeader
+            onNavigateHome={() => navigateTo('/', 'missions')}
+            userProfile={userProfile}
+            onOpenJoin={() => setShowJoinModal(true)}
+            onOpenLogin={() => setShowLoginModal(true)}
+            theme={theme}
+            onToggleTheme={toggleTheme}
+          />
 
-      <main className="flex-1 pb-10">
-        {currentTab === 'missions' && (
-          <div className="space-y-4">
-            <HeroSection userProfile={userProfile} onOpenJoin={() => setShowJoinModal(true)} setCurrentTab={setCurrentTab} />
-            <UpcomingMissions missions={content.missions} contentStatus={content.status} signedUpIds={signedUpIds} onSignUp={handleSignUp} />
-          </div>
-        )}
+          <main className="flex-1 pb-10">
+            <TitrationLab userProfile={userProfile} onUpdateXp={handleUpdateXp} />
+          </main>
+        </>
+      ) : (
+        <>
+          <Header
+            currentTab={currentTab}
+            setCurrentTab={handleTabChange}
+            userProfile={userProfile}
+            onOpenJoin={() => setShowJoinModal(true)}
+            onOpenLogin={() => setShowLoginModal(true)}
+            theme={theme}
+            onToggleTheme={toggleTheme}
+          />
 
-        {currentTab === 'lab' && <VirtualLab userProfile={userProfile} onUpdateXp={handleUpdateXp} />}
+          <main className="flex-1 pb-10">
+            {currentTab === 'missions' && (
+              <div className="space-y-4">
+                <HeroSection userProfile={userProfile} onOpenJoin={() => setShowJoinModal(true)} setCurrentTab={setCurrentTab} />
+                <UpcomingMissions missions={content.missions} contentStatus={content.status} signedUpIds={signedUpIds} onSignUp={handleSignUp} />
+              </div>
+            )}
 
-        {currentTab === 'titration' && <TitrationLab userProfile={userProfile} onUpdateXp={handleUpdateXp} />}
+            {currentTab === 'lab' && <VirtualLab userProfile={userProfile} onUpdateXp={handleUpdateXp} />}
 
-        {currentTab === 'resources' && <CuratedResources resources={content.resources} />}
+            {currentTab === 'resources' && <CuratedResources resources={content.resources} />}
 
-        {currentTab === 'logs' && (
-          <LabLogAnnouncements logs={content.labLogs} announcements={content.announcements} contentStatus={content.status} />
-        )}
+            {currentTab === 'logs' && (
+              <LabLogAnnouncements logs={content.labLogs} announcements={content.announcements} contentStatus={content.status} />
+            )}
 
-        {currentTab === 'gallery' && (
-          <PhotoGallery photos={photos} sheetPhotos={content.photos} eventPhotos={content.eventPhotos} contentStatus={content.status} userProfile={userProfile} onAddPhoto={handleAddPhoto} onOpenJoin={() => setShowJoinModal(true)} />
-        )}
+            {currentTab === 'gallery' && (
+              <PhotoGallery photos={photos} sheetPhotos={content.photos} eventPhotos={content.eventPhotos} contentStatus={content.status} userProfile={userProfile} onAddPhoto={handleAddPhoto} onOpenJoin={() => setShowJoinModal(true)} />
+            )}
 
-        {currentTab === 'about' && <AboutUs />}
+            {currentTab === 'about' && <AboutUs />}
 
-        {currentTab === 'dashboard' && (
-          <Dashboard userProfile={userProfile} missions={content.missions} signedUpIds={signedUpIds} onUpdateProfileName={handleUpdateProfileName} setCurrentTab={setCurrentTab} />
-        )}
-      </main>
+            {currentTab === 'dashboard' && (
+              <Dashboard userProfile={userProfile} missions={content.missions} signedUpIds={signedUpIds} onUpdateProfileName={handleUpdateProfileName} setCurrentTab={setCurrentTab} />
+            )}
+          </main>
+        </>
+      )}
 
-      <Footer setCurrentTab={setCurrentTab} onSubscribe={content.subscribeNewsletter} />
+      <Footer setCurrentTab={handleTabChange} onSubscribe={content.subscribeNewsletter} />
 
       {signupMission && (
         <SignupModal mission={signupMission} onClose={() => setSignupMission(null)} onSubmit={content.submitSignup} onSuccess={handleSignupSuccess} />
