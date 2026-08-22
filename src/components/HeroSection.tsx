@@ -52,7 +52,7 @@ export default function HeroSection({
                 onClick={() => setCurrentTab('lab')}
                 className="w-full sm:w-auto px-6 py-3 rounded-full font-display font-bold text-sm transition-all duration-300 hover:scale-[1.02] active:scale-95 cursor-pointer flex items-center justify-center gap-2 bg-[#6CC24A] text-[#14351F] shadow-[0_4px_0_#4C9A3A]"
               >
-                <span>Play Minigames</span>
+                <span>Games</span>
                 <Atom className="w-4 h-4" />
               </button>
             )}
@@ -63,7 +63,7 @@ export default function HeroSection({
               className="w-full sm:w-auto px-6 py-3 rounded-full font-display font-bold text-sm transition-all cursor-pointer bg-white hover:bg-[#1F3A42]/5 text-[#1F3A42] border-2 border-[#1F3A42]/15 flex items-center justify-center gap-2"
             >
               <BookMarked className="w-4 h-4 text-[#4C9A3A]" />
-              <span>Curated Resources</span>
+              <span>Resources</span>
             </button>
 
             <button
@@ -71,7 +71,7 @@ export default function HeroSection({
               onClick={() => setCurrentTab('about')}
               className="w-full sm:w-auto px-6 py-3 rounded-full font-display font-bold text-sm transition-all cursor-pointer bg-white hover:bg-[#1F3A42]/5 text-[#1F3A42] border-2 border-[#1F3A42]/15"
             >
-              About Us
+              About
             </button>
           </div>
 
