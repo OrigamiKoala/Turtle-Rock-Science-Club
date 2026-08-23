@@ -60,61 +60,6 @@ export const MODULES: ModuleDef[] = [
   {
     id: 'module-2',
     number: 2,
-    title: 'Reading the Burette',
-    subtitle: 'Meniscus estimation & precision measurement',
-    description: 'Turn off auto-read and practice reading the volume to 0.01 mL using the reading loupe magnifier at the bottom of the meniscus curve.',
-    difficulty: 'Beginner',
-    xpReward: 25,
-    learningGoals: [
-      'Read burette scales from top ($0.00\\text{ mL}$) to bottom ($50.00\\text{ mL}$)',
-      'Align the bottom of the liquid meniscus against millimeter marks',
-      'Estimate the second decimal place ($\\pm 0.01\\text{ mL}$) with the loupe reticle'
-    ],
-    setup: {
-      analyte: REAGENTS.hcl,
-      analyteConc: 0.08,
-      analyteVolumeMl: 25.0,
-      titrant: REAGENTS.naoh,
-      titrantConc: 0.1,
-      defaultIndicatorId: 'phenolphthalein',
-      allowedIndicatorIds: ['phenolphthalein', 'bromothymol_blue'],
-      autoReadDefault: false,
-      showProbeDefault: false,
-      allowProbeToggle: true
-    },
-    predict: {
-      question: 'Burette scales are numbered with $0.00\\text{ mL}$ at the top and $50.00\\text{ mL}$ at the bottom. If the liquid meniscus is between the $18.3\\text{ mL}$ and $18.4\\text{ mL}$ line, approximately $3/10$ths of the way down, what is the correct reading?',
-      context: 'Analytical burettes are read downwards, estimating the hundredths digit.',
-      options: [
-        {
-          id: 'p1',
-          label: '$18.33\\text{ mL}$',
-          isCorrect: true,
-          explanation: 'Spot on! The major reading is $18.3\\text{ mL}$ and estimating $0.03\\text{ mL}$ gives $18.33\\text{ mL}$.'
-        },
-        {
-          id: 'p2',
-          label: '$18.43\\text{ mL}$',
-          isCorrect: false,
-          explanation: 'Reading downwards means moving from $18.3$ toward $18.4$, so it must be less than $18.40\\text{ mL}$.'
-        },
-        {
-          id: 'p3',
-          label: '$18.30\\text{ mL}$',
-          isCorrect: false,
-          explanation: 'Burettes allow precision to $0.01\\text{ mL}$ by estimating between the graduation marks.'
-        }
-      ]
-    },
-    deeperNotes: {
-      title: 'Parallax and Meniscus Physics',
-      content: 'Surface tension pulls water upwards against the glass wall. Always read the lowest horizontal tangent at the bottom of the curve at eye level to avoid parallax error.',
-      keyEquation: '\\Delta V = V_{\\text{final}} - V_{\\text{initial}}'
-    }
-  },
-  {
-    id: 'module-3',
-    number: 3,
     title: 'The Steep Jump',
     subtitle: 'Why one single drop swings pH by 4 units',
     description: 'Experience the razor-thin equivalence cliff. See how 0.05 mL changes an acid solution into a bright magenta base without a probe.',
@@ -168,8 +113,8 @@ export const MODULES: ModuleDef[] = [
     }
   },
   {
-    id: 'module-4',
-    number: 4,
+    id: 'module-3',
+    number: 3,
     title: 'Weak Acid, Strong Base',
     subtitle: 'Buffer zones and half-equivalence pKa',
     description: 'Titrate acetic acid (vinegar) with sodium hydroxide. Discover why the equivalence point is basic (pH ≈ 8.7) and how to read pKa directly from the curve.',
@@ -223,8 +168,8 @@ export const MODULES: ModuleDef[] = [
     }
   },
   {
-    id: 'module-5',
-    number: 5,
+    id: 'module-4',
+    number: 4,
     title: 'Weak Base, Strong Acid',
     subtitle: 'The mirror image: equivalence below 7',
     description: 'Titrate ammonia (window cleaner) with hydrochloric acid. See the curve flip upside down and find why methyl red is the ideal indicator.',
@@ -278,8 +223,8 @@ export const MODULES: ModuleDef[] = [
     }
   },
   {
-    id: 'module-6',
-    number: 6,
+    id: 'module-5',
+    number: 5,
     title: 'Choosing an Indicator',
     subtitle: 'Indicator error and matching pKa to equivalence',
     description: 'Titrate 0.1 M acetic acid with three different indicators. Compare the three experimental concentrations to discover indicator error.',
@@ -333,8 +278,8 @@ export const MODULES: ModuleDef[] = [
     }
   },
   {
-    id: 'module-7',
-    number: 7,
+    id: 'module-6',
+    number: 6,
     title: "When It Doesn't Work",
     subtitle: 'Weak acid vs weak base: no sharp inflection',
     description: 'Titrate acetic acid with ammonia. Without a strong reagent on either side, visual indicators fail and only a calibrated pH probe can find the center of inflection.',
@@ -388,8 +333,8 @@ export const MODULES: ModuleDef[] = [
     }
   },
   {
-    id: 'module-8',
-    number: 8,
+    id: 'module-7',
+    number: 7,
     title: 'Two Protons',
     subtitle: 'Polyprotic systems & sequential equivalence points',
     description: 'Titrate sodium carbonate (Na₂CO₃) with hydrochloric acid. Observe two distinct equivalence steps as CO₃²⁻ turns to HCO₃⁻ then to H₂CO₃.',
@@ -443,8 +388,8 @@ export const MODULES: ModuleDef[] = [
     }
   },
   {
-    id: 'module-9',
-    number: 9,
+    id: 'module-8',
+    number: 8,
     title: 'Mystery Samples',
     subtitle: 'Endlessly repeatable unknown analysis',
     description: 'Receive a coded mystery sample (TR-XXXX). Determine its unknown concentration and earn the Analytical Chemist badge!',
@@ -499,8 +444,8 @@ export const MODULES: ModuleDef[] = [
     }
   },
   {
-    id: 'module-10',
-    number: 10,
+    id: 'module-9',
+    number: 9,
     title: 'Free Bench',
     subtitle: 'Open sandbox simulation laboratory',
     description: 'Explore the full reagent library. Choose any analyte, any titrant, custom concentrations, and test any indicator with real-time chemical equilibrium.',

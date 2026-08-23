@@ -516,7 +516,7 @@ of sync again.
 ## Titration Lab
 
 `src/components/TitrationLab.tsx` — a standalone top-level tab (not a
-`VirtualLab` minigame) providing an acid–base titration simulator and 10-module
+`VirtualLab` minigame) providing an acid–base titration simulator and 9-module
 curriculum backed by an exact polyprotic charge-balance equilibrium solver
 (`src/components/titration/chem.ts`, verified by `scripts/check-titration.mjs`).
 The apparatus laboratory view is a unified physical setup (`src/components/titration/Apparatus.tsx`)

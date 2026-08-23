@@ -305,7 +305,8 @@ export default function TitrationLab({ userProfile, onUpdateXp }: TitrationLabPr
     setActiveView('briefing');
     handleResetTrial();
 
-    if (modId === 'module-9') {
+    const selectedMod = MODULES.find((m) => m.id === modId);
+    if (selectedMod?.setup.isMystery) {
       setMysterySeed(Math.floor(Math.random() * 8999) + 1000);
     }
   };
@@ -373,9 +374,17 @@ export default function TitrationLab({ userProfile, onUpdateXp }: TitrationLabPr
   return (
     <section className="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-8 font-sans text-[#1F3A42]">
 
-      {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b-2 border-[#1F3A42]/10">
+      {/* Hero Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b-2 border-[#1F3A42]/8 pb-6">
         <div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="px-3 py-1 rounded-full text-xs font-display font-bold bg-[#6CC24A] text-[#14351F]">
+              Interactive Simulation Laboratory
+            </span>
+            <span className="text-xs font-display font-bold text-[#4C9A3A]">
+              Physical Apparatus & Equilibria
+            </span>
+          </div>
           <h1 className="font-display font-bold text-3xl sm:text-4xl text-[#1F3A42] tracking-tight">
             Titration Lab
           </h1>
@@ -399,7 +408,7 @@ export default function TitrationLab({ userProfile, onUpdateXp }: TitrationLabPr
         </div>
       </div>
 
-      {/* Module Selector Rail (1 to 10) */}
+      {/* Module Selector Rail (1 to 9) */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-extrabold text-[#4B6169] uppercase tracking-wide">
@@ -410,7 +419,7 @@ export default function TitrationLab({ userProfile, onUpdateXp }: TitrationLabPr
           </span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-5 lg:grid-cols-10 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-2">
           {MODULES.map((mod) => {
             const isCompleted = progress.completedModules.includes(mod.id);
             const isCurrent = mod.id === activeModuleId;
