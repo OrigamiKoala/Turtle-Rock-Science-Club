@@ -50,7 +50,7 @@ export default function HeroSection({
               <button
                 id="hero-lab-cta-btn"
                 onClick={() => setCurrentTab('lab')}
-                className="w-full sm:w-auto px-6 py-3 rounded-full font-display font-bold text-sm transition-all duration-300 hover:scale-[1.02] active:scale-95 cursor-pointer flex items-center justify-center gap-2 bg-[#6CC24A] text-[#14351F] shadow-[0_4px_0_#4C9A3A]"
+                className="w-full sm:w-auto px-6 py-3 rounded-full font-display font-bold text-sm transition-all cursor-pointer bg-white hover:bg-[#1F3A42]/5 text-[#1F3A42] border-2 border-[#1F3A42]/15 flex items-center justify-center gap-2"
               >
                 <Atom className="w-4 h-4" />
                 <span>Games</span>
@@ -60,7 +60,7 @@ export default function HeroSection({
             <button
               id="hero-resources-btn"
               onClick={() => setCurrentTab('resources')}
-              className="w-full sm:w-auto px-6 py-3 rounded-full font-display font-bold text-sm transition-all cursor-pointer bg-white hover:bg-[#1F3A42]/5 text-[#1F3A42] border-2 border-[#1F3A42]/15 flex items-center justify-center gap-2"
+              className="w-full sm:w-auto px-6 py-3 rounded-full font-display font-bold text-sm transition-all duration-300 hover:scale-[1.02] active:scale-95 cursor-pointer flex items-center justify-center gap-2 bg-[#6CC24A] text-[#14351F] shadow-[0_4px_0_#4C9A3A]"
             >
               <BookMarked className="w-4 h-4 text-[#4C9A3A]" />
               <span>Resources</span>
