@@ -377,14 +377,6 @@ export default function TitrationLab({ userProfile, onUpdateXp }: TitrationLabPr
       {/* Hero Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b-2 border-[#1F3A42]/8 pb-6">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="px-3 py-1 rounded-full text-xs font-display font-bold bg-[#6CC24A] text-[#14351F]">
-              Interactive Simulation Laboratory
-            </span>
-            <span className="text-xs font-display font-bold text-[#4C9A3A]">
-              Physical Apparatus & Equilibria
-            </span>
-          </div>
           <h1 className="font-display font-bold text-3xl sm:text-4xl text-[#1F3A42] tracking-tight">
             Titration Lab
           </h1>
