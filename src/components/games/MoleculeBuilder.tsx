@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { RotateCcw, ChevronRight, Trophy, Lightbulb } from 'lucide-react';
+import { Chem, MathText } from '../Latex';
 
 /**
  * Molecule Builder
@@ -421,15 +422,16 @@ export default function MoleculeBuilder({ solvedLevels, onSolve }: MoleculeBuild
               }`}
           >
             {solvedLevels.includes(i) && <Trophy className="w-3 h-3 text-amber-400" />}
-            {lvl.formula}
+            <Chem formula={lvl.formula} />
           </button>
         ))}
       </div>
 
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h4 className="font-display font-bold text-lg text-white">
-          Build {level.formula}{' '}
-          <span className="text-zinc-500 font-sans font-normal text-sm">({level.common})</span>
+        <h4 className="font-display font-bold text-lg text-white flex items-center gap-2">
+          <span>Build</span>
+          <Chem formula={level.formula} className="text-xl text-[#F2C94C]" />
+          <span className="text-zinc-400 font-sans font-normal text-sm">({level.common})</span>
         </h4>
         <button
           onClick={() => setShowHint((s) => !s)}
@@ -441,13 +443,13 @@ export default function MoleculeBuilder({ solvedLevels, onSolve }: MoleculeBuild
       </div>
 
       {showHint && (
-        <p className="text-xs text-amber-200/80 bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-2.5 font-sans leading-relaxed">
-          {level.hint}
-          {level.isomerNote && <span className="block mt-1.5 text-amber-200/60">{level.isomerNote}</span>}
-        </p>
+        <div className="text-xs text-amber-200/80 bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-2.5 font-sans leading-relaxed">
+          <MathText text={level.hint} />
+          {level.isomerNote && <span className="block mt-1.5 text-amber-200/60"><MathText text={level.isomerNote} /></span>}
+        </div>
       )}
 
-      {liveNote && <p className="text-xs text-zinc-400 font-sans leading-relaxed">{liveNote}</p>}
+      {liveNote && <div className="text-xs text-zinc-400 font-sans leading-relaxed"><MathText text={liveNote} /></div>}
 
       <div className="rounded-2xl overflow-hidden border border-white/10 bg-[#0d0d12] relative">
         <svg
@@ -562,11 +564,11 @@ export default function MoleculeBuilder({ solvedLevels, onSolve }: MoleculeBuild
         {solved && (
           <div className="absolute inset-0 bg-black/75 backdrop-blur-sm flex flex-col items-center justify-center gap-3 text-center px-6">
             <Trophy className="w-10 h-10 text-amber-400" />
-            <h4 className="font-display font-bold text-xl text-emerald-400">
-              {level.formula} complete!
+            <h4 className="font-display font-bold text-xl text-emerald-400 flex items-center justify-center gap-2">
+              <Chem formula={level.formula} /> <span>complete!</span>
             </h4>
             <p className="text-xs text-zinc-300 font-sans max-w-sm leading-relaxed">
-              Connect the atoms in the right way!
+              Every valence is satisfied and all bonds are connected!
             </p>
             <div className="flex gap-2 pt-1">
               <button

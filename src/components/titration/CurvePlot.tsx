@@ -3,6 +3,7 @@ import { useTheme } from '../../useTheme';
 import { CurvePoint } from './types';
 import { INDICATORS } from './chem';
 import { LineChart, Sparkles } from 'lucide-react';
+import { Latex } from '../Latex';
 
 interface CurvePlotProps {
   points: CurvePoint[];
@@ -119,14 +120,14 @@ export default function CurvePlot({
               Titration Curve
             </h4>
             <p className="text-[11px] text-[#4B6169]">
-              pH vs. Delivered Titrant Volume (mL)
+              <Latex math="\text{pH vs. } V_{\text{titrant}}\text{ (mL)}" />
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
           <span className="px-2.5 py-1 rounded-full text-xs font-display font-bold bg-[#E4F5DA] text-[#2E7D46]">
-            pH {currentPh.toFixed(2)}
+            <Latex math={`\\text{pH } ${currentPh.toFixed(2)}`} />
           </span>
         </div>
       </div>
@@ -373,13 +374,15 @@ export default function CurvePlot({
         {/* Hover Tooltip Readout */}
         {hoverPoint && (
           <div
-            className="absolute z-10 px-2 py-1 rounded-lg bg-[#1F3A42] text-white text-[11px] font-sans font-bold shadow-md pointer-events-none -translate-x-1/2 -translate-y-8"
+            className="absolute z-10 px-2.5 py-1 rounded-lg bg-[#1F3A42] text-white text-[11px] font-sans font-bold shadow-md pointer-events-none -translate-x-1/2 -translate-y-8 flex items-center gap-1.5"
             style={{
               left: `${(hoverPoint.x / svgWidth) * 100}%`,
               top: `${(hoverPoint.y / svgHeight) * 100}%`
             }}
           >
-            {hoverPoint.volume.toFixed(2)} mL | pH {hoverPoint.pH.toFixed(2)}
+            <span><Latex math={`${hoverPoint.volume.toFixed(2)}\\text{ mL}`} /></span>
+            <span className="opacity-60">|</span>
+            <span><Latex math={`\\text{pH } ${hoverPoint.pH.toFixed(2)}`} /></span>
           </div>
         )}
       </div>
@@ -393,12 +396,12 @@ export default function CurvePlot({
           </span>
           <span className="flex items-center gap-1">
             <span className="w-3 h-0.5 border-b border-dashed border-[#6CC24A]" />
-            <span>Neutral pH 7</span>
+            <span>Neutral <Latex math="\text{pH } 7" /></span>
           </span>
           {showAnnotations && (
             <span className="flex items-center gap-1 text-[#E4574B] font-bold">
               <Sparkles className="w-3 h-3" />
-              <span>Equivalence Point</span>
+              <span>Equivalence Point (<Latex math="V_{\text{eq}}" />)</span>
             </span>
           )}
         </div>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ModuleDef, ModuleTrack } from './types';
 import { BookOpen, CheckCircle, HelpCircle, ArrowRight, Award, Sparkles, Beaker } from 'lucide-react';
+import { Latex, MathText } from '../Latex';
 
 interface BriefingProps {
   module: ModuleDef;
@@ -93,7 +94,7 @@ export default function Briefing({
             {module.learningGoals.map((goal, idx) => (
               <li key={idx} className="flex items-start gap-2">
                 <CheckCircle className="w-4 h-4 text-[#6CC24A] shrink-0 mt-0.5" />
-                <span>{goal}</span>
+                <MathText text={goal} as="span" />
               </li>
             ))}
           </ul>
@@ -106,12 +107,14 @@ export default function Briefing({
               <Sparkles className="w-3.5 h-3.5" />
               <span>{module.deeperNotes.title}</span>
             </h4>
-            <p className="text-xs font-sans text-[#1F3A42] leading-relaxed">
-              {module.deeperNotes.content}
-            </p>
+            <MathText
+              text={module.deeperNotes.content}
+              as="p"
+              className="text-xs font-sans text-[#1F3A42] leading-relaxed"
+            />
             {module.deeperNotes.keyEquation && (
-              <div className="p-2 rounded-xl bg-white border border-[#6CC24A]/40 text-center font-mono text-xs font-bold text-[#2E7D46]">
-                {module.deeperNotes.keyEquation}
+              <div className="p-2.5 rounded-xl bg-white border border-[#6CC24A]/40 text-center font-bold text-[#2E7D46] shadow-sm">
+                <Latex math={module.deeperNotes.keyEquation} displayMode={true} />
               </div>
             )}
           </div>
@@ -131,10 +134,10 @@ export default function Briefing({
             </span>
           </div>
           <h3 className="font-display font-bold text-lg sm:text-xl text-[#1F3A42]">
-            {module.predict.question}
+            <MathText text={module.predict.question} />
           </h3>
           <p className="text-xs font-sans text-[#4B6169]">
-            {module.predict.context}
+            <MathText text={module.predict.context} />
           </p>
         </div>
 
@@ -162,10 +165,12 @@ export default function Briefing({
                   {isSelected && <span className="w-2 h-2 rounded-full bg-white" />}
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-bold leading-snug">{opt.label}</p>
+                  <p className="text-sm font-bold leading-snug">
+                    <MathText text={opt.label} />
+                  </p>
                   {isSelected && (
                     <p className={`text-xs mt-2 leading-relaxed ${opt.isCorrect ? 'text-[#2E7D46]' : 'text-red-600 dark:text-red-400'}`}>
-                      {opt.explanation}
+                      <MathText text={opt.explanation} />
                     </p>
                   )}
                 </div>

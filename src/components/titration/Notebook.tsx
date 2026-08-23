@@ -1,6 +1,7 @@
 import React from 'react';
 import { TitrationTrial } from './types';
 import { BookOpen, Printer, Trash2, CheckCircle, AlertTriangle, Sparkles } from 'lucide-react';
+import { Latex, Chem } from '../Latex';
 
 interface NotebookProps {
   trials: TitrationTrial[];
@@ -75,7 +76,7 @@ export default function Notebook({ trials, onClearNotebook }: NotebookProps) {
         <div className="p-4 rounded-2xl border-2 border-[#6CC24A]/40 bg-[#E4F5DA] flex items-center gap-3">
           <Sparkles className="w-5 h-5 text-[#2E7D46] shrink-0" />
           <div className="text-xs font-sans text-[#1F3A42]">
-            <strong className="text-[#2E7D46]">Concordant Titers Achieved!</strong> You have replicate trials within 0.10 mL agreement, satisfying analytical quality control standards.
+            <strong className="text-[#2E7D46]">Concordant Titers Achieved!</strong> You have replicate trials within <Latex math="|V_1 - V_2| \le 0.10\text{ mL}" /> agreement, satisfying analytical precision standards.
           </div>
         </div>
       )}
@@ -98,11 +99,11 @@ export default function Notebook({ trials, onClearNotebook }: NotebookProps) {
                 <tr className="border-b-2 border-[#1F3A42]/10 text-[11px] font-extrabold uppercase tracking-wide text-[#4B6169]">
                   <th className="pb-3 pr-4">Sample / Time</th>
                   <th className="pb-3 px-3">Analyte / Titrant</th>
-                  <th className="pb-3 px-3">Initial (Vᵢ)</th>
-                  <th className="pb-3 px-3">Final (V𝒻)</th>
-                  <th className="pb-3 px-3">Titer (ΔV)</th>
+                  <th className="pb-3 px-3">Initial (<Latex math="V_i" />)</th>
+                  <th className="pb-3 px-3">Final (<Latex math="V_f" />)</th>
+                  <th className="pb-3 px-3">Titer (<Latex math="\Delta V" />)</th>
                   <th className="pb-3 px-3">Endpoint Color</th>
-                  <th className="pb-3 px-3">Calculated M</th>
+                  <th className="pb-3 px-3">Calculated (<Latex math="C" />)</th>
                   <th className="pb-3 px-3">Error %</th>
                   <th className="pb-3 pl-3 text-right">Status</th>
                 </tr>
@@ -115,12 +116,12 @@ export default function Notebook({ trials, onClearNotebook }: NotebookProps) {
                       <span className="text-[10px] text-[#4B6169] block font-sans font-normal">{t.timestamp}</span>
                     </td>
                     <td className="py-3.5 px-3">
-                      <span className="font-bold">{t.analyteFormula}</span> vs {t.titrantFormula}
+                      <span className="font-bold"><Chem formula={t.analyteFormula} /></span> vs <Chem formula={t.titrantFormula} />
                     </td>
-                    <td className="py-3.5 px-3 font-mono">{t.initialReadingMl.toFixed(2)} mL</td>
-                    <td className="py-3.5 px-3 font-mono">{t.finalReadingMl.toFixed(2)} mL</td>
+                    <td className="py-3.5 px-3 font-mono"><Latex math={`${t.initialReadingMl.toFixed(2)}\\text{ mL}`} /></td>
+                    <td className="py-3.5 px-3 font-mono"><Latex math={`${t.finalReadingMl.toFixed(2)}\\text{ mL}`} /></td>
                     <td className="py-3.5 px-3 font-mono font-bold text-[#2E7D46] bg-[#E4F5DA] rounded-lg">
-                      {t.deliveredVolumeMl.toFixed(2)} mL
+                      <Latex math={`${t.deliveredVolumeMl.toFixed(2)}\\text{ mL}`} />
                     </td>
                     <td className="py-3.5 px-3">
                       <div className="flex items-center gap-1.5">
@@ -132,10 +133,10 @@ export default function Notebook({ trials, onClearNotebook }: NotebookProps) {
                       </div>
                     </td>
                     <td className="py-3.5 px-3 font-mono font-bold">
-                      {t.studentCalculatedConc !== undefined ? `${t.studentCalculatedConc.toFixed(3)} M` : '—'}
+                      {t.studentCalculatedConc !== undefined ? <Latex math={`${t.studentCalculatedConc.toFixed(3)}\\text{ M}`} /> : '—'}
                     </td>
                     <td className="py-3.5 px-3 font-mono">
-                      {t.errorPercent !== undefined ? `${t.errorPercent.toFixed(1)}%` : '—'}
+                      {t.errorPercent !== undefined ? <Latex math={`${t.errorPercent.toFixed(1)}\\%`} /> : '—'}
                     </td>
                     <td className="py-3.5 pl-3 text-right">
                       {t.passed ? (

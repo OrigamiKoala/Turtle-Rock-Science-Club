@@ -23,6 +23,19 @@
     linear-gradient(to bottom, rgba(31, 58, 66, 0.05) 1px, transparent 1px);
 }
 
+.katex {
+  font-size: 1.05em;
+  text-rendering: auto;
+}
+
+:root.dark .katex {
+  color: inherit;
+}
+
+.katex-display {
+  margin: 0.5em 0 !important;
+}
+
 .bg-dot-pattern {
   background-size: 20px 20px;
   background-image: radial-gradient(circle, rgba(76, 154, 58, 0.10) 1px, transparent 1px);

@@ -532,4 +532,15 @@ graduation lines and meniscus concave curve for pure visual reading (no text tag
 Progress is stored in `tr_sc_titration_progress`. Guests can access all modules;
 members earn Discovery XP and the "Analytical Chemist" badge on correctly identifying mystery samples.
 
+## Math & Chemistry LaTeX Formatting (KaTeX)
+
+All mathematical expressions, chemical formulas, reaction equations, and physical units across the website use KaTeX rendering via components in `src/components/Latex.tsx`:
+- `<Latex math="..." displayMode={false|true} />`: Renders pure KaTeX expressions directly (e.g. formulas, step equations, variable readouts).
+- `<Chem formula="..." />`: Automatically tokenizes chemical formulas (`H2O`, `CH3COOH`, `Fe2O3`, `(NH4)2SO4`, `CO3^2-`) into standard chemical LaTeX notation (`\text{H}_2\text{O}`, `\text{CH}_3\text{COOH}`, etc.).
+- `<MathText text="..." />`: Parses mixed prose strings with inline `$math$` and block `$$math$$` expressions (and chemistry formulas) into KaTeX spans without string interpolation bugs.
+- `SafeHtml.tsx`: Formats any Sheet-published announcements, missions, or logs containing `$math$` or `$$math$$` via KaTeX.
+- Dark mode: `katex/dist/katex.min.css` is imported in `main.tsx`, and `:root.dark .katex` in `index.css` ensures all equations inherit text colors with high contrast.
+
+
+
 

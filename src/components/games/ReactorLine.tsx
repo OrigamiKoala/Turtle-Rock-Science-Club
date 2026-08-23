@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Trophy, Lightbulb, Play, Pause, RotateCcw, Plus, Minus, Power, ChevronRight } from 'lucide-react';
+import { Chem, MathText, Latex } from '../Latex';
 
 /**
  * Reactor Line
@@ -138,8 +139,8 @@ interface SimState {
 const LEVELS: LevelSpec[] = [
   {
     name: 'Make Water',
-    subtitle: 'H₂ + O₂ → H₂O — the simplest reactor on the line',
-    hint: 'Two hydrogens for every oxygen, and two waters come out. Balance the coefficients so every atom on the left has a match on the right, then hit Run.',
+    subtitle: '$\\text{H}_2 + \\text{O}_2 \\longrightarrow \\text{H}_2\\text{O}$ — the simplest reactor on the line',
+    hint: 'Two hydrogens for every oxygen, and two waters come out. Balance the stoichiometric coefficients so every atom on the left matches the right ($2\\text{H}_2 + \\text{O}_2 \\longrightarrow 2\\text{H}_2\\text{O}$), then hit Run.',
     reactions: [
       { id: 'n1', label: 'Reactor', reagents: [{ formula: 'H2' }, { formula: 'O2' }], products: [{ formula: 'H2O' }], yield: 1, maxRate: 6 }
     ],
@@ -151,8 +152,8 @@ const LEVELS: LevelSpec[] = [
   },
   {
     name: 'Rust Never Sleeps',
-    subtitle: 'Fe + O₂ → Fe₂O₃ — the coefficients get uglier',
-    hint: 'Iron rusts as Fe₂O₃, not FeO. Balance the oxygens across both sides first, then fix the irons to match.',
+    subtitle: '$\\text{Fe} + \\text{O}_2 \\longrightarrow \\text{Fe}_2\\text{O}_3$ — the coefficients get uglier',
+    hint: 'Iron rusts as $\\text{Fe}_2\\text{O}_3$, not $\\text{FeO}$. Balance the oxygens across both sides first ($4\\text{Fe} + 3\\text{O}_2 \\longrightarrow 2\\text{Fe}_2\\text{O}_3$), then fix the irons to match.',
     reactions: [
       { id: 'n1', label: 'Reactor', reagents: [{ formula: 'Fe' }, { formula: 'O2' }], products: [{ formula: 'Fe2O3' }], yield: 1, maxRate: 6 }
     ],
@@ -164,8 +165,8 @@ const LEVELS: LevelSpec[] = [
   },
   {
     name: 'The Bottleneck',
-    subtitle: 'Al + O₂ → Al₂O₃ — one silo runs dry',
-    hint: 'Aluminum is abundant here; oxygen is not — only 12 units of it will ever arrive. Work out the most Al₂O₃ that oxygen can make before you assume more aluminum helps.',
+    subtitle: '$\\text{Al} + \\text{O}_2 \\longrightarrow \\text{Al}_2\\text{O}_3$ — one silo runs dry',
+    hint: 'Aluminum is abundant here; oxygen is not — only $12\\text{ units}$ of $\\text{O}_2$ will ever arrive. Work out the limiting reagent for $\\text{Al}_2\\text{O}_3$ before you assume more aluminum helps.',
     reactions: [
       { id: 'n1', label: 'Reactor', reagents: [{ formula: 'Al' }, { formula: 'O2' }], products: [{ formula: 'Al2O3' }], yield: 1, maxRate: 5 }
     ],
@@ -178,7 +179,7 @@ const LEVELS: LevelSpec[] = [
   {
     name: 'Two-Step',
     subtitle: 'Ammonia synthesis feeds a fertiliser line',
-    hint: 'Node 1 makes the ammonia that node 2 consumes — balance each equation on its own first. If node 1 outruns node 2, watch the NH₃ pile up on the connecting pipe.',
+    hint: 'Node 1 makes the $\\text{NH}_3$ that node 2 consumes ($\\text{N}_2 + 3\\text{H}_2 \\longrightarrow 2\\text{NH}_3$). Balance each equation on its own first ($2\\text{NH}_3 + \\text{H}_2\\text{SO}_4 \\longrightarrow (\\text{NH}_4)_2\\text{SO}_4$).',
     reactions: [
       { id: 'a', label: 'Synthesize NH₃', reagents: [{ formula: 'N2' }, { formula: 'H2' }], products: [{ formula: 'NH3' }], yield: 1, maxRate: 6 },
       { id: 'b', label: 'Neutralize', reagents: [{ formula: 'NH3' }, { formula: 'H2SO4' }], products: [{ formula: '(NH4)2SO4' }], yield: 1, maxRate: 6 }
@@ -192,8 +193,8 @@ const LEVELS: LevelSpec[] = [
   },
   {
     name: 'Eighty Percent',
-    subtitle: 'A lossy reaction — yield is only 80%',
-    hint: 'The reagents still get fully consumed at the balanced ratio — only 80% of what they could make actually converts to isolable product. Let the whole supply run through; watch how far short of the naive total you land.',
+    subtitle: 'A lossy reaction — yield is only $80\\%$',
+    hint: 'The reagents still get fully consumed at the balanced ratio ($2\\text{H}_2 + \\text{O}_2 \\longrightarrow 2\\text{H}_2\\text{O}$) — only $80\\%$ of what they could make converts to isolated product.',
     reactions: [
       { id: 'n1', label: 'Reactor', reagents: [{ formula: 'H2' }, { formula: 'O2' }], products: [{ formula: 'H2O' }], yield: 0.8, maxRate: 6 }
     ],
@@ -206,7 +207,7 @@ const LEVELS: LevelSpec[] = [
   {
     name: 'Nothing Wasted',
     subtitle: 'Recycle the byproduct, or run the starter tanks dry',
-    hint: 'The starter H₂/O₂ tanks alone can only ever make a fraction of quota — they are capped. Balance and switch on the electrolysis node too: it splits spent water back into hydrogen and oxygen and feeds node 1 again, lossy but sustained.',
+    hint: 'The starter $\\text{H}_2/\\text{O}_2$ tanks alone are capped. Balance and switch on the electrolysis node too ($2\\text{H}_2\\text{O} \\longrightarrow 2\\text{H}_2 + \\text{O}_2$): it splits spent water back into reactants, lossy but sustained.',
     reactions: [
       { id: 'n1', label: 'Combustion', reagents: [{ formula: 'H2' }, { formula: 'O2' }], products: [{ formula: 'H2O' }], yield: 1, maxRate: 6 },
       { id: 'n2', label: 'Electrolysis', reagents: [{ formula: 'H2O' }], products: [{ formula: 'H2' }, { formula: 'O2' }], yield: 0.7, maxRate: 4 }
@@ -220,7 +221,7 @@ const LEVELS: LevelSpec[] = [
   {
     name: 'The Contract',
     subtitle: 'Free build — hit quota without blowing the budget',
-    hint: 'Ready-made NH₃ is expensive per unit; synthesizing it from N₂ and H₂ on-site is cheap but needs its own balanced node. Blend the two routes (or drop one silo\'s valve entirely) to land under budget.',
+    hint: 'Ready-made $\\text{NH}_3$ is expensive per unit; synthesizing it from $\\text{N}_2$ and $\\text{H}_2$ on-site is cheap but needs its own balanced node. Combine the routes to land under budget.',
     reactions: [
       { id: 'a', label: 'Synthesize NH₃', reagents: [{ formula: 'N2' }, { formula: 'H2' }], products: [{ formula: 'NH3' }], yield: 1, maxRate: 8 },
       { id: 'b', label: 'Neutralize', reagents: [{ formula: 'NH3' }, { formula: 'H2SO4' }], products: [{ formula: '(NH4)2SO4' }], yield: 1, maxRate: 8 }
@@ -637,7 +638,7 @@ export default function ReactorLine({ solvedLevels, onSolve }: ReactorLineProps)
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h4 className="font-display font-bold text-lg text-white">{level.name}</h4>
-          <p className="text-xs text-zinc-500 font-sans">{level.subtitle}</p>
+          <p className="text-xs text-zinc-400 font-sans"><MathText text={level.subtitle} /></p>
         </div>
         <button
           onClick={() => setShowHint((s) => !s)}
@@ -649,9 +650,9 @@ export default function ReactorLine({ solvedLevels, onSolve }: ReactorLineProps)
       </div>
 
       {showHint && (
-        <p className="text-xs text-amber-200/80 bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-2.5 font-sans leading-relaxed">
-          {level.hint}
-        </p>
+        <div className="text-xs text-amber-200/80 bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-2.5 font-sans leading-relaxed">
+          <MathText text={level.hint} />
+        </div>
       )}
 
       <div className="rounded-2xl overflow-hidden border border-white/10 bg-[#0d0d12] relative">
@@ -822,15 +823,15 @@ export default function ReactorLine({ solvedLevels, onSolve }: ReactorLineProps)
             <React.Fragment key={`rg-${i}`}>
               {i > 0 && <span className="text-zinc-500">+</span>}
               <CoeffStepper value={selectedCoeffs.reagents[i]} onDelta={(d) => bumpCoeff(selectedReaction.id, 'reagents', i, d)} />
-              <span>{toDisplayFormula(rg.formula)}</span>
+              <Chem formula={rg.formula} className="text-sm font-bold" />
             </React.Fragment>
           ))}
-          <span className="text-zinc-500 mx-1">→</span>
+          <span className="text-zinc-400 mx-1"><Latex math="\longrightarrow" /></span>
           {selectedReaction.products.map((p, i) => (
             <React.Fragment key={`p-${i}`}>
               {i > 0 && <span className="text-zinc-500">+</span>}
               <CoeffStepper value={selectedCoeffs.products[i]} onDelta={(d) => bumpCoeff(selectedReaction.id, 'products', i, d)} />
-              <span>{toDisplayFormula(p.formula)}</span>
+              <Chem formula={p.formula} className="text-sm font-bold" />
             </React.Fragment>
           ))}
           {selectedBalanced ? (

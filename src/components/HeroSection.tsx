@@ -52,8 +52,8 @@ export default function HeroSection({
                 onClick={() => setCurrentTab('lab')}
                 className="w-full sm:w-auto px-6 py-3 rounded-full font-display font-bold text-sm transition-all duration-300 hover:scale-[1.02] active:scale-95 cursor-pointer flex items-center justify-center gap-2 bg-[#6CC24A] text-[#14351F] shadow-[0_4px_0_#4C9A3A]"
               >
-                <span>Games</span>
                 <Atom className="w-4 h-4" />
+                <span>Games</span>
               </button>
             )}
 

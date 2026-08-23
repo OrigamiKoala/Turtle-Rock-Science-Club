@@ -1,4 +1,5 @@
 import React from 'react';
+import katex from 'katex';
 
 interface SafeHtmlProps {
   content?: string;
@@ -9,12 +10,30 @@ interface SafeHtmlProps {
 export function parseMarkdownToHtml(text: string): string {
   if (!text) return '';
 
-  // If it already contains complete HTML structures, return as-is
-  if (/<[a-z][\s\S]*>/i.test(text)) {
-    return text;
-  }
-
   let html = text;
+
+  // Process Display Math: $$ ... $$
+  html = html.replace(/\$\$([\s\S]+?)\$\$/g, (_, math) => {
+    try {
+      return katex.renderToString(math.trim(), { displayMode: true, throwOnError: false });
+    } catch {
+      return math;
+    }
+  });
+
+  // Process Inline Math: $ ... $
+  html = html.replace(/\$([^\$\n]+?)\$/g, (_, math) => {
+    try {
+      return katex.renderToString(math.trim(), { displayMode: false, throwOnError: false });
+    } catch {
+      return math;
+    }
+  });
+
+  // If it already contains complete HTML structures (and no further markdown needed)
+  if (/<[a-z][\s\S]*>/i.test(text) && !text.includes('**') && !text.includes('###') && !text.includes('- ')) {
+    return html;
+  }
 
   // Bold: **text** or __text__
   html = html.replace(/(\*\*|__)(.*?)\1/g, '<strong>$2</strong>');

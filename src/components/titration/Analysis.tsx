@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ModuleDef, ModuleTrack, TitrationTrial, CurvePoint } from './types';
 import CurvePlot from './CurvePlot';
 import { CheckCircle, AlertCircle, Award, Sparkles, BookOpen, RotateCcw, ArrowRight, Save } from 'lucide-react';
+import { Latex, Chem, MathText } from '../Latex';
 
 interface AnalysisProps {
   module: ModuleDef;
@@ -136,7 +137,7 @@ export default function Analysis({
             Calculate Analyte Concentration
           </h2>
           <p className="text-xs sm:text-sm font-sans text-[#4B6169]">
-            Convert your burette readings and stoichiometry into the final molarity (mol/L).
+            <MathText text="Convert your burette readings and stoichiometry into the final molarity ($C_{\text{analyte}}\text{ in mol/L}$)." />
           </p>
         </div>
 
@@ -168,25 +169,41 @@ export default function Analysis({
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
               <div className="p-2.5 rounded-xl bg-[#FBF7EC] border border-[#1F3A42]/8">
-                <span className="text-[10px] text-[#4B6169] block font-sans">Initial Reading (Vᵢ)</span>
-                <span className="font-display font-bold text-sm text-[#1F3A42]">{initialReadingMl.toFixed(2)} mL</span>
+                <span className="text-[10px] text-[#4B6169] block font-sans">
+                  Initial Reading (<Latex math="V_i" />)
+                </span>
+                <span className="font-display font-bold text-sm text-[#1F3A42]">
+                  <Latex math={`${initialReadingMl.toFixed(2)}\\text{ mL}`} />
+                </span>
               </div>
               <div className="p-2.5 rounded-xl bg-[#FBF7EC] border border-[#1F3A42]/8">
-                <span className="text-[10px] text-[#4B6169] block font-sans">Final Reading (V𝒻)</span>
-                <span className="font-display font-bold text-sm text-[#1F3A42]">{finalReadingMl.toFixed(2)} mL</span>
+                <span className="text-[10px] text-[#4B6169] block font-sans">
+                  Final Reading (<Latex math="V_f" />)
+                </span>
+                <span className="font-display font-bold text-sm text-[#1F3A42]">
+                  <Latex math={`${finalReadingMl.toFixed(2)}\\text{ mL}`} />
+                </span>
               </div>
               <div className="p-2.5 rounded-xl bg-[#E4F5DA] border border-[#6CC24A]/40">
-                <span className="text-[10px] text-[#2E7D46] block font-sans">Delivered (ΔV)</span>
-                <span className="font-display font-bold text-sm text-[#2E7D46]">{deliveredVolumeMl.toFixed(2)} mL</span>
+                <span className="text-[10px] text-[#2E7D46] block font-sans">
+                  Delivered (<Latex math="\Delta V" />)
+                </span>
+                <span className="font-display font-bold text-sm text-[#2E7D46]">
+                  <Latex math={`${deliveredVolumeMl.toFixed(2)}\\text{ mL}`} />
+                </span>
               </div>
               <div className="p-2.5 rounded-xl bg-[#FBF7EC] border border-[#1F3A42]/8">
-                <span className="text-[10px] text-[#4B6169] block font-sans">Endpoint pH</span>
-                <span className="font-display font-bold text-sm text-[#1F3A42]">{finalPh.toFixed(2)}</span>
+                <span className="text-[10px] text-[#4B6169] block font-sans">
+                  Endpoint <Latex math="\text{pH}" />
+                </span>
+                <span className="font-display font-bold text-sm text-[#1F3A42]">
+                  <Latex math={finalPh.toFixed(2)} />
+                </span>
               </div>
             </div>
 
             <p className="text-[11px] text-[#4B6169] font-sans">
-              Endpoint visual color: <strong className="text-[#1F3A42]">{endpointColorName}</strong>.
+              Endpoint visual color: <strong className="text-[#1F3A42]">{endpointColorName}</strong> for analyte <Chem formula={module.setup.analyte.formula} /> with titrant <Chem formula={module.setup.titrant.formula} />.
             </p>
           </div>
 
@@ -211,7 +228,7 @@ export default function Analysis({
             {/* Step 1: Titrant volume */}
             <div className="space-y-1">
               <label className="text-[11px] font-extrabold text-[#4B6169] block">
-                1. Net Titrant Volume Delivered (ΔV in mL):
+                1. Net Titrant Volume Delivered (<Latex math="\Delta V = V_f - V_i\text{ in mL}" />):
               </label>
               <input
                 type="number"
@@ -227,7 +244,7 @@ export default function Analysis({
             {/* Step 2: Moles of Titrant */}
             <div className="space-y-1">
               <label className="text-[11px] font-extrabold text-[#4B6169] block">
-                2. Moles of Titrant Added (n = C_titrant × ΔV / 1000):
+                2. Moles of Titrant Added (<Latex math="n_{\text{titrant}} = \frac{C_{\text{titrant}} \times \Delta V}{1000}" />):
               </label>
               <div className="flex items-center gap-2">
                 <input
@@ -237,24 +254,24 @@ export default function Analysis({
                   placeholder={`e.g. ${((titrantMolarity * deliveredVolumeMl) / 1000).toExponential(3)}`}
                   className="w-full p-2.5 rounded-xl text-sm border-2 border-[#1F3A42]/12 bg-white text-[#1F3A42] focus:outline-none font-mono"
                 />
-                <span className="text-xs text-[#4B6169] shrink-0">mol</span>
+                <span className="text-xs text-[#4B6169] shrink-0 font-bold"><Latex math="\text{mol}" /></span>
               </div>
             </div>
 
             {/* Step 3: Stoichiometric Ratio Info */}
             <div className="p-3 rounded-xl bg-[#FBF7EC] border border-[#1F3A42]/8 text-xs font-sans space-y-1">
-              <span className="font-bold text-[#1F3A42]">
-                3. Balanced Equation Stoichiometry:
+              <span className="font-bold text-[#1F3A42] flex items-center gap-1.5">
+                <span>3. Balanced Equation Stoichiometry:</span>
               </span>
               <p className="text-[#4B6169]">
-                Mole Ratio (Titrant : Analyte) = <strong>{stoichRatio} : 1</strong>
+                Mole Ratio (<Chem formula={module.setup.titrant.formula} /> : <Chem formula={module.setup.analyte.formula} />) = <strong className="text-[#1F3A42]"><Latex math={`${stoichRatio} : 1`} /></strong>
               </p>
             </div>
 
             {/* Step 4: Final Calculated Concentration */}
             <div className="space-y-1">
               <label className="text-[11px] font-extrabold text-[#4B6169] block">
-                4. Analyte Molar Concentration (M = moles / sample_volume):
+                4. Analyte Molar Concentration (<Latex math="C_{\text{analyte}} = \frac{n_{\text{analyte}}}{V_{\text{sample}} / 1000}" />):
               </label>
               <div className="flex items-center gap-2">
                 <input
@@ -266,7 +283,7 @@ export default function Analysis({
                   placeholder="e.g. 0.100"
                   className="w-full p-2.5 rounded-xl text-sm border-2 border-[#1F3A42]/12 bg-white text-[#1F3A42] focus:outline-none font-mono font-bold"
                 />
-                <span className="text-xs text-[#4B6169] shrink-0">M (mol/L)</span>
+                <span className="text-xs text-[#4B6169] shrink-0 font-bold"><Latex math="\text{M (mol/L)}" /></span>
               </div>
             </div>
 
@@ -300,9 +317,15 @@ export default function Analysis({
                     {isPassed ? 'Excellent Analytical Precision!' : 'Titration Inaccuracy Detected'}
                   </h3>
                   <p className="text-xs sm:text-sm font-sans mt-0.5 text-[#1F3A42]">
-                    {isPassed
-                      ? `Your calculated molarity of ${studentConcNumber.toFixed(3)} M is within ±${tolerance}% of the true concentration!`
-                      : `Your calculated molarity had an error of ${errorPercent.toFixed(1)}% (allowed: ±${tolerance}%).`}
+                    {isPassed ? (
+                      <span>
+                        Your calculated molarity of <Latex math={`${studentConcNumber.toFixed(3)}\\text{ M}`} /> is within <Latex math={`\\pm ${tolerance}\\%`} /> of the true concentration!
+                      </span>
+                    ) : (
+                      <span>
+                        Your calculated molarity had an error of <Latex math={`${errorPercent.toFixed(1)}\\%`} /> (allowed: <Latex math={`\\pm ${tolerance}\\%`} />).
+                      </span>
+                    )}
                   </p>
                 </div>
               </div>
@@ -311,16 +334,20 @@ export default function Analysis({
               <div className="grid grid-cols-3 gap-3 text-center">
                 <div className="p-2.5 rounded-xl bg-white border border-[#1F3A42]/10">
                   <span className="text-[10px] text-[#4B6169] block">Your Answer</span>
-                  <span className="font-display font-bold text-sm text-[#1F3A42]">{studentConcNumber.toFixed(3)} M</span>
+                  <span className="font-display font-bold text-sm text-[#1F3A42]">
+                    <Latex math={`${studentConcNumber.toFixed(3)}\\text{ M}`} />
+                  </span>
                 </div>
                 <div className="p-2.5 rounded-xl bg-white border border-[#1F3A42]/10">
                   <span className="text-[10px] text-[#4B6169] block">True Value</span>
-                  <span className="font-display font-bold text-sm text-[#2E7D46]">{trueConcentration.toFixed(3)} M</span>
+                  <span className="font-display font-bold text-sm text-[#2E7D46]">
+                    <Latex math={`${trueConcentration.toFixed(3)}\\text{ M}`} />
+                  </span>
                 </div>
                 <div className="p-2.5 rounded-xl bg-white border border-[#1F3A42]/10">
                   <span className="text-[10px] text-[#4B6169] block">Percent Error</span>
                   <span className={`font-display font-bold text-sm ${isPassed ? 'text-[#2E7D46]' : 'text-red-600'}`}>
-                    {errorPercent.toFixed(2)}%
+                    <Latex math={`${errorPercent.toFixed(2)}\\%`} />
                   </span>
                 </div>
               </div>
@@ -368,13 +395,18 @@ export default function Analysis({
             </h4>
 
             <p className="text-xs font-sans text-[#1F3A42] leading-relaxed">
-              At equivalence, exactly <strong>{theoreticalEquivalenceVol.toFixed(2)} mL</strong> of titrant neutralized all acidic protons. Notice how the inflection point aligns with the transition interval of <strong>{module.setup.defaultIndicatorId}</strong>.
+              At equivalence, exactly <Latex math={`V_{\\text{eq}} = ${theoreticalEquivalenceVol.toFixed(2)}\\text{ mL}`} /> of titrant neutralized all reactive acidic protons. Notice how the inflection jump matches the color transition range of indicator <strong className="text-[#2E7D46]">{module.setup.defaultIndicatorId}</strong>.
             </p>
 
             {module.deeperNotes && (
-              <div className="p-3 rounded-xl bg-[#FBF7EC] border border-[#1F3A42]/8 text-xs font-sans space-y-1">
-                <span className="font-bold text-[#1F3A42]">{module.deeperNotes.title}</span>
-                <p className="text-[#4B6169]">{module.deeperNotes.content}</p>
+              <div className="p-3 rounded-xl bg-[#FBF7EC] border border-[#1F3A42]/8 text-xs font-sans space-y-1.5">
+                <span className="font-bold text-[#1F3A42] block">{module.deeperNotes.title}</span>
+                <MathText text={module.deeperNotes.content} as="p" className="text-[#4B6169]" />
+                {module.deeperNotes.keyEquation && (
+                  <div className="p-2 rounded-lg bg-white border border-[#1F3A42]/10 text-center font-bold text-[#2E7D46] shadow-2xs">
+                    <Latex math={module.deeperNotes.keyEquation} displayMode={true} />
+                  </div>
+                )}
               </div>
             )}
           </div>

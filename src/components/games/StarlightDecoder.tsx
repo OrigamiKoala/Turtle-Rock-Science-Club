@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Trophy, Lightbulb, ChevronRight, RotateCcw, Check } from 'lucide-react';
+import { MathText } from '../Latex';
 
 /**
  * Starlight Decoder
@@ -99,74 +100,74 @@ const LEVELS: Level[] = [
     kind: 'spectral',
     title: "What's in the Sun?",
     brief:
-      "Our own star's light, dead calm — nothing is moving toward or away from us. Drag the elements you think are present onto the spectrum and see if their lines land on the dark bands.",
+      "Our own star's light, dead calm — nothing is moving toward or away from us ($v = 0\\text{ km/s}$). Drag the elements you think are present onto the spectrum and see if their emission lines land on the dark absorption bands.",
     trueElements: ['H', 'Na', 'Ca'],
     velocityKmS: 0,
     candidateElements: ['H', 'Na', 'Ca', 'He'],
     hasDopplerSlider: false,
-    hint: 'Three of the four cards belong. A card with no lines on a dark band is not part of the mix — even if it seems likely.'
+    hint: 'Three of the four cards belong. A card with no lines on a dark band is not part of the stellar atmosphere — even if it seems likely.'
   },
   {
     kind: 'temperature',
     title: 'How Hot?',
     brief:
-      "A star's colour is a thermometer. Bluer means hotter, redder means cooler — that's Wien's law. Slide until your swatch matches the star's, then pick its letter class.",
+      "A star's colour is a thermometer. Bluer means hotter, redder means cooler — that's Wien's displacement law. Slide until your swatch matches the star's, then pick its spectral letter class.",
     trueTempK: 5778,
-    hint: 'Wien\'s law: λ_peak = 2.898×10⁶ nm·K ÷ T. A yellow-white star like this one sits in the middle of the classes — not the bluest, not the reddest.'
+    hint: "Wien's law: $\\lambda_{\\text{peak}} = \\frac{2.898 \\times 10^6\\text{ nm}\\cdot\\text{K}}{T}$. A yellow-white star like this ($T \\approx 5778\\text{ K}$) sits in spectral class G."
   },
   {
     kind: 'spectral',
     title: 'Red Shift',
     brief:
-      "A distant galaxy's light — but nothing lines up at zero shift. Every line is redder than it should be. Slide the velocity control until the whole pattern, not just one line, snaps into place.",
+      "A distant galaxy's light — but nothing lines up at zero shift. Every line is shifted redder than rest wavelength ($\\Delta \\lambda > 0$). Slide the velocity control until the whole pattern snaps into place.",
     trueElements: ['Na', 'Ca'],
     velocityKmS: 6000,
     candidateElements: ['Na', 'Ca', 'H'],
     hasDopplerSlider: true,
-    hint: "Positive velocity means receding — the whole spectrum stretches toward red. Try around 2% of the speed of light."
+    hint: "Positive velocity means receding ($v > 0$) — the spectrum stretches red via $\\frac{\\Delta \\lambda}{\\lambda_0} = \\frac{v}{c}$. Try around $v = 6000\\text{ km/s}$ ($2\\%$ of $c$)."
   },
   {
     kind: 'spectral',
     title: 'Blue Arrival',
     brief:
-      'This star is heading toward us. One reference card will tempt you — its line sits suspiciously close to two of the dark bands. Check ALL of its lines before you trust it.',
+      'This star is heading toward us ($v < 0$, blueshift). One reference card will tempt you — its line sits suspiciously close to two of the dark bands. Check ALL lines before you confirm.',
     trueElements: ['H', 'Na'],
     velocityKmS: -1200,
     candidateElements: ['H', 'Na', 'He', 'Ca'],
     hasDopplerSlider: true,
-    hint: "Helium's yellow-ish line (587.6 nm) sits only about 1.5 nm from sodium's D lines — real astronomers hit this exact trap. Helium's other three lines match nothing here, so the full pattern fails."
+    hint: "Helium's yellow line ($\\lambda = 587.6\\text{ nm}$) sits only $\\approx 1.5\\text{ nm}$ from sodium's D lines. Check that all lines match before confirming."
   },
   {
     kind: 'transit',
     title: 'Transit',
     brief:
-      "Starlight dims a little every time a planet crosses in front of its star. Measure how deep the dip is to size the planet; measure the spacing between dips to time its year.",
+      "Starlight dims a little every time an exoplanet crosses in front of its parent star. Measure the transit depth to size the planet, and measure dip spacing to time its orbital period.",
     starRadiusSolar: 1.0,
     planetRadiusSolar: 0.1,
     periodDays: 3.5,
     depthTolerancePct: 0.18,
     periodToleranceDays: 0.25,
-    hint: 'Depth, as a percent of starlight lost, equals (planet radius ÷ star radius) squared. A 10%-of-the-star planet blocks about 1% of the light.'
+    hint: 'Transit depth: $\\text{Depth} = \\left(\\frac{R_{\\text{planet}}}{R_{\\text{star}}}\\right)^2 \\times 100\\%$. A $10\\%$ radius planet blocks $(0.10)^2 = 1.0\\%$ of starlight.'
   },
   {
     kind: 'wobble',
     title: 'The Wobble',
     brief:
-      "No transit this time — the planet never crosses our view. But the star's own light drifts blue, then red, then blue again, like clockwork. Something unseen is tugging on it.",
+      "Radial velocity method: as the unseen planet orbits, the star wobbles toward and away from Earth, sinusoidally blueshifting and redshifting ($v(t) = K \\sin(2\\pi t / P)$).",
     trueAmplitudeKmS: 42,
     truePeriodDays: 8,
     amplitudeTolerance: 5,
     periodTolerance: 0.6,
-    hint: 'Fit a smooth wave through the noisy points. The wave\'s height is the wobble speed; the distance between its peaks is the orbital period.'
+    hint: "Fit a sine wave $v(t) = K \\sin(2\\pi t / P)$ through the data. Wave peak is velocity amplitude ($K \\approx 42\\text{ km/s}$); period is peak-to-peak time ($P \\approx 8\\text{ days}$)."
   },
   {
     kind: 'synthesis',
     title: 'Is It Habitable?',
     brief:
-      'One planet, three numbers: how hot its star burns, how far out the planet orbits, and what that means for liquid water. Classify the star, then decide.',
+      'Evaluate an exoplanet system: stellar temperature ($T$), orbital semi-major axis ($a$), and the Goldilocks habitable zone for liquid water ($0.95\\text{ AU} \\le a \\le 1.37\\text{ AU}$).',
     trueTempK: 5500,
     orbitalDistanceAU: 0.9,
-    hint: 'A cooler star\'s habitable zone sits closer in. Compare the orbit distance to where liquid water could survive — not too hot, not too cold.'
+    hint: 'A cooler K-dwarf star ($T \\approx 5500\\text{ K}$) has a habitable zone shifted closer in ($a \\approx 0.7 - 1.1\\text{ AU}$). At $0.9\\text{ AU}$, liquid water can stably exist!'
   }
 ];
 
@@ -708,12 +709,14 @@ export default function StarlightDecoder({ solvedLevels, onSolve }: StarlightDec
         </button>
       </div>
 
-      <p className="text-xs text-zinc-400 leading-relaxed font-sans">{level.brief}</p>
+      <div className="text-xs text-zinc-400 leading-relaxed font-sans">
+        <MathText text={level.brief} />
+      </div>
 
       {showHint && (
-        <p className="text-xs text-amber-200/80 bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-2.5 font-sans leading-relaxed">
-          {level.hint}
-        </p>
+        <div className="text-xs text-amber-200/80 bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-2.5 font-sans leading-relaxed">
+          <MathText text={level.hint} />
+        </div>
       )}
 
       {/* ---------------------------------------------------------- spectral */}

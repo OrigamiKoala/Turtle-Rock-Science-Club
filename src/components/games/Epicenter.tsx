@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Trophy, Lightbulb, RotateCcw, ChevronRight, Clock, AlertTriangle, Send } from 'lucide-react';
+import { MathText } from '../Latex';
 
 /**
  * Epicenter
@@ -152,8 +153,8 @@ const LEVELS: LevelDef[] = [
   },
   {
     name: 'How Big Was It?',
-    brief: 'Find the epicenter and estimate the earthquake\'s magnitude (how powerful it was).',
-    hint: 'Bigger quakes make bigger waves, but farther-away quakes make smaller waves — so you need both the amplitude and the distance to work out the magnitude. The formula is: magnitude ≈ log₁₀(amplitude in mm) + 2.56 × log₁₀(distance in km) − 1.67. Your estimate just needs to be within ±0.3 to count.',
+    brief: 'Find the epicenter and estimate the earthquake\'s Richter magnitude ($M_L$).',
+    hint: 'Bigger quakes make bigger wave amplitudes, but farther-away quakes make smaller waves. The Richter magnitude formula is: $M_L \\approx \\log_{10}(A_{\\text{mm}}) + 2.56 \\log_{10}(d_{\\text{km}}) - 1.67$. Your estimate just needs to be within $\\pm 0.3$ to pass.',
     rounds: [303],
     magRange: [4.5, 6.0],
     stations: NETWORK_A,
@@ -620,7 +621,9 @@ export default function Epicenter({ solvedLevels, onSolve }: EpicenterProps) {
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h4 className="font-display font-bold text-lg text-white">{level.name}</h4>
-          <p className="text-xs text-zinc-400 leading-relaxed font-sans max-w-2xl">{level.brief}</p>
+          <div className="text-xs text-zinc-400 leading-relaxed font-sans max-w-2xl">
+            <MathText text={level.brief} />
+          </div>
         </div>
         <button
           onClick={() => setShowHint((s) => !s)}
@@ -632,9 +635,9 @@ export default function Epicenter({ solvedLevels, onSolve }: EpicenterProps) {
       </div>
 
       {showHint && (
-        <p className="text-xs text-amber-200/80 bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-2.5 font-sans leading-relaxed">
-          {level.hint}
-        </p>
+        <div className="text-xs text-amber-200/80 bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-2.5 font-sans leading-relaxed">
+          <MathText text={level.hint} />
+        </div>
       )}
 
       {isMultiRound && (
