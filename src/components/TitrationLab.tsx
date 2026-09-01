@@ -320,6 +320,14 @@ export default function TitrationLab({ userProfile, onUpdateXp }: TitrationLabPr
 
   // Save completed trial
   const handleSaveTrial = (trial: TitrationTrial) => {
+    // Checked against the state as it stood before this trial, same as
+    // VirtualLab's per-level dedupe — otherwise re-submitting an
+    // already-passing trial (the grade button has no disabled state) awards
+    // xpReward again on every click, with no cap.
+    const alreadyCompleted = isMystery
+      ? progress.solvedUnknownSeeds.includes(mysterySeed)
+      : progress.completedModules.includes(activeModule.id);
+
     setProgress((prev) => {
       const updatedTrials = [trial, ...prev.trials];
       const completedMods = prev.completedModules.includes(activeModule.id)
@@ -348,8 +356,9 @@ export default function TitrationLab({ userProfile, onUpdateXp }: TitrationLabPr
       };
     });
 
-    // Award XP and badges
-    if (trial.passed) {
+    // Award XP and badges — only the first time this module (or, for a
+    // mystery run, this particular mystery seed) is actually passed.
+    if (trial.passed && !alreadyCompleted) {
       if (isMystery) {
         // Award Analytical Chemist badge on mystery solve
         onUpdateXp(activeModule.xpReward, 'Analytical Chemist');

@@ -107,8 +107,12 @@ export default function CuratedResources({ resources }: CuratedResourcesProps) {
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const paginatedResources = filteredResources.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
+  // The entrance animation this page used to own (a bare `animate-fade-in`
+  // here, the only page that had one) is now on App.tsx's shared tab wrapper,
+  // which every tab gets. Keeping it here as well would run two overlapping
+  // animations on nested elements and compound the slide.
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8 animate-fade-in">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
       {/* Header Banner */}
       <div className="relative overflow-hidden rounded-[32px] bg-gradient-to-br from-[#1F3A42] via-[#2D525D] to-[#142B32] p-8 sm:p-12 text-white shadow-2xl">
         <div className="absolute top-0 right-0 -mt-10 -mr-10 w-64 h-64 rounded-full bg-[#6CC24A]/20 blur-3xl pointer-events-none" />

@@ -186,9 +186,19 @@ export const REAGENTS: Record<string, ReagentDef> = {
     formula: 'H₂SO₄',
     commonName: 'Battery acid',
     category: 'strong_acid',
-    pKa: [1.99], // First proton strong (releases H+ and HSO4-), second proton pKa 1.99
-    z0: -1, // HSO4- fully protonated has charge -1
-    spectators: [{ z: -1, count: 1 }], // 1st strong proton creates 1 free H+ via spectator logic or -1 charge
+    // The first proton is ~100% dissociated, so it's not modeled as its own
+    // equilibrium step — it's baked directly into z0: -1, i.e. "the reference
+    // species for this system is already HSO4-, having already lost one
+    // proton." The one remaining (weak, pKa 1.99) HSO4-/SO4^2- equilibrium is
+    // then the sole entry in pKa below. meanCharge = z0 - protonLossSum in
+    // solvePh() already fully accounts for both protons on its own — an
+    // additional spectator here would double-count the first proton's -1
+    // charge on top of what z0 already contributes (verified: without it,
+    // pure 0.05 M H2SO4 solves to pH 1.24, matching hand calculation; with
+    // the extra spectator it solved to ~0.98, too acidic).
+    pKa: [1.99],
+    z0: -1,
+    spectators: [],
     defaultConc: 0.05,
     isPolyprotic: true
   },

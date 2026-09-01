@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800;900&family=EB+Garamond:ital,wght@0,600;0,700;0,800;1,500;1,600;1,700&family=Geist+Mono:wght@400;500;600;700;800&family=Hedvig+Letters+Serif:opsz@12..24&display=swap');
 @import "tailwindcss";
 
 /* Bind Tailwind's `dark:` utilities to the same `.dark` class that
@@ -12,9 +12,81 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --font-sans: "Nunito", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Baloo 2", sans-serif;
-  --font-mono: "Nunito", ui-monospace, SFMono-Regular, monospace;
+  --font-sans: "Hedvig Letters Serif", serif;
+  --font-display: "Hedvig Letters Serif", serif;
+  --font-mono: "Hedvig Letters Serif", serif;
+  /* Landing intro (Hero.tsx) + the floating nav wordmark only — Wispr Flow
+     (wisprflow.ai) sets its big display headlines in EB Garamond, a classic
+     revival serif with a genuinely elegant italic; used here at a heavier
+     weight than Wispr's own regular-weight display, since the brief for
+     this panel is specifically a bold statement. EB Garamond is SIL OFL
+     licensed via Google Fonts, unlike Hack Club's Phantom Sans, which was
+     ruled out earlier for being "HQ sites only." Not used elsewhere on the
+     site. */
+  --font-hero: "Hedvig Letters Serif", serif;
+}
+
+@keyframes spin-slow {
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin-slow-a {
+  animation: spin-slow 42s linear infinite;
+}
+
+.animate-spin-slow-b {
+  animation: spin-slow 58s linear infinite reverse;
+}
+
+.animate-spin-slow-c {
+  animation: spin-slow 33s linear infinite;
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.25; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+.animate-twinkle {
+  animation: twinkle 2.4s ease-in-out infinite;
+}
+
+/* Hero.tsx's photo carousel (CarouselTrack) — a constant-speed auto-scroll,
+   not tied to page scroll at all anymore (an earlier version drove this off
+   the scroll-captured `progress` value, which read as "way too fast" no
+   matter how much scroll distance it was given). `animation-duration` is set
+   inline per-instance (computed from the actual content width so the *felt*
+   speed stays constant regardless of photo count or card size — see
+   MARQUEE_PX_PER_SEC in Hero.tsx), so this rule only owns the motion shape:
+   translate by exactly -50%, which lines up with the seam between the first
+   and second copies of the (doubled, for a seamless loop) card row. Paused
+   on hover via a plain Tailwind `hover:[animation-play-state:paused]`
+   utility on the element itself, not here. */
+@keyframes carousel-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.animate-carousel-marquee {
+  animation-name: carousel-marquee;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+/* `currentColor` rather than a hardcoded hex so the same static glow works
+   on both the Gold "Science." word and the Mint "a community." line without
+   a second near-duplicate rule — each just inherits its own text color into
+   the shadow. No animation/scale (that was `.animate-word-pulse`'s original
+   "breathing" version — dropped per direct request: permanently glowing,
+   normal size, not pulsing). Kept on an *inner* span, never the element a
+   framer-motion `y`/`opacity` MotionValue is bound to, purely so this rule
+   and any future scroll-driven transform on the outer element never fight
+   over the same `transform`/`style` — there's no animation here to actually
+   conflict now, but the split costs nothing and matches the sibling
+   pattern. */
+.glow-word {
+  display: inline-block;
+  text-shadow: 0 0 14px currentColor;
 }
 
 .bg-grid-pattern {
@@ -48,9 +120,28 @@ textarea:focus {
   outline-offset: 1px;
 }
 
+:root {
+  --scrollbar-thumb: rgba(31, 58, 66, 0.25);
+  --scrollbar-thumb-hover: rgba(31, 58, 66, 0.45);
+}
+
+/* #93A6A0 is the same muted-teal token already used for dark-mode text
+   (STYLE.md's dark contrast table) — reused here rather than introducing a
+   new hex, per the "only use hex values that already have an override"
+   rule. */
+:root.dark {
+  --scrollbar-thumb: rgba(147, 166, 160, 0.35);
+  --scrollbar-thumb-hover: rgba(147, 166, 160, 0.55);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 12px;
+  height: 12px;
 }
 
 ::-webkit-scrollbar-track {
@@ -58,12 +149,17 @@ textarea:focus {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(31, 58, 66, 0.2);
+  background-color: var(--scrollbar-thumb);
   border-radius: 9999px;
+  /* Transparent border + padding-box clip insets the thumb from the track
+     edges, so it reads as a small floating capsule (Wispr Flow-style)
+     rather than a bar flush against the viewport edge. */
+  border: 3px solid transparent;
+  background-clip: padding-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(31, 58, 66, 0.35);
+  background-color: var(--scrollbar-thumb-hover);
 }
 
 @keyframes lavaBubbleUp {
@@ -101,6 +197,58 @@ textarea:focus {
 
 .animate-fade-in {
   animation: fade-in 0.25s ease;
+}
+
+/* ---------- Page (tab) transitions ----------
+   Every tab's content now enters this way, not just Resources — which was
+   the only page that had it, as a bare `animate-fade-in` on its own root
+   div, and is what this was asked to be modelled on. It lives on a single
+   wrapper in App.tsx keyed by `currentTab` rather than on each page
+   component, so switching tabs remounts the wrapper and replays the
+   animation. Adding the class to each page instead would not reliably
+   re-trigger it, and would double up wherever a page already had one.
+
+   Deliberately a shade larger than `fade-in` it grew out of (4px/0.25s →
+   10px/0.32s, and a real ease-out rather than the symmetric `ease`), by
+   direct request to exaggerate it slightly: 4px is close to invisible on a
+   full page of content, where 10px reads as the page actually arriving.
+   `fade-in` itself is left alone — modals, toasts, the header menus and the
+   FAQ accordion all use it, and they are small elements where a 10px slide
+   would be too much. */
+@keyframes tab-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-tab-in {
+  animation: tab-in 0.32s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* Opacity-only variant for the home tab. The hero panel is `position: fixed`
+   while its scroll sequence is locked, and *any* non-none `transform` on an
+   ancestor makes a fixed descendant resolve against that ancestor instead of
+   the viewport — so the 10px slide above would knock the hero out of place
+   for the length of the animation. Opacity creates a stacking context but
+   not a containing block, so it is safe here. */
+@keyframes tab-in-fade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-tab-in-fade {
+  animation: tab-in-fade 0.32s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 /* ---------- Dark mode: whole site ----------

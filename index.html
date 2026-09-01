@@ -7,13 +7,9 @@
   <title>Turtle Rock Science Club</title>
   <link rel="icon" href="/favicon.ico" type="image/x-icon" />
   <script>
-    (function () {
-      try {
-        var saved = localStorage.getItem('tr_sc_theme');
-        var dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
-        document.documentElement.classList.toggle('dark', dark);
-      } catch (e) {}
-    })();
+    // The site is dark-only — applied synchronously here (before React
+    // mounts) so there's no flash of unstyled/light content on load.
+    document.documentElement.classList.add('dark');
   </script>
 </head>
 

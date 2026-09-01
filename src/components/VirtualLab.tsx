@@ -49,13 +49,19 @@ export default function VirtualLab({ userProfile, onUpdateXp }: VirtualLabProps)
 
   const makeSolveHandler = useCallback(
     (gameId: GameId, badge: string) => (levelIndex: number) => {
+      // The dedupe check now runs before the side effect, not inside the
+      // setGameProgress updater — an updater function must stay pure, and
+      // StrictMode's dev-mode double-invocation of updaters was double-firing
+      // onUpdateXp (and the level-up/badge effects it triggers) the first
+      // time a level was solved.
+      if (gameProgress[gameId].includes(levelIndex)) return;
+      onUpdateXp(10 + levelIndex * 5, badge);
       setGameProgress((prev) => {
         if (prev[gameId].includes(levelIndex)) return prev;
-        onUpdateXp(10 + levelIndex * 5, badge);
         return { ...prev, [gameId]: [...prev[gameId], levelIndex] };
       });
     },
-    [onUpdateXp]
+    [onUpdateXp, gameProgress]
   );
 
   const active = GAMES.find((g) => g.id === activeGame) as (typeof GAMES)[number];

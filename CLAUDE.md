@@ -251,36 +251,48 @@ has the remainder to do.
   toggle — a fictional company — which was removed. If you see `identity`,
   `isTurtle`, or `ClubIdentity` reappear, it is a regression.
 
-## Theming (light/dark)
+## Theming (dark-only)
 
-The site defaults to the OS color-scheme setting and can be overridden
-manually via the half-moon/sun button in the header, next to the profile/Join
-button.
+The site is dark-only — no OS-preference tracking, no manual toggle, no
+stored override. It used to default to the OS color-scheme setting with a
+half-moon/sun toggle button in the header next to the profile/Join button;
+both were removed by direct request. What's left is the mechanics of how
+"dark" actually gets applied, since that machinery is still exactly how the
+whole site is styled:
 
-- `src/useTheme.ts` resolves the effective theme (`localStorage['tr_sc_theme']`
-  if set, else `prefers-color-scheme`) and toggles a `dark` class on
-  `document.documentElement`. It only writes to storage once the user
-  actually toggles — until then it keeps tracking OS changes live.
+- `src/useTheme.ts` is a thin hook that just applies a `dark` class to
+  `document.documentElement` on mount and always returns `{ theme: 'dark' }`.
+  Kept (rather than deleted) because several components — `SFCave.tsx`, the
+  Titration apparatus pieces (`Burette`/`Flask`/`CurvePlot`/`Apparatus.tsx`)
+  — still destructure `theme` off it to pick their dark-mode color branch;
+  always getting `'dark'` back is exactly the wanted behavior post-removal
+  without touching every one of those call sites. `tr_sc_theme` in
+  localStorage is no longer read or written.
 - An inline script in `index.html`'s `<head>` applies that same class
-  synchronously on load, before React mounts, so there's no flash of the
-  wrong theme.
-- `src/index.css` implements dark mode as `:root.dark <selector>` overrides
-  (`!important`) on the site's hardcoded `bg-[#hex]` / `text-[#hex]` classes,
-  scoped under a plain class rather than `@media (prefers-color-scheme)` so
-  the manual toggle can drive it independent of the OS setting.
-- **Both dark-mode mechanisms must key off that same `.dark` class.** The
-  site styles dark mode two ways — the enumerated `:root.dark` overrides
-  above, and plain Tailwind `dark:` utilities (`CuratedResources`,
-  `LabLogAnnouncements`, `SafeHtml`). Tailwind v4 compiles `dark:` to
-  `@media (prefers-color-scheme: dark)` by default, so the two disagreed
-  whenever a visitor's stored preference differed from their OS: the toggle
-  moved the overrides but not the utilities, and the Resources filter bar
-  rendered as a light-gray card of washed-out pills on an otherwise dark
-  page. `index.css` now declares
-  `@custom-variant dark (&:where(.dark, .dark *));` immediately after
-  `@import "tailwindcss"` to bind them together. A compiled bundle
-  (`dist/assets/*.css`) containing any `prefers-color-scheme` rule means that
-  line was lost and the split is back.
+  synchronously on load, before React mounts, so there's no flash of
+  unstyled/light content.
+- `src/index.css` implements the actual dark styling as `:root.dark
+  <selector>` overrides (`!important`) on the site's hardcoded `bg-[#hex]` /
+  `text-[#hex]` classes. This is *not* dead code now that there's no toggle —
+  it's the only styling those elements have; removing the override system
+  and inlining the dark values directly would mean touching every one of
+  those hardcoded classes across the codebase instead of just always keeping
+  the `.dark` class present, which is what was done here.
+- **Both dark-mode mechanisms must still key off that same `.dark` class,
+  even with the toggle gone.** The site styles dark mode two ways — the
+  enumerated `:root.dark` overrides above, and plain Tailwind `dark:`
+  utilities (`CuratedResources`, `LabLogAnnouncements`, `SafeHtml`). Tailwind
+  v4 compiles `dark:` to `@media (prefers-color-scheme: dark)` by default,
+  which reads the *visitor's OS setting*, not this site's (now-permanent)
+  `.dark` class — back when there was a toggle, that mismatch only bit
+  someone whose stored preference disagreed with their OS; now that the site
+  is always dark, reverting to that default would mean the split shows up
+  for anyone whose OS isn't in dark mode, i.e. most visitors, not an edge
+  case. `index.css` declares `@custom-variant dark (&:where(.dark, .dark
+  *));` immediately after `@import "tailwindcss"` to bind `dark:` to the
+  class instead. A compiled bundle (`dist/assets/*.css`) containing any
+  `prefers-color-scheme` rule means that line was lost and the split is
+  back.
 - **Only use hex values that already have an override.** The dark rules are
   enumerated per hex, so a new `text-[#hex]` that isn't in that list renders
   identically in both themes — which usually means dark text on a dark
@@ -298,14 +310,18 @@ button.
   their own dark styling regardless of site theme, same as
   `OrbitalSlingshot.tsx` (which is intentionally always-dark). Wiring up the
   wrapper classes is unfinished work, not a regression.
-- `SFCave.tsx` is the one place that reads the toggle directly in JS
+- `SFCave.tsx` is the one place that reads `theme` directly in JS
   (`useTheme()`) instead of through the `:root.dark` CSS mechanism above —
   its cave/ship colors are `<canvas>` fill styles, which CSS can't reach at
   all, so there was never an option to add them to the enumerated hex list.
-  It's a second, independent call to the same hook `App.tsx`/`Header.tsx`
-  already own; that's safe because `applyTheme` is just an idempotent
-  `classList.toggle`, and both calls derive from the same
-  `localStorage`/`matchMedia` source, so there's nothing to keep in sync.
+  Before the toggle was removed, this was the one game with a genuinely
+  light interior that tracked it live (see the Minigames section below); now
+  that `useTheme()` always returns `'dark'`, `SFCave` always renders that
+  branch — its light-interior identity is effectively retired along with the
+  toggle, not a bug. The call itself is harmless dead weight rather than
+  something to rip out: it's a second, independent call to the same hook
+  `App.tsx` used to own (now nobody else does), safe because `useTheme`'s
+  `classList.add` is idempotent.
 
 ## Minigames
 
@@ -448,12 +464,14 @@ note behind a genuine mess-up or success, never a mere selection or drag.
   (`#F2C94C`), and the crashed ship / every obstacle block share Alert Red
   (`#E4574B`) — see STYLE.md §2.1 for the full table. This is also the one
   game of the twelve that is *not* an "always-dark instrument panel"
-  (STYLE.md §11) — its light interior is what makes it read as SF Cave, so
-  having already broken from the dark-canvas convention, it tracks the
-  site's light/dark toggle (`useTheme()`) using the two colors STYLE.md §2.1
-  actually documents a dark-mode pair for (Cream → `#12181A`, Forest →
-  `#8FE07A`) rather than sitting frozen in light mode; ship/hazard/HUD are
-  marked "unchanged" in that same table, so they don't get a second variant.
+  (STYLE.md §11) — its light interior is what makes it read as SF Cave. It
+  still reads `useTheme()` for that Cream/Forest ↔ `#12181A`/`#8FE07A` pair
+  (STYLE.md §2.1), a leftover from when the site had a light/dark toggle it
+  tracked live; now that the toggle is gone and `useTheme()` always returns
+  `'dark'`, this always renders the dark branch — the light interior no
+  longer actually appears. Not a bug to fix; ship/hazard/HUD are marked
+  "unchanged" in that same table, so they never had a second variant either
+  way.
   Free-floating red obstacle blocks (`BLOCK_H`, `CaveGen.blocks`) spawn
   mid-gap — the
   original PalmOS game's "mines," reproduced from the same clone source

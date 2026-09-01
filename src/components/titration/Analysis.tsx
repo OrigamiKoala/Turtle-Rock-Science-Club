@@ -78,6 +78,10 @@ export default function Analysis({
 
   const handleGradeCalculation = (e: React.FormEvent) => {
     e.preventDefault();
+    // A fresh mount (via onRetryTrial, which sends the student back to redo
+    // the titration) is a real new attempt and resets this; within the same
+    // mount, re-submitting an already-graded trial must not re-save it.
+    if (hasSaved) return;
     setIsGraded(true);
 
     const trial: TitrationTrial = {
@@ -291,9 +295,10 @@ export default function Analysis({
             <div className="pt-3 border-t border-[#1F3A42]/8">
               <button
                 type="submit"
-                className="w-full py-3 rounded-full font-display font-bold text-sm transition-all duration-300 hover:scale-[1.01] active:scale-95 cursor-pointer bg-[#6CC24A] text-[#14351F] shadow-[0_4px_0_#4C9A3A]"
+                disabled={hasSaved}
+                className="w-full py-3 rounded-full font-display font-bold text-sm transition-all duration-300 hover:scale-[1.01] active:scale-95 cursor-pointer bg-[#6CC24A] text-[#14351F] shadow-[0_4px_0_#4C9A3A] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
-                Submit & Grade Analysis
+                {hasSaved ? 'Graded' : 'Submit & Grade Analysis'}
               </button>
             </div>
 
@@ -382,7 +387,12 @@ export default function Analysis({
             showAnnotations={true}
             equivalenceVolumeMl={theoreticalEquivalenceVol}
             equivalencePh={finalPh}
-            halfEquivalenceVolumeMl={theoreticalEquivalenceVol / 2.0}
+            // pH = pKa1 at the point where half of the FIRST equivalent is
+            // neutralized — for a polyprotic/multi-equivalent analyte
+            // (stoichRatio > 1, e.g. citric acid at 3), that's V_eq/(2*ratio),
+            // not V_eq/2. Dividing by stoichRatio here was missing, which put
+            // the marker 3x too far along the curve for citric acid.
+            halfEquivalenceVolumeMl={theoreticalEquivalenceVol / (2.0 * stoichRatio)}
             pKaValue={module.setup.analyte.pKa[0]}
             indicatorId={module.setup.defaultIndicatorId}
           />

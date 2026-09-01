@@ -236,6 +236,87 @@ Subscribers once it clears.
 
 ---
 
+## Join wizard (replaces the standalone registration Google Form)
+
+The "Join the Club" button now opens a multi-step wizard that replicates the
+club's former separate Saturday Science Seminars registration form —
+Student's Elementary School/Grade/Email, both parents' name/email/phone, and
+the Video Consent + Liability Waiver consent questions — instead of linking
+out to a Google Form that wrote to its own, separate Sheet. Every answer now
+lands directly in the same Members row as the account itself. The Members tab
+gained six more columns for this: `Parent 1 Phone`, `Parent 2 Name`,
+`Parent 2 Email`, `Parent 2 Phone`, `Video Consent`, `Liability Waiver
+Consent` — again added automatically by **⚙️ Set Up / Repair Sheets**.
+
+**Outstanding:** the original form's "Waiver and Release of Liability Form
+Part 1" is a full legal waiver, but it exists in that form only as a scanned
+image, not text — there was no way to extract it when this was built. The
+wizard's consent step ships with a visibly flagged placeholder box in its
+place (`src/components/JoinModal.tsx`, the `consent` step). Replace it with
+the real waiver text before relying on this for actual liability coverage.
+
+The Zoom meeting link from the original form's confirmation section (marked
+"DO NOT SHARE" in the form's own text) was deliberately not carried over — a
+public site's build output is far more exposed than a gated Google Form
+response page. If members still need that link, it should go out over email
+instead, not live in the site's source.
+
+---
+
+## Member accounts (passwords, verification, password reset)
+
+Joining the club now sets a real password (minimum 8 characters) instead of
+the old name-only "login." The Members tab gained seven columns for this —
+`Password Hash`, `Email Verified`, `Account Token`, `Account Token Type`,
+`Account Token Expires`, `Session Token`, `Session Token Expires` — which
+**⚙️ Set Up / Repair Sheets** adds automatically to an existing sheet; you
+don't need to insert them by hand.
+
+A member who joined before this change has a blank `Password Hash`. The next
+time they try to log in, the site asks them to set a password on the spot
+instead of rejecting them — nobody is locked out by the upgrade.
+
+### Verification and reset emails reuse the newsletter's Sender.net setup
+
+There is no second email system. Sending an account-verification or
+password-reset link works exactly like the newsletter confirmation email —
+the script pushes a subscriber into a Sender.net group with a link in a
+custom field, and a Sender.net automation you build once actually sends it.
+
+**One-time setup, in addition to the Newsletter setup above:**
+
+1. In Sender.net: **Subscribers ▸ Custom fields ▸ Add field**. Create a text
+   field with the key `account_link`. (Same account/token as the newsletter —
+   nothing new to configure there.)
+2. Create two groups (empty is fine, same as **Parents**/**Students**/
+   **Newsletter** above): **Account Verification** and **Password Reset**.
+   Spell them exactly that way — the script matches groups by title.
+3. For **each** group, build an automation: *trigger* = "subscriber joins this
+   group", *action* = send an email whose body includes the merge tag
+   `{$account_link}` as a button/link. Base these on the same
+   `newsletter/confirm-subscription.html` template used for the newsletter
+   confirmation — swap the copy ("Verify your account" / "Reset your
+   password") and point the button at `{$account_link}`.
+
+The link itself points at `https://trscienceclub.org/?verify=<token>` (valid
+7 days) or `https://trscienceclub.org/?reset=<token>` (valid 1 hour) — the
+website reads that query parameter on load and calls the script.
+
+If a verify/reset email doesn't arrive, check the same things as a missing
+newsletter email (API token set, account not under Sender.net review — see
+"If something goes wrong" above). There is no separate retry queue for these
+two — since the Members row's token is written before the email is attempted,
+nothing is lost if you need to have the member try again (a fresh login
+attempt or "Forgot password?" click always reissues a new link).
+
+### Failed logins
+
+Five wrong attempts against the same name/email locks it out for 15 minutes.
+This is kept in memory (Apps Script's `CacheService`), not the spreadsheet, so
+there's nothing to reset by hand — it clears itself.
+
+---
+
 ## Updating the script later
 
 If you edit `Code.gs`, you must **re-deploy** for the website to see the change:

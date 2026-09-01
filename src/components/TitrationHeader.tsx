@@ -1,25 +1,20 @@
 import React from 'react';
 import { UserProfile } from '../types';
-import { Theme } from '../useTheme';
 import TurtleRockLogo from './TurtleRockLogo';
-import { Trophy, Moon, Sun, ArrowLeft, FlaskConical } from 'lucide-react';
+import { Trophy, ArrowLeft } from 'lucide-react';
 
 interface TitrationHeaderProps {
   onNavigateHome: () => void;
   userProfile: UserProfile;
   onOpenJoin: () => void;
   onOpenLogin: () => void;
-  theme: Theme;
-  onToggleTheme: () => void;
 }
 
 export default function TitrationHeader({
   onNavigateHome,
   userProfile,
   onOpenJoin,
-  onOpenLogin,
-  theme,
-  onToggleTheme
+  onOpenLogin
 }: TitrationHeaderProps) {
   return (
     <header className="sticky top-0 z-40 border-b-2 border-[#1F3A42]/10 bg-[#FBF7EC]/90 text-[#1F3A42] backdrop-blur-xl">
@@ -57,18 +52,8 @@ export default function TitrationHeader({
             </button>
           </div>
 
-          {/* Right: Theme Toggle & Auth / Profile */}
+          {/* Right: Auth / Profile */}
           <div className="flex items-center gap-2.5">
-            <button
-              id="titration-theme-toggle-btn"
-              onClick={onToggleTheme}
-              aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-              className="w-8 h-8 flex items-center justify-center rounded-full border-2 border-[#1F3A42]/10 text-[#1F3A42] hover:bg-[#1F3A42]/5 cursor-pointer transition-colors shrink-0"
-            >
-              {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-            </button>
-
             {userProfile.level > 0 ? (
               <div
                 id="titration-header-profile"

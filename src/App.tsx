@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { UserProfile, GalleryPhoto, Mission } from './types';
 import { useSiteContent, SignupResult } from './useSiteContent';
-import { useTheme } from './useTheme';
+import { useHeroScroll } from './useHeroScroll';
 
 import Header from './components/Header';
 import TitrationHeader from './components/TitrationHeader';
 import Footer from './components/Footer';
-import HeroSection from './components/HeroSection';
+import Hero from './components/Hero';
 import UpcomingMissions from './components/UpcomingMissions';
 import VirtualLab from './components/VirtualLab';
 import PhotoGallery from './components/PhotoGallery';
@@ -15,17 +15,17 @@ import LabLogAnnouncements from './components/LabLogAnnouncements';
 import Dashboard from './components/Dashboard';
 import CuratedResources from './components/CuratedResources';
 import TitrationLab from './components/TitrationLab';
-import JoinModal from './components/JoinModal';
+import JoinPage from './components/JoinPage';
 import ConfirmEmailModal from './components/ConfirmEmailModal';
 import LoginModal from './components/LoginModal';
+import ResetPasswordModal from './components/ResetPasswordModal';
 import SignupModal from './components/SignupModal';
 
 import { Trophy, Star, MailCheck, X } from 'lucide-react';
 
 export default function App() {
   const [pathname, setPathname] = useState<string>(() => window.location.pathname);
-  const [currentTab, setCurrentTab] = useState<string>('missions');
-  const [showJoinModal, setShowJoinModal] = useState<boolean>(false);
+  const [currentTab, setCurrentTab] = useState<string>('home');
   const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
   const [showLevelUpAlert, setShowLevelUpAlert] = useState<boolean>(false);
   const [signupMission, setSignupMission] = useState<Mission | null>(null);
@@ -37,10 +37,17 @@ export default function App() {
   // link doesn't show the banner again.
   const [showConfirmedBanner, setShowConfirmedBanner] = useState<boolean>(false);
 
-  // Lives here rather than inside JoinModal: JoinModal calls onClose() 1600ms
-  // after a successful join, which unmounts it — and would take a modal
-  // rendered inside it along too, so the reminder only flashed on screen.
+  // Lives here rather than inside JoinPage: JoinPage is a full separate
+  // screen (see isJoinPage below) that renders instead of this component's
+  // main tree, so a modal mounted inside it would never actually show —
+  // it only appears once the visitor navigates back to the main site.
   const [showConfirmEmailModal, setShowConfirmEmailModal] = useState<boolean>(false);
+
+  // Set only when the URL is an emailed `?verify=`/`?reset=` link — neither
+  // ever appears from normal browsing, so these change nothing about the
+  // pages a visitor sees otherwise.
+  const [emailVerifiedBanner, setEmailVerifiedBanner] = useState<'success' | 'error' | null>(null);
+  const [resetToken, setResetToken] = useState<string | null>(null);
 
   useEffect(() => {
     const handlePopState = () => {
@@ -62,6 +69,13 @@ export default function App() {
   };
 
   const isTitrationPage = pathname === '/titration' || pathname === '/titration/' || pathname.startsWith('/titration');
+  const isJoinPage = pathname === '/join' || pathname.startsWith('/join');
+  const isHomeHero = currentTab === 'home' && !isTitrationPage && !isJoinPage;
+  // Shared with Header so the floating nav pill fades in at the same intro
+  // progress the Hero's title/Join button do — one source of truth. Only
+  // active (listens for wheel/touch/key input, locks document scroll) while
+  // isHomeHero is true.
+  const { progress: heroProgress, locked: heroLocked } = useHeroScroll(isHomeHero);
 
   const handleTabChange = (tab: string) => {
     if (tab === 'titration') {
@@ -90,7 +104,37 @@ export default function App() {
   }, []);
 
   const content = useSiteContent();
-  const { theme, toggleTheme } = useTheme();
+
+  // The verify/reset emails link back here with ?verify=<token> / ?reset=<token>.
+  // Same strip-the-query-string treatment as ?confirmed=1 above, so a refresh
+  // or a shared link doesn't replay the action.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const verifyToken = params.get('verify');
+    const reset = params.get('reset');
+    if (!verifyToken && !reset) return;
+
+    if (verifyToken) {
+      void content.verifyEmail(verifyToken).then((result) => {
+        setEmailVerifiedBanner(result.ok ? 'success' : 'error');
+      });
+      params.delete('verify');
+    }
+    if (reset) {
+      setResetToken(reset);
+      params.delete('reset');
+    }
+
+    const query = params.toString();
+    window.history.replaceState(
+      {},
+      '',
+      window.location.pathname + (query ? `?${query}` : '') + window.location.hash
+    );
+    // Runs once: reacts to whatever the page loaded with, not to state that
+    // changes afterward.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [userProfile, setUserProfile] = useState<UserProfile>(() => {
     try {
@@ -98,6 +142,12 @@ export default function App() {
       if (saved) return JSON.parse(saved);
     } catch (e) { console.error('Failed reading user profile from storage', e); }
     return { name: '', school: '', role: '', joinedDate: '', level: 0, xp: 0, unlockedBadges: [], reservedMissionIds: [], newsletterSubscribed: false };
+  });
+
+  const [sessionToken, setSessionToken] = useState<string>(() => {
+    try {
+      return localStorage.getItem('tr_sc_session_token') || '';
+    } catch (e) { console.error('Failed reading session token from storage', e); return ''; }
   });
 
   const [photos, setPhotos] = useState<GalleryPhoto[]>(() => {
@@ -121,12 +171,21 @@ export default function App() {
     return [];
   });
 
+  const { syncProfile } = content;
+
   useEffect(() => {
     localStorage.setItem('tr_sc_user_profile', JSON.stringify(userProfile));
-    if (userProfile.level > 0) {
-      void content.syncProfile(userProfile);
+    if (userProfile.level > 0 && sessionToken) {
+      void syncProfile(userProfile, sessionToken);
     }
-  }, [userProfile, content]);
+    // `syncProfile` is a useCallback with an empty dep array, so it's stable
+    // across renders — depending on it (not the whole `content` object, which
+    // is a fresh object literal every render) is what keeps this effect from
+    // re-firing on every unrelated App render while a member is logged in.
+  }, [userProfile, sessionToken, syncProfile]);
+  useEffect(() => {
+    localStorage.setItem('tr_sc_session_token', sessionToken);
+  }, [sessionToken]);
   useEffect(() => { localStorage.setItem('tr_sc_gallery_photos', JSON.stringify(photos)); }, [photos]);
   useEffect(() => { localStorage.setItem('tr_sc_signed_up_ids', JSON.stringify(signedUpIds)); }, [signedUpIds]);
 
@@ -149,27 +208,35 @@ export default function App() {
     });
   };
 
-  const handleJoinSuccess = (newProfile: UserProfile) => {
+  const handleJoinSuccess = (newProfile: UserProfile, newSessionToken: string) => {
     setUserProfile(newProfile);
+    setSessionToken(newSessionToken);
     setCurrentTab('dashboard');
-    void content.syncProfile(newProfile);
   };
 
-  const handleLoginSuccess = (profile: UserProfile) => {
+  const handleLoginSuccess = (profile: UserProfile, newSessionToken: string) => {
     setUserProfile(profile);
+    setSessionToken(newSessionToken);
     if (Array.isArray(profile.reservedMissionIds)) {
       setSignedUpIds(profile.reservedMissionIds);
     }
     setCurrentTab('dashboard');
   };
 
+  const handleLogout = () => {
+    if (sessionToken) void content.logout(sessionToken);
+    setSessionToken('');
+    setUserProfile({ name: '', school: '', role: '', joinedDate: '', level: 0, xp: 0, unlockedBadges: [], reservedMissionIds: [], newsletterSubscribed: false });
+    setCurrentTab('home');
+  };
+
   const handleSignupSuccess = (missionId: string) => {
     setSignedUpIds((prev) => {
       const updated = prev.includes(missionId) ? prev : [...prev, missionId];
       if (userProfile.level > 0) {
-        const updatedProfile = { ...userProfile, reservedMissionIds: updated };
-        setUserProfile(updatedProfile);
-        void content.syncProfile(updatedProfile);
+        // The profile-sync effect below picks this up as soon as userProfile
+        // changes — no need for a second, redundant syncProfile call here.
+        setUserProfile((current) => ({ ...current, reservedMissionIds: updated }));
       }
       return updated;
     });
@@ -199,6 +266,32 @@ export default function App() {
   const handleUpdateProfileName = (newName: string) => {
     setUserProfile((prev) => ({ ...prev, name: newName }));
   };
+
+  // A genuine separate screen, not a modal over the rest of the site — no
+  // Header/Footer/other overlay chrome renders alongside it, same as how
+  // /titration replaces the whole page rather than layering on top of it.
+  if (isJoinPage) {
+    return (
+      <JoinPage
+        // No explicit tab here on purpose: bailing out mid-wizard leaves
+        // whatever tab was active before (home, same as the site's
+        // default), but a successful join has already set currentTab to
+        // 'dashboard' via handleJoinSuccess by the time this fires from the
+        // done screen's "Go to the site" button — forcing 'home' here
+        // would silently undo that and land a brand-new member on the
+        // homepage instead of their own dashboard.
+        onClose={() => navigateTo('/')}
+        onJoinSuccess={handleJoinSuccess}
+        onJoinSubmit={async (details) => {
+          const result = await content.submitMemberJoin(details);
+          // Only opt-ins are pushed to Sender, so only they get a confirmation
+          // email to go looking for.
+          if (result.ok && details.newsletterOptIn) setShowConfirmEmailModal(true);
+          return result;
+        }}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col justify-between font-sans bg-[#FBF7EC] text-[#1F3A42] relative overflow-hidden bg-dot-pattern">
@@ -230,12 +323,10 @@ export default function App() {
       {isTitrationPage ? (
         <>
           <TitrationHeader
-            onNavigateHome={() => navigateTo('/', 'missions')}
+            onNavigateHome={() => navigateTo('/', 'home')}
             userProfile={userProfile}
-            onOpenJoin={() => setShowJoinModal(true)}
+            onOpenJoin={() => navigateTo('/join')}
             onOpenLogin={() => setShowLoginModal(true)}
-            theme={theme}
-            onToggleTheme={toggleTheme}
           />
 
           <main className="flex-1 pb-10">
@@ -248,36 +339,59 @@ export default function App() {
             currentTab={currentTab}
             setCurrentTab={handleTabChange}
             userProfile={userProfile}
-            onOpenJoin={() => setShowJoinModal(true)}
+            onOpenJoin={() => navigateTo('/join')}
             onOpenLogin={() => setShowLoginModal(true)}
-            theme={theme}
-            onToggleTheme={toggleTheme}
+            onLogout={handleLogout}
+            revealProgress={isHomeHero ? heroProgress : undefined}
           />
 
-          <main className="flex-1 pb-10">
-            {currentTab === 'missions' && (
-              <div className="space-y-4">
-                <HeroSection userProfile={userProfile} onOpenJoin={() => setShowJoinModal(true)} setCurrentTab={setCurrentTab} />
-                <UpcomingMissions missions={content.missions} contentStatus={content.status} signedUpIds={signedUpIds} onSignUp={handleSignUp} />
+          {/* Every tab's content enters through the same fade-and-rise (see
+              `.animate-tab-in` in index.css) — Resources used to be the only
+              page with one. `key={currentTab}` is what makes it replay:
+              React remounts the wrapper on a tab change, restarting the CSS
+              animation, which simply re-rendering the same element would
+              not do.
+
+              Home is deliberately a *different* wrapper, and not just for
+              want of tidiness: the hero panel is `position: fixed` while its
+              scroll sequence is locked, and a `transform` on any ancestor
+              would make it resolve against that ancestor rather than the
+              viewport for the length of the animation. Its variant fades
+              without the slide for exactly that reason — see the CSS. */}
+          <main className={`flex-1 pb-10 ${isHomeHero ? '' : 'pt-24'}`}>
+            {currentTab === 'home' ? (
+              <div key="home" className="animate-tab-in-fade">
+                <Hero
+                  onOpenJoin={() => navigateTo('/join')}
+                  progress={heroProgress}
+                  locked={heroLocked}
+                  photos={content.photos}
+                />
               </div>
-            )}
+            ) : (
+              <div key={currentTab} className="animate-tab-in">
+                {currentTab === 'missions' && (
+                  <UpcomingMissions missions={content.missions} contentStatus={content.status} signedUpIds={signedUpIds} onSignUp={handleSignUp} />
+                )}
 
-            {currentTab === 'lab' && <VirtualLab userProfile={userProfile} onUpdateXp={handleUpdateXp} />}
+                {currentTab === 'lab' && <VirtualLab userProfile={userProfile} onUpdateXp={handleUpdateXp} />}
 
-            {currentTab === 'resources' && <CuratedResources resources={content.resources} />}
+                {currentTab === 'resources' && <CuratedResources resources={content.resources} />}
 
-            {currentTab === 'logs' && (
-              <LabLogAnnouncements logs={content.labLogs} announcements={content.announcements} contentStatus={content.status} />
-            )}
+                {currentTab === 'logs' && (
+                  <LabLogAnnouncements logs={content.labLogs} announcements={content.announcements} contentStatus={content.status} />
+                )}
 
-            {currentTab === 'gallery' && (
-              <PhotoGallery photos={photos} sheetPhotos={content.photos} eventPhotos={content.eventPhotos} contentStatus={content.status} userProfile={userProfile} onAddPhoto={handleAddPhoto} onOpenJoin={() => setShowJoinModal(true)} />
-            )}
+                {currentTab === 'gallery' && (
+                  <PhotoGallery photos={photos} sheetPhotos={content.photos} eventPhotos={content.eventPhotos} contentStatus={content.status} userProfile={userProfile} onAddPhoto={handleAddPhoto} onOpenJoin={() => navigateTo('/join')} />
+                )}
 
-            {currentTab === 'about' && <AboutUs />}
+                {currentTab === 'about' && <AboutUs />}
 
-            {currentTab === 'dashboard' && (
-              <Dashboard userProfile={userProfile} missions={content.missions} signedUpIds={signedUpIds} onUpdateProfileName={handleUpdateProfileName} setCurrentTab={setCurrentTab} />
+                {currentTab === 'dashboard' && (
+                  <Dashboard userProfile={userProfile} missions={content.missions} signedUpIds={signedUpIds} onUpdateProfileName={handleUpdateProfileName} setCurrentTab={setCurrentTab} />
+                )}
+              </div>
             )}
           </main>
         </>
@@ -303,19 +417,6 @@ export default function App() {
         </div>
       )}
 
-      {showJoinModal && (
-        <JoinModal
-          onClose={() => setShowJoinModal(false)}
-          onJoinSuccess={handleJoinSuccess}
-          onJoinSubmit={(details) => {
-            // Only opt-ins are pushed to Sender, so only they get a confirmation
-            // email to go looking for.
-            if (details.newsletterOptIn) setShowConfirmEmailModal(true);
-            content.submitMemberJoin(details);
-          }}
-        />
-      )}
-
       {showConfirmEmailModal && <ConfirmEmailModal onClose={() => setShowConfirmEmailModal(false)} />}
 
       {showLoginModal && (
@@ -323,8 +424,38 @@ export default function App() {
           onClose={() => setShowLoginModal(false)}
           onLoginSubmit={content.loginMember}
           onLoginSuccess={handleLoginSuccess}
-          onOpenJoin={() => setShowJoinModal(true)}
+          onRequestPasswordReset={content.requestPasswordReset}
+          onOpenJoin={() => navigateTo('/join')}
         />
+      )}
+
+      {resetToken && (
+        <ResetPasswordModal
+          token={resetToken}
+          onClose={() => setResetToken(null)}
+          onResetPassword={content.resetPassword}
+        />
+      )}
+
+      {emailVerifiedBanner && (
+        <div className={`relative z-20 ${emailVerifiedBanner === 'success' ? 'bg-[#6CC24A] text-[#14351F]' : 'bg-red-100 text-red-700'}`}>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center gap-3">
+            <MailCheck className="w-6 h-6 shrink-0" strokeWidth={2} />
+            <div className="flex-1 text-left">
+              <p className="font-display font-bold text-sm sm:text-base leading-tight">
+                {emailVerifiedBanner === 'success' ? 'Email verified!' : 'That verification link is invalid or expired.'}
+              </p>
+            </div>
+            <button
+              id="dismiss-verified-banner"
+              onClick={() => setEmailVerifiedBanner(null)}
+              aria-label="Dismiss"
+              className="p-1.5 rounded-full hover:bg-black/10 transition cursor-pointer shrink-0"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
       )}
 
       {showLevelUpAlert && (

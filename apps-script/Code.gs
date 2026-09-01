@@ -89,8 +89,62 @@ var MEMBER_HEADERS = [
   'Unlocked Badges',
   'Reserved Missions',
   'Student Email',
-  'Newsletter Opt-In'
+  'Newsletter Opt-In',
+  'Password Hash',
+  'Email Verified',
+  'Account Token',
+  'Account Token Type',
+  'Account Token Expires',
+  'Session Token',
+  'Session Token Expires',
+  'Parent 1 Phone',
+  'Parent 2 Name',
+  'Parent 2 Email',
+  'Parent 2 Phone',
+  'Video Consent',
+  'Liability Waiver Consent'
 ];
+
+// 0-based positions matching a `bodyRows_(members, MEMBER_HEADERS.length)` row.
+var MEM_IDX_TIMESTAMP = 0;
+var MEM_IDX_NAME = 1;
+var MEM_IDX_SCHOOL = 2;
+var MEM_IDX_ROLE = 3;
+var MEM_IDX_GUARDIAN_NAME = 4;
+var MEM_IDX_PARENT_EMAIL = 5;
+var MEM_IDX_GRADE = 6;
+var MEM_IDX_LEVEL = 7;
+var MEM_IDX_XP = 8;
+var MEM_IDX_BADGES = 9;
+var MEM_IDX_MISSIONS = 10;
+var MEM_IDX_STUDENT_EMAIL = 11;
+var MEM_IDX_NEWSLETTER_OPTIN = 12;
+var MEM_IDX_PASSWORD_HASH = 13;
+var MEM_IDX_EMAIL_VERIFIED = 14;
+var MEM_IDX_ACCOUNT_TOKEN = 15;
+var MEM_IDX_ACCOUNT_TOKEN_TYPE = 16;
+var MEM_IDX_ACCOUNT_TOKEN_EXPIRES = 17;
+var MEM_IDX_SESSION_TOKEN = 18;
+var MEM_IDX_SESSION_TOKEN_EXPIRES = 19;
+var MEM_IDX_PARENT1_PHONE = 20;
+var MEM_IDX_PARENT2_NAME = 21;
+var MEM_IDX_PARENT2_EMAIL = 22;
+var MEM_IDX_PARENT2_PHONE = 23;
+var MEM_IDX_VIDEO_CONSENT = 24;
+var MEM_IDX_WAIVER_CONSENT = 25;
+
+// The same positions, 1-based, for `sheet.getRange(row, col)`.
+var MEM_COL_LEVEL = MEM_IDX_LEVEL + 1;
+var MEM_COL_XP = MEM_IDX_XP + 1;
+var MEM_COL_BADGES = MEM_IDX_BADGES + 1;
+var MEM_COL_MISSIONS = MEM_IDX_MISSIONS + 1;
+var MEM_COL_PASSWORD_HASH = MEM_IDX_PASSWORD_HASH + 1;
+var MEM_COL_EMAIL_VERIFIED = MEM_IDX_EMAIL_VERIFIED + 1;
+var MEM_COL_ACCOUNT_TOKEN = MEM_IDX_ACCOUNT_TOKEN + 1;
+var MEM_COL_ACCOUNT_TOKEN_TYPE = MEM_IDX_ACCOUNT_TOKEN_TYPE + 1;
+var MEM_COL_ACCOUNT_TOKEN_EXPIRES = MEM_IDX_ACCOUNT_TOKEN_EXPIRES + 1;
+var MEM_COL_SESSION_TOKEN = MEM_IDX_SESSION_TOKEN + 1;
+var MEM_COL_SESSION_TOKEN_EXPIRES = MEM_IDX_SESSION_TOKEN_EXPIRES + 1;
 
 var PHOTO_HEADERS = ['Title', 'Image URL', 'Caption', 'Category', 'Submitted By', 'Show on Site'];
 
@@ -126,6 +180,132 @@ var RESOURCE_CATEGORIES = ['chemistry', 'physics', 'astronomy', 'biology', 'robo
 var BRAND_DARK = '#064e3b';
 var SIGNUP_HEADER_COLOR = '#1e3a8a';
 var NEWSLETTER_HEADER_COLOR = '#7c2d12';
+
+// ---------------------------------------------------------------------------
+// Account security — passwords, one-time tokens, sessions
+// ---------------------------------------------------------------------------
+//
+// Apps Script has no bcrypt/Argon2. `stretch_` stretches a salted password
+// through rounds of HMAC-SHA256 instead — not as strong as a real
+// password-hashing function, but stronger than a single unsalted digest, and
+// it's the strongest primitive this platform actually offers.
+// A stored hash is `salt:iterations:hex` — self-describing, so the iteration
+// count can change without invalidating hashes already written (and
+// handleLogin_ opportunistically re-hashes at the current count on a
+// successful login, so an old, slower hash upgrades itself over time).
+//
+// The count matters more here than on a normal server: Apps Script's
+// `Utilities.computeHmacSha256Signature` has real per-call overhead (this
+// isn't a tight V8 loop), so what would be an unnoticeable 10,000 rounds
+// elsewhere measured at ~19 SECONDS for one login on the actual deployment —
+// exactly the "login/join just hangs" bug this fixes. 200 rounds measured
+// well under a second there and is what's actually shipped below.
+var PASSWORD_HASH_ITERATIONS = 200;
+var SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+var ACCOUNT_TOKEN_TTL_MS = {
+  verify: 7 * 24 * 60 * 60 * 1000, // 7 days
+  reset: 60 * 60 * 1000 // 1 hour — a reset link is far more sensitive
+};
+
+function bytesToHex_(bytes) {
+  return bytes
+    .map(function (b) {
+      return ('0' + (b & 0xff).toString(16)).slice(-2);
+    })
+    .join('');
+}
+
+function stretch_(password, salt, iterations) {
+  var value = String(password);
+  for (var i = 0; i < iterations; i++) {
+    value = bytesToHex_(Utilities.computeHmacSha256Signature(value, salt));
+  }
+  return value;
+}
+
+function makePasswordHash_(password) {
+  var salt = Utilities.getUuid();
+  var digest = stretch_(password, salt, PASSWORD_HASH_ITERATIONS);
+  return salt + ':' + PASSWORD_HASH_ITERATIONS + ':' + digest;
+}
+
+/** Constant-time-ish comparison so a failed check can't be timed character by character. */
+function timingSafeEqual_(a, b) {
+  if (a.length !== b.length) return false;
+  var diff = 0;
+  for (var i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+function verifyPassword_(password, stored) {
+  var parts = String(stored || '').split(':');
+  if (parts.length !== 3) return false;
+
+  var salt = parts[0];
+  var iterations = parseInt(parts[1], 10) || PASSWORD_HASH_ITERATIONS;
+  var expected = parts[2];
+  return timingSafeEqual_(stretch_(password, salt, iterations), expected);
+}
+
+/** A long random opaque string, used for both account-action and session tokens. */
+function generateToken_() {
+  return (Utilities.getUuid() + Utilities.getUuid()).replace(/-/g, '');
+}
+
+/** Prefers the guardian's address; falls back to the student's own. */
+function pickAccountEmail_(parentEmail, studentEmail) {
+  var parent = String(parentEmail || '').trim();
+  if (isEmail_(parent)) return parent;
+  var student = String(studentEmail || '').trim();
+  if (isEmail_(student)) return student;
+  return '';
+}
+
+/** Writes a fresh verify/reset token onto a Members row and returns it. */
+function issueAccountToken_(members, sheetRow, type) {
+  var token = generateToken_();
+  var expires = new Date(Date.now() + ACCOUNT_TOKEN_TTL_MS[type]);
+  members.getRange(sheetRow, MEM_COL_ACCOUNT_TOKEN).setValue(token);
+  members.getRange(sheetRow, MEM_COL_ACCOUNT_TOKEN_TYPE).setValue(type);
+  members.getRange(sheetRow, MEM_COL_ACCOUNT_TOKEN_EXPIRES).setValue(expires);
+  return token;
+}
+
+function clearAccountToken_(members, sheetRow) {
+  members.getRange(sheetRow, MEM_COL_ACCOUNT_TOKEN).setValue('');
+  members.getRange(sheetRow, MEM_COL_ACCOUNT_TOKEN_TYPE).setValue('');
+  members.getRange(sheetRow, MEM_COL_ACCOUNT_TOKEN_EXPIRES).setValue('');
+}
+
+function tokenExpired_(expiresCell) {
+  return expiresCell instanceof Date && expiresCell.getTime() < Date.now();
+}
+
+// Failed-login throttling lives in CacheService, not the sheet: it's
+// self-expiring and needs no schema, and a lockout only ever needs to survive
+// minutes, not the life of the account.
+var LOGIN_MAX_ATTEMPTS = 5;
+var LOGIN_LOCKOUT_SECONDS = 15 * 60;
+
+function loginAttemptsKey_(identifier) {
+  return 'login_attempts_' + String(identifier).toLowerCase().trim();
+}
+
+function isLoginLocked_(identifier) {
+  var count = Number(CacheService.getScriptCache().get(loginAttemptsKey_(identifier))) || 0;
+  return count >= LOGIN_MAX_ATTEMPTS;
+}
+
+function recordFailedLogin_(identifier) {
+  var cache = CacheService.getScriptCache();
+  var key = loginAttemptsKey_(identifier);
+  var count = (Number(cache.get(key)) || 0) + 1;
+  cache.put(key, String(count), LOGIN_LOCKOUT_SECONDS);
+}
+
+function clearLoginAttempts_(identifier) {
+  CacheService.getScriptCache().remove(loginAttemptsKey_(identifier));
+}
 
 // ---------------------------------------------------------------------------
 // Sender.net (newsletter)
@@ -375,7 +555,7 @@ function styleNewsletterSheet_(sheet) {
 }
 
 function styleMembersSheet_(sheet) {
-  setWidths_(sheet, [180, 200, 240, 180, 200, 240, 80, 80, 80, 260, 260]);
+  setWidths_(sheet, [180, 200, 240, 180, 200, 240, 80, 80, 80, 260, 260, 220, 100, 90, 90, 70, 90, 140, 70, 140, 140, 200, 240, 140, 90, 130]);
   var body = Math.min(100, Math.max(20, sheet.getLastRow() - 1));
   if (body <= 0) return;
   sheet.getRange(2, 1, body, 1).setNumberFormat('yyyy-mm-dd hh:mm:ss');
@@ -516,7 +696,25 @@ function publishToWebsite() {
     return;
   }
 
-  ensurePublishedSheet_(ss).getRange('A1').setValue(json);
+  // Same lock handleSignup_/bumpPublishedSpots_ take before touching
+  // _Published!A1 — without it, a signup landing mid-publish could have its
+  // spot-count bump silently clobbered by this (older) snapshot, or this
+  // publish could get clobbered right back by a signup's bump. Scoped to just
+  // the write itself (not the dialogs above), so an admin sitting on the
+  // confirmation prompt doesn't block a student trying to sign up.
+  var publishLock = LockService.getScriptLock();
+  try {
+    publishLock.waitLock(15000);
+  } catch (err) {
+    ui.alert('Server busy', 'Could not get a lock to publish. Please try again in a moment.', ui.ButtonSet.OK);
+    return;
+  }
+
+  try {
+    ensurePublishedSheet_(ss).getRange('A1').setValue(json);
+  } finally {
+    publishLock.releaseLock();
+  }
 
   ui.alert(
     '🚀 Published!',
@@ -553,12 +751,16 @@ function readEvents_(sheet, problems) {
 
     var total = toWholeNumber_(row[5], 0);
     var taken = toWholeNumber_(row[6], 0);
-    if (taken > total) {
+    // A bad Spots Taken/Total pair should hide the (now-nonsensical) event
+    // listing, but Photos is an unrelated column — a data-entry typo here
+    // must not also take down that event's whole photo album until someone
+    // notices and fixes it.
+    var spotsInvalid = taken > total;
+    if (spotsInvalid) {
       problems.push(
         'Events row ' + rowNumber + ' ("' + title + '"): Spots Taken (' + taken +
           ') is more than Spots Total (' + total + ').'
       );
-      continue;
     }
 
     var isDone = row[9] === true;
@@ -577,7 +779,7 @@ function readEvents_(sheet, problems) {
       });
     }
 
-    if (isDone) continue;
+    if (spotsInvalid || isDone) continue;
 
     events.push({
       id: 'sheet-event-' + rowNumber,
@@ -707,6 +909,20 @@ function readResources_(sheet, problems) {
   var rows = bodyRows_(sheet, width);
   var out = [];
 
+  // Which column layout this sheet uses is a structural fact — whether row 1
+  // actually has a "Level" header — not something to guess from a cell's
+  // content. A Level value like "gr.5" (a dot, no space) used to be
+  // misdetected as a URL by a content-sniffing heuristic, silently swapping
+  // Level and URL for that row.
+  var headerRow = sheet.getRange(1, 1, 1, Math.max(1, lastCol)).getValues()[0];
+  var hasLevelColumn = false;
+  for (var h = 0; h < headerRow.length; h++) {
+    if (String(headerRow[h] || '').trim().toLowerCase() === 'level') {
+      hasLevelColumn = true;
+      break;
+    }
+  }
+
   for (var i = 0; i < rows.length; i++) {
     var row = rows[i];
     var rowNumber = i + 2;
@@ -728,18 +944,17 @@ function readResources_(sheet, problems) {
     var type = 'website';
     var showOnSite = true;
 
-    // Detect if column 4 (index 3) is a URL vs Level
-    if (col3.indexOf('http://') === 0 || col3.indexOf('https://') === 0 || col3.indexOf('www.') === 0 || col3.indexOf('.') !== -1 && col3.indexOf(' ') === -1) {
-      // 6-column sheet: Title, Description, Category, URL, Type, Show on Site
-      url = col3;
-      type = col4 || 'website';
-      showOnSite = row[5] !== false;
-    } else {
+    if (hasLevelColumn) {
       // 7-column sheet: Title, Description, Category, Level, URL, Type, Show on Site
       level = col3 || 'all';
       url = col4 || col3;
       type = col5 || 'website';
       showOnSite = row[6] !== false;
+    } else {
+      // 6-column sheet: Title, Description, Category, URL, Type, Show on Site
+      url = col3;
+      type = col4 || 'website';
+      showOnSite = row[5] !== false;
     }
 
     if (!url) {
@@ -826,26 +1041,6 @@ function doGet(e) {
   return serve_(json, e);
 }
 
-var ALLOWED_MEMBER_READ_DOMAINS = ['trscienceclub.org', 'www.trscienceclub.org'];
-
-/**
- * Validates whether the request comes from an authorized domain for member list reads.
- */
-function isDomainAllowed_(body, e) {
-  var origin = '';
-  if (body) {
-    origin = body.origin || body.domain || body.referrer || '';
-  }
-  if (!origin && e && e.parameter) {
-    origin = e.parameter.origin || e.parameter.domain || e.parameter.referrer || '';
-  }
-  origin = String(origin || '').toLowerCase().trim();
-  if (!origin) return false;
-
-  var host = origin.replace(/^https?:\/\//, '').split('/')[0].split(':')[0];
-  return ALLOWED_MEMBER_READ_DOMAINS.indexOf(host) !== -1;
-}
-
 /**
  * Signups arrive here.
  *
@@ -863,15 +1058,17 @@ function doPost(e) {
     } else if (body.action === 'join') {
       result = handleJoin_(body);
     } else if (body.action === 'login') {
-      if (!isDomainAllowed_(body, e)) {
-        throw new Error('Unauthorized: reading member data is only allowed from trscienceclub.org.');
-      }
       result = handleLogin_(body);
     } else if (body.action === 'syncProfile') {
-      if (!isDomainAllowed_(body, e)) {
-        throw new Error('Unauthorized: profile sync is only allowed from trscienceclub.org.');
-      }
       result = handleSyncProfile_(body);
+    } else if (body.action === 'verifyEmail') {
+      result = handleVerifyEmail_(body);
+    } else if (body.action === 'requestPasswordReset') {
+      result = handleRequestPasswordReset_(body);
+    } else if (body.action === 'resetPassword') {
+      result = handleResetPassword_(body);
+    } else if (body.action === 'logout') {
+      result = handleLogout_(body);
     } else if (body.action === 'subscribe') {
       result = handleSubscribe_(body);
     } else {
@@ -895,13 +1092,35 @@ function handleJoin_(body) {
   // reading it — the script and the site deploy independently, so a visitor on
   // a cached bundle would otherwise write a blank cell.
   var childGrade = String(body.childGrade || body.childAge || '').trim();
+  // Replicates the club's Saturday Science Seminars registration form, which
+  // used to live on a separate Google Form/Sheet — these all land in the
+  // same Members row as everything else now.
+  var parent1Phone = String(body.parent1Phone || '').trim();
+  var parent2Name = String(body.parent2Name || '').trim();
+  var parent2Email = String(body.parent2Email || '').trim();
+  var parent2Phone = String(body.parent2Phone || '').trim();
+  var videoConsent = String(body.videoConsent || '').trim();
+  var waiverConsent = String(body.waiverConsent || '').trim();
   // JSON gives a real boolean, but be tolerant of a stringified one so a
   // hand-built POST or an older client can't accidentally read as consent.
   var newsletterOptIn =
     body.newsletterOptIn === true || String(body.newsletterOptIn).toLowerCase() === 'true';
+  var password = String(body.password || '');
 
   if (!name) return { ok: false, error: 'Please enter a name.' };
   if (!school) return { ok: false, error: 'Please enter a school.' };
+  if (!childGrade) return { ok: false, error: 'Please enter a grade.' };
+  if (!studentEmail) return { ok: false, error: "Please enter the student's email." };
+  if (!parentName) return { ok: false, error: "Please enter Parent 1's name." };
+  if (!email) return { ok: false, error: "Please enter Parent 1's email." };
+  if (!parent1Phone) return { ok: false, error: "Please enter Parent 1's phone number." };
+  if (videoConsent !== 'Agree' && videoConsent !== 'Disagree') {
+    return { ok: false, error: 'Please answer the video consent question.' };
+  }
+  if (waiverConsent !== 'Agree' && waiverConsent !== 'Disagree (Will Not Participate)') {
+    return { ok: false, error: 'Please answer the waiver question.' };
+  }
+  if (password.length < 8) return { ok: false, error: 'Password must be at least 8 characters.' };
 
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var members = ss.getSheetByName(MEMBERS_SHEET);
@@ -910,7 +1129,32 @@ function handleJoin_(body) {
     styleMembersSheet_(members);
   }
 
-  members.appendRow([new Date(), name, school, role, parentName, email, childGrade, 1, 15, 'Foundation Member', '', studentEmail, newsletterOptIn]);
+  var passwordHash = makePasswordHash_(password);
+  var sessionToken = generateToken_();
+  var sessionExpires = new Date(Date.now() + SESSION_DURATION_MS);
+  var accountToken = generateToken_();
+  var accountTokenExpires = new Date(Date.now() + ACCOUNT_TOKEN_TTL_MS.verify);
+  var joinedAt = new Date();
+
+  members.appendRow([
+    joinedAt, name, school, role, parentName, email, childGrade, 1, 15,
+    'Foundation Member', '', studentEmail, newsletterOptIn,
+    passwordHash, false, accountToken, 'verify', accountTokenExpires,
+    sessionToken, sessionExpires,
+    parent1Phone, parent2Name, parent2Email, parent2Phone, videoConsent, waiverConsent
+  ]);
+
+  // Joining still logs the student in immediately — the unverified email only
+  // blocks a future password-reset request, not first use.
+  var verifyEmailAddress = pickAccountEmail_(email, studentEmail);
+  var needsVerification = !!verifyEmailAddress;
+  if (verifyEmailAddress) {
+    try {
+      sendAccountEmail_(verifyEmailAddress, parentName || name, 'verify', accountToken);
+    } catch (err) {
+      Logger.log('sendAccountEmail_ (verify) failed: ' + (err && err.message ? err.message : err));
+    }
+  }
 
   // Joining the club is NOT consent to the newsletter — only the opt-in box is.
   // The member row is written either way so the club still has the contact.
@@ -926,42 +1170,117 @@ function handleJoin_(body) {
     }
   }
 
-  return { ok: true, name: name, newsletterSubscribed: subscribed };
+  return {
+    ok: true,
+    sessionToken: sessionToken,
+    newsletterSubscribed: subscribed,
+    needsVerification: needsVerification,
+    profile: {
+      name: name,
+      school: school,
+      role: role,
+      joinedDate: formatDate_(joinedAt) || 'Club Member',
+      level: 1,
+      xp: 15,
+      unlockedBadges: ['Foundation Member'],
+      reservedMissionIds: [],
+      newsletterSubscribed: subscribed
+    }
+  };
 }
 
 function handleLogin_(body) {
   var identifier = String(body.identifier || body.email || body.name || '').trim().toLowerCase();
   if (!identifier) return { ok: false, error: 'Please enter your name or email address.' };
 
+  if (isLoginLocked_(identifier)) {
+    return { ok: false, error: 'Too many attempts. Please wait a few minutes and try again.' };
+  }
+
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var members = ss.getSheetByName(MEMBERS_SHEET);
   if (!members) return { ok: false, error: 'No member records found in spreadsheet.' };
 
   var rows = bodyRows_(members, MEMBER_HEADERS.length);
-  var foundUser = null;
+  var foundIndex = -1;
 
   for (var i = 0; i < rows.length; i++) {
     var row = rows[i];
-    var rName = String(row[1] || '').trim().toLowerCase();
-    var rEmail = String(row[5] || '').trim().toLowerCase();
+    var rName = String(row[MEM_IDX_NAME] || '').trim().toLowerCase();
+    var rParentEmail = String(row[MEM_IDX_PARENT_EMAIL] || '').trim().toLowerCase();
+    var rStudentEmail = String(row[MEM_IDX_STUDENT_EMAIL] || '').trim().toLowerCase();
 
-    if (rName === identifier || rEmail === identifier) {
-      foundUser = row;
+    if (rName === identifier || rParentEmail === identifier || rStudentEmail === identifier) {
+      foundIndex = i;
       break;
     }
   }
 
-  if (!foundUser) {
-    return { ok: false, error: 'Member not found. Check spelling or click Join to sign up.' };
+  // One generic message for "no such member" and "wrong password" alike, so a
+  // failed attempt never confirms whether an account exists.
+  if (foundIndex === -1) {
+    recordFailedLogin_(identifier);
+    return { ok: false, error: 'Incorrect name/email or password.' };
   }
 
-  var name = String(foundUser[1] || '').trim();
-  var school = String(foundUser[2] || '').trim();
-  var role = String(foundUser[3] || 'Rookie Researcher').trim();
-  var level = toWholeNumber_(foundUser[7], 1);
-  var xp = toWholeNumber_(foundUser[8], 15);
-  var rawBadges = String(foundUser[9] || '').trim();
-  var rawMissions = String(foundUser[10] || '').trim();
+  var foundUser = rows[foundIndex];
+  var sheetRow = foundIndex + 2;
+  var storedHash = String(foundUser[MEM_IDX_PASSWORD_HASH] || '').trim();
+
+  if (!storedHash) {
+    // A member created before passwords existed — claim the account with a
+    // fresh password instead of leaving it permanently locked out.
+    var newPassword = String(body.newPassword || '').trim();
+    if (!newPassword) {
+      return { ok: false, needsPasswordSetup: true, error: 'This account needs a password. Please set one to continue.' };
+    }
+    if (newPassword.length < 8) {
+      return { ok: false, needsPasswordSetup: true, error: 'Password must be at least 8 characters.' };
+    }
+
+    storedHash = makePasswordHash_(newPassword);
+    members.getRange(sheetRow, MEM_COL_PASSWORD_HASH).setValue(storedHash);
+    members.getRange(sheetRow, MEM_COL_EMAIL_VERIFIED).setValue(false);
+
+    var claimEmail = pickAccountEmail_(foundUser[MEM_IDX_PARENT_EMAIL], foundUser[MEM_IDX_STUDENT_EMAIL]);
+    if (claimEmail) {
+      var claimToken = issueAccountToken_(members, sheetRow, 'verify');
+      try {
+        sendAccountEmail_(claimEmail, String(foundUser[MEM_IDX_NAME] || '').trim(), 'verify', claimToken);
+      } catch (err) {
+        Logger.log('sendAccountEmail_ (verify) failed: ' + (err && err.message ? err.message : err));
+      }
+    }
+  } else {
+    var password = String(body.password || '');
+    if (!password || !verifyPassword_(password, storedHash)) {
+      recordFailedLogin_(identifier);
+      return { ok: false, error: 'Incorrect name/email or password.' };
+    }
+
+    // Self-healing for accounts created while PASSWORD_HASH_ITERATIONS was
+    // higher (e.g. the original 10,000, ~19s/login on this platform) — a
+    // successful verify already proves the password, so re-hash it at the
+    // current (fast) count right here rather than leaving it slow forever.
+    var storedIterations = parseInt(String(storedHash).split(':')[1], 10) || 0;
+    if (storedIterations !== PASSWORD_HASH_ITERATIONS) {
+      members.getRange(sheetRow, MEM_COL_PASSWORD_HASH).setValue(makePasswordHash_(password));
+    }
+  }
+
+  clearLoginAttempts_(identifier);
+
+  var sessionToken = generateToken_();
+  members.getRange(sheetRow, MEM_COL_SESSION_TOKEN).setValue(sessionToken);
+  members.getRange(sheetRow, MEM_COL_SESSION_TOKEN_EXPIRES).setValue(new Date(Date.now() + SESSION_DURATION_MS));
+
+  var name = String(foundUser[MEM_IDX_NAME] || '').trim();
+  var school = String(foundUser[MEM_IDX_SCHOOL] || '').trim();
+  var role = String(foundUser[MEM_IDX_ROLE] || 'Rookie Researcher').trim();
+  var level = toWholeNumber_(foundUser[MEM_IDX_LEVEL], 1);
+  var xp = toWholeNumber_(foundUser[MEM_IDX_XP], 15);
+  var rawBadges = String(foundUser[MEM_IDX_BADGES] || '').trim();
+  var rawMissions = String(foundUser[MEM_IDX_MISSIONS] || '').trim();
 
   var unlockedBadges = rawBadges ? rawBadges.split(',').map(function(s) { return s.trim(); }).filter(Boolean) : ['Foundation Member'];
   var reservedMissionIds = rawMissions ? rawMissions.split(',').map(function(s) { return s.trim(); }).filter(Boolean) : [];
@@ -1000,60 +1319,187 @@ function handleLogin_(body) {
 
   return {
     ok: true,
+    sessionToken: sessionToken,
     profile: {
       name: name,
       school: school,
       role: role,
-      joinedDate: formatDate_(foundUser[0]) || 'Club Member',
+      joinedDate: formatDate_(foundUser[MEM_IDX_TIMESTAMP]) || 'Club Member',
       level: level || 1,
       xp: xp || 15,
       unlockedBadges: unlockedBadges,
       reservedMissionIds: reservedMissionIds,
-      newsletterSubscribed: false
+      newsletterSubscribed: String(foundUser[MEM_IDX_NEWSLETTER_OPTIN]).toLowerCase() === 'true'
     }
   };
 }
 
+/**
+ * The member row is now found by session token, not by name/email — that's
+ * what actually stops one member's sync from being spoofable or colliding
+ * with a different member who happens to share a name. A request with no
+ * valid, unexpired session is rejected outright rather than falling back to
+ * appending a brand-new row, which used to silently create duplicate members.
+ */
 function handleSyncProfile_(body) {
-  var name = String(body.name || '').trim();
-  var email = String(body.email || '').trim();
-  var school = String(body.school || '').trim();
-  var role = String(body.role || 'Rookie Researcher').trim();
-  var level = toWholeNumber_(body.level, 1);
-  var xp = toWholeNumber_(body.xp, 0);
-  var unlockedBadges = Array.isArray(body.unlockedBadges) ? body.unlockedBadges.join(',') : String(body.unlockedBadges || '');
-  var reservedMissions = Array.isArray(body.reservedMissionIds) ? body.reservedMissionIds.join(',') : String(body.reservedMissions || '');
-
-  if (!name && !email) return { ok: false, error: 'Missing name or email for profile sync.' };
+  var sessionToken = String(body.sessionToken || '').trim();
+  if (!sessionToken) return { ok: false, error: 'Missing session token. Please log in again.' };
 
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var members = ss.getSheetByName(MEMBERS_SHEET);
-  if (!members) {
-    members = ensureSheet_(ss, MEMBERS_SHEET, MEMBER_HEADERS, BRAND_DARK);
-    styleMembersSheet_(members);
-  }
+  if (!members) return { ok: false, error: 'No member records found in spreadsheet.' };
 
   var rows = bodyRows_(members, MEMBER_HEADERS.length);
-  var targetRow = -1;
-  var nameLower = name.toLowerCase();
-  var emailLower = email.toLowerCase();
+  var targetIndex = -1;
 
   for (var i = 0; i < rows.length; i++) {
-    var rName = String(rows[i][1] || '').trim().toLowerCase();
-    var rEmail = String(rows[i][5] || '').trim().toLowerCase();
-    if ((nameLower && rName === nameLower) || (emailLower && rEmail === emailLower)) {
-      targetRow = i + 2;
+    if (String(rows[i][MEM_IDX_SESSION_TOKEN] || '') === sessionToken) {
+      targetIndex = i;
       break;
     }
   }
 
-  if (targetRow > 1) {
-    if (level) members.getRange(targetRow, 8).setValue(level);
-    members.getRange(targetRow, 9).setValue(xp);
-    members.getRange(targetRow, 10).setValue(unlockedBadges);
-    members.getRange(targetRow, 11).setValue(reservedMissions);
-  } else {
-    members.appendRow([new Date(), name, school, role, '', email, '', level, xp, unlockedBadges, reservedMissions]);
+  if (targetIndex === -1) return { ok: false, error: 'Session expired. Please log in again.' };
+  if (tokenExpired_(rows[targetIndex][MEM_IDX_SESSION_TOKEN_EXPIRES])) {
+    return { ok: false, error: 'Session expired. Please log in again.' };
+  }
+
+  var sheetRow = targetIndex + 2;
+  // 0 (not 1) is the "caller didn't send a real level" fallback here, unlike
+  // the old code's `toWholeNumber_(body.level, 1)` — that default was truthy,
+  // so the `if (level)` guard meant to skip writing it never actually did,
+  // and a malformed sync could quietly reset a member back to level 1.
+  var level = toWholeNumber_(body.level, 0);
+  var xp = toWholeNumber_(body.xp, 0);
+  var unlockedBadges = Array.isArray(body.unlockedBadges) ? body.unlockedBadges.join(',') : String(body.unlockedBadges || '');
+  var reservedMissions = Array.isArray(body.reservedMissionIds) ? body.reservedMissionIds.join(',') : String(body.reservedMissions || '');
+
+  if (level > 0) members.getRange(sheetRow, MEM_COL_LEVEL).setValue(level);
+  members.getRange(sheetRow, MEM_COL_XP).setValue(xp);
+  members.getRange(sheetRow, MEM_COL_BADGES).setValue(unlockedBadges);
+  members.getRange(sheetRow, MEM_COL_MISSIONS).setValue(reservedMissions);
+
+  return { ok: true };
+}
+
+function handleVerifyEmail_(body) {
+  var token = String(body.token || '').trim();
+  if (!token) return { ok: false, error: 'Missing verification token.' };
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var members = ss.getSheetByName(MEMBERS_SHEET);
+  if (!members) return { ok: false, error: 'No member records found in spreadsheet.' };
+
+  var rows = bodyRows_(members, MEMBER_HEADERS.length);
+  for (var i = 0; i < rows.length; i++) {
+    var row = rows[i];
+    if (String(row[MEM_IDX_ACCOUNT_TOKEN] || '') !== token || String(row[MEM_IDX_ACCOUNT_TOKEN_TYPE] || '') !== 'verify') {
+      continue;
+    }
+
+    var sheetRow = i + 2;
+    if (tokenExpired_(row[MEM_IDX_ACCOUNT_TOKEN_EXPIRES])) {
+      return { ok: false, error: 'This verification link has expired. Please request a new one.' };
+    }
+
+    members.getRange(sheetRow, MEM_COL_EMAIL_VERIFIED).setValue(true);
+    clearAccountToken_(members, sheetRow);
+    return { ok: true };
+  }
+
+  return { ok: false, error: 'This verification link is invalid or has already been used.' };
+}
+
+/**
+ * Always answers `{ ok: true }` — whether or not the identifier matched a
+ * verified account with a usable email — so the response itself never
+ * confirms which addresses are registered.
+ */
+function handleRequestPasswordReset_(body) {
+  var identifier = String(body.identifier || '').trim().toLowerCase();
+  if (!identifier) return { ok: true };
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var members = ss.getSheetByName(MEMBERS_SHEET);
+  if (!members) return { ok: true };
+
+  var rows = bodyRows_(members, MEMBER_HEADERS.length);
+  for (var i = 0; i < rows.length; i++) {
+    var row = rows[i];
+    var rName = String(row[MEM_IDX_NAME] || '').trim().toLowerCase();
+    var rParentEmail = String(row[MEM_IDX_PARENT_EMAIL] || '').trim().toLowerCase();
+    var rStudentEmail = String(row[MEM_IDX_STUDENT_EMAIL] || '').trim().toLowerCase();
+
+    if (rName !== identifier && rParentEmail !== identifier && rStudentEmail !== identifier) continue;
+
+    var verified = String(row[MEM_IDX_EMAIL_VERIFIED]).toLowerCase() === 'true';
+    var hasPassword = !!String(row[MEM_IDX_PASSWORD_HASH] || '').trim();
+    var email = pickAccountEmail_(row[MEM_IDX_PARENT_EMAIL], row[MEM_IDX_STUDENT_EMAIL]);
+
+    if (verified && hasPassword && email) {
+      var sheetRow = i + 2;
+      var token = issueAccountToken_(members, sheetRow, 'reset');
+      try {
+        sendAccountEmail_(email, String(row[MEM_IDX_NAME] || '').trim(), 'reset', token);
+      } catch (err) {
+        Logger.log('sendAccountEmail_ (reset) failed: ' + (err && err.message ? err.message : err));
+      }
+    }
+    break;
+  }
+
+  return { ok: true };
+}
+
+function handleResetPassword_(body) {
+  var token = String(body.token || '').trim();
+  var newPassword = String(body.newPassword || '');
+  if (!token) return { ok: false, error: 'Missing reset token.' };
+  if (newPassword.length < 8) return { ok: false, error: 'Password must be at least 8 characters.' };
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var members = ss.getSheetByName(MEMBERS_SHEET);
+  if (!members) return { ok: false, error: 'No member records found in spreadsheet.' };
+
+  var rows = bodyRows_(members, MEMBER_HEADERS.length);
+  for (var i = 0; i < rows.length; i++) {
+    var row = rows[i];
+    if (String(row[MEM_IDX_ACCOUNT_TOKEN] || '') !== token || String(row[MEM_IDX_ACCOUNT_TOKEN_TYPE] || '') !== 'reset') {
+      continue;
+    }
+
+    var sheetRow = i + 2;
+    if (tokenExpired_(row[MEM_IDX_ACCOUNT_TOKEN_EXPIRES])) {
+      return { ok: false, error: 'This reset link has expired. Please request a new one.' };
+    }
+
+    members.getRange(sheetRow, MEM_COL_PASSWORD_HASH).setValue(makePasswordHash_(newPassword));
+    clearAccountToken_(members, sheetRow);
+    // A reset should actually lock out anyone using the old password.
+    members.getRange(sheetRow, MEM_COL_SESSION_TOKEN).setValue('');
+    members.getRange(sheetRow, MEM_COL_SESSION_TOKEN_EXPIRES).setValue('');
+    return { ok: true };
+  }
+
+  return { ok: false, error: 'This reset link is invalid or has already been used.' };
+}
+
+function handleLogout_(body) {
+  var sessionToken = String(body.sessionToken || '').trim();
+  if (!sessionToken) return { ok: true };
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var members = ss.getSheetByName(MEMBERS_SHEET);
+  if (!members) return { ok: true };
+
+  var rows = bodyRows_(members, MEMBER_HEADERS.length);
+  for (var i = 0; i < rows.length; i++) {
+    if (String(rows[i][MEM_IDX_SESSION_TOKEN] || '') === sessionToken) {
+      var sheetRow = i + 2;
+      members.getRange(sheetRow, MEM_COL_SESSION_TOKEN).setValue('');
+      members.getRange(sheetRow, MEM_COL_SESSION_TOKEN_EXPIRES).setValue('');
+      break;
+    }
   }
 
   return { ok: true };
@@ -1312,6 +1758,75 @@ function senderSubscribe_(email, name, audience) {
     return { ok: true, status: STATUS_SUBSCRIBED + ' → ' + added.join(', '), groups: added };
   }
   return { ok: false, status: 'Error: ' + failures.join('; '), groups: added };
+}
+
+// --- Account emails (verify / reset) ---------------------------------------
+//
+// Reuses the exact Sender.net plumbing above (senderFetch_/senderGroupByTitle_/
+// senderToken_) instead of a second email pipeline. A group-triggered
+// automation does the actual sending — same mechanism as the newsletter
+// confirmation email — so this only ever pushes the subscriber + a merge
+// field into Sender.net; a human sets up the matching automation once in the
+// Sender.net UI (see SETUP.md).
+
+var ACCOUNT_SENDER_GROUPS = {
+  verify: 'Account Verification',
+  reset: 'Password Reset'
+};
+
+function accountActionUrl_(kind, token) {
+  var param = kind === 'reset' ? 'reset' : 'verify';
+  return 'https://trscienceclub.org/?' + param + '=' + encodeURIComponent(token);
+}
+
+/**
+ * Pushes `account_link` (a Sender.net custom field, set up by hand) onto the
+ * subscriber and adds them to the group whose automation emails that link.
+ * Never throws — a Sender.net outage must not fail the join/login/reset flow
+ * that triggered it; callers already wrap this in try/catch and log instead.
+ */
+function sendAccountEmail_(email, name, kind, token) {
+  email = normaliseEmail_(email);
+  if (!isEmail_(email)) return { ok: false, status: 'Skipped — not an email address' };
+
+  var token_ = senderToken_();
+  if (!token_) return { ok: false, status: STATUS_PENDING, message: 'No Sender.net API token set.' };
+
+  var groupTitle = ACCOUNT_SENDER_GROUPS[kind];
+  var group = senderGroupByTitle_(groupTitle, token_);
+  if (!group.id) {
+    return { ok: false, status: 'Error: could not resolve the "' + groupTitle + '" group — ' + group.error };
+  }
+
+  var url = accountActionUrl_(kind, token);
+  var payload = {
+    email: email,
+    groups: [group.id],
+    trigger_automation: true,
+    fields: { account_link: url }
+  };
+  if (name) payload.firstname = name;
+
+  var created = senderFetch_('post', '/subscribers', payload, token_);
+  if (created.ok) return { ok: true, status: 'Sent' };
+
+  if (!looksLikeDuplicate_(created)) {
+    return { ok: false, status: 'Error: ' + senderError_(created) };
+  }
+
+  // Already a Sender.net subscriber (e.g. from the newsletter) — update the
+  // link field, then add them to the group to (re)trigger the automation.
+  senderFetch_('patch', '/subscribers/' + encodeURIComponent(email), { fields: { account_link: url } }, token_);
+
+  var added = senderFetch_(
+    'post',
+    '/subscribers/groups/' + encodeURIComponent(group.id),
+    { subscribers: [email], trigger_automation: true },
+    token_
+  );
+
+  if (added.ok && !wasRejectedByGroupAdd_(added, email)) return { ok: true, status: 'Sent (existing subscriber)' };
+  return { ok: false, status: 'Error: ' + senderError_(added) };
 }
 
 /** Every group title an audience belongs to. */

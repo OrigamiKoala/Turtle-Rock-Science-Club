@@ -30,6 +30,47 @@ export interface MemberJoinDetails {
   childGrade?: string;
   /** Guardian ticked the newsletter box. Absent/false means do not subscribe. */
   newsletterOptIn?: boolean;
+  /** Minimum 8 characters, checked again server-side. */
+  password: string;
+  /** Fields replicated from the club's former standalone registration form. */
+  parent1Phone: string;
+  parent2Name?: string;
+  parent2Email?: string;
+  parent2Phone?: string;
+  /** 'Agree' | 'Disagree' */
+  videoConsent: string;
+  /** 'Agree' | 'Disagree (Will Not Participate)' */
+  waiverConsent: string;
+}
+
+export interface JoinResult {
+  ok: boolean;
+  error?: string;
+  sessionToken?: string;
+  needsVerification?: boolean;
+  newsletterSubscribed?: boolean;
+  profile?: UserProfile;
+}
+
+export interface LoginParams {
+  identifier: string;
+  password?: string;
+  /** Only sent when the server has already reported `needsPasswordSetup` — claims a pre-password legacy account. */
+  newPassword?: string;
+}
+
+export interface LoginResult {
+  ok: boolean;
+  error?: string;
+  /** This identifier matched a member created before passwords existed; resubmit with `newPassword`. */
+  needsPasswordSetup?: boolean;
+  sessionToken?: string;
+  profile?: UserProfile;
+}
+
+export interface SimpleResult {
+  ok: boolean;
+  error?: string;
 }
 
 export interface NewsletterResult {
@@ -52,9 +93,13 @@ export interface SiteContent {
   /** Re-fetches from the Sheet, skipping the cache. */
   refresh: () => Promise<void>;
   submitSignup: (details: SignupDetails) => Promise<SignupResult>;
-  submitMemberJoin: (details: MemberJoinDetails) => Promise<void>;
-  loginMember: (identifier: string) => Promise<{ ok: boolean; profile?: UserProfile; error?: string }>;
-  syncProfile: (profile: UserProfile) => Promise<void>;
+  submitMemberJoin: (details: MemberJoinDetails) => Promise<JoinResult>;
+  loginMember: (params: LoginParams) => Promise<LoginResult>;
+  syncProfile: (profile: UserProfile, sessionToken: string) => Promise<void>;
+  logout: (sessionToken: string) => Promise<void>;
+  verifyEmail: (token: string) => Promise<SimpleResult>;
+  requestPasswordReset: (identifier: string) => Promise<SimpleResult>;
+  resetPassword: (token: string, newPassword: string) => Promise<SimpleResult>;
   /** Adds an address to the Newsletter tab, which mirrors it into Sender.net. */
   subscribeNewsletter: (email: string, source?: string) => Promise<NewsletterResult>;
 }
@@ -376,6 +421,28 @@ async function fetchPayload(signal?: AbortSignal): Promise<SheetPayload> {
 }
 
 /**
+ * A `login`/`join` response is trusted as-is once `ok` is true — this is the
+ * boundary that actually checks the shape before that trust is extended, so a
+ * malformed server response fails here instead of crashing later (e.g. inside
+ * `handleUpdateXp`'s `[...prev.unlockedBadges]`).
+ */
+function isValidProfile(value: unknown): value is UserProfile {
+  if (!value || typeof value !== 'object') return false;
+  const p = value as Record<string, unknown>;
+  return (
+    typeof p.name === 'string' &&
+    typeof p.school === 'string' &&
+    typeof p.role === 'string' &&
+    typeof p.joinedDate === 'string' &&
+    typeof p.level === 'number' &&
+    typeof p.xp === 'number' &&
+    Array.isArray(p.unlockedBadges) &&
+    Array.isArray(p.reservedMissionIds) &&
+    typeof p.newsletterSubscribed === 'boolean'
+  );
+}
+
+/**
  * Loads events, announcements and lab logs from the published Google Sheet.
  *
  * Falls back to empty lists whenever the Sheet is not configured,
@@ -460,53 +527,58 @@ export function useSiteContent(): SiteContent {
     [refresh]
   );
 
-  const submitMemberJoin = useCallback(async (details: MemberJoinDetails): Promise<void> => {
-    if (!SHEET_API_URL) return;
+  const submitMemberJoin = useCallback(async (details: MemberJoinDetails): Promise<JoinResult> => {
+    if (!SHEET_API_URL) {
+      return { ok: false, error: 'Spreadsheet connection not configured.' };
+    }
 
     try {
-      await fetch(SHEET_API_URL, {
+      const response = await fetch(SHEET_API_URL, {
         method: 'POST',
         redirect: 'follow',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({ action: 'join', ...details })
       });
+
+      if (!response.ok) return { ok: false, error: `Server error HTTP ${response.status}` };
+
+      const result = JSON.parse(await response.text()) as JoinResult;
+      if (result.ok && !isValidProfile(result.profile)) {
+        return { ok: false, error: 'Unexpected response from the server. Please try again.' };
+      }
+      return result;
     } catch {
-      // Silently swallow errors logging join details so user onboarding flow never blocks
+      return { ok: false, error: 'Could not reach the club server. Please check your connection and try again.' };
     }
   }, []);
 
-  const loginMember = useCallback(
-    async (identifier: string): Promise<{ ok: boolean; profile?: UserProfile; error?: string }> => {
-      if (!SHEET_API_URL) {
-        return { ok: false, error: 'Spreadsheet connection not configured.' };
+  const loginMember = useCallback(async (params: LoginParams): Promise<LoginResult> => {
+    if (!SHEET_API_URL) {
+      return { ok: false, error: 'Spreadsheet connection not configured.' };
+    }
+
+    try {
+      const response = await fetch(SHEET_API_URL, {
+        method: 'POST',
+        redirect: 'follow',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'login', ...params })
+      });
+
+      if (!response.ok) return { ok: false, error: `Server error HTTP ${response.status}` };
+
+      const result = JSON.parse(await response.text()) as LoginResult;
+      if (result.ok && (!result.sessionToken || !isValidProfile(result.profile))) {
+        return { ok: false, error: 'Unexpected response from the server. Please try again.' };
       }
+      return result;
+    } catch {
+      return { ok: false, error: 'Could not connect to member database. Please try again.' };
+    }
+  }, []);
 
-      try {
-        const response = await fetch(SHEET_API_URL, {
-          method: 'POST',
-          redirect: 'follow',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({
-            action: 'login',
-            identifier,
-            origin: typeof window !== 'undefined' ? window.location.origin : '',
-            domain: typeof window !== 'undefined' ? window.location.hostname : ''
-          })
-        });
-
-        if (!response.ok) return { ok: false, error: `Server error HTTP ${response.status}` };
-
-        const result = JSON.parse(await response.text()) as { ok: boolean; profile?: UserProfile; error?: string };
-        return result;
-      } catch {
-        return { ok: false, error: 'Could not connect to member database. Please try again.' };
-      }
-    },
-    []
-  );
-
-  const syncProfile = useCallback(async (profile: UserProfile): Promise<void> => {
-    if (!SHEET_API_URL || profile.level <= 0) return;
+  const syncProfile = useCallback(async (profile: UserProfile, sessionToken: string): Promise<void> => {
+    if (!SHEET_API_URL || profile.level <= 0 || !sessionToken) return;
 
     try {
       await fetch(SHEET_API_URL, {
@@ -515,19 +587,82 @@ export function useSiteContent(): SiteContent {
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({
           action: 'syncProfile',
-          name: profile.name,
-          school: profile.school,
-          role: profile.role,
+          sessionToken,
           level: profile.level,
           xp: profile.xp,
           unlockedBadges: profile.unlockedBadges,
-          reservedMissionIds: profile.reservedMissionIds,
-          origin: typeof window !== 'undefined' ? window.location.origin : '',
-          domain: typeof window !== 'undefined' ? window.location.hostname : ''
+          reservedMissionIds: profile.reservedMissionIds
         })
       });
     } catch {
       // Ignore network failures on profile sync
+    }
+  }, []);
+
+  const logout = useCallback(async (sessionToken: string): Promise<void> => {
+    if (!SHEET_API_URL || !sessionToken) return;
+
+    try {
+      await fetch(SHEET_API_URL, {
+        method: 'POST',
+        redirect: 'follow',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'logout', sessionToken })
+      });
+    } catch {
+      // The local session is cleared regardless; a stale server-side token
+      // just expires on its own after SESSION_DURATION_MS.
+    }
+  }, []);
+
+  const verifyEmail = useCallback(async (token: string): Promise<SimpleResult> => {
+    if (!SHEET_API_URL) return { ok: false, error: 'Spreadsheet connection not configured.' };
+
+    try {
+      const response = await fetch(SHEET_API_URL, {
+        method: 'POST',
+        redirect: 'follow',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'verifyEmail', token })
+      });
+      if (!response.ok) return { ok: false, error: `Server error HTTP ${response.status}` };
+      return JSON.parse(await response.text()) as SimpleResult;
+    } catch {
+      return { ok: false, error: 'Could not reach the club server. Please check your connection and try again.' };
+    }
+  }, []);
+
+  const requestPasswordReset = useCallback(async (identifier: string): Promise<SimpleResult> => {
+    if (!SHEET_API_URL) return { ok: false, error: 'Spreadsheet connection not configured.' };
+
+    try {
+      const response = await fetch(SHEET_API_URL, {
+        method: 'POST',
+        redirect: 'follow',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'requestPasswordReset', identifier })
+      });
+      if (!response.ok) return { ok: false, error: `Server error HTTP ${response.status}` };
+      return JSON.parse(await response.text()) as SimpleResult;
+    } catch {
+      return { ok: false, error: 'Could not reach the club server. Please check your connection and try again.' };
+    }
+  }, []);
+
+  const resetPassword = useCallback(async (token: string, newPassword: string): Promise<SimpleResult> => {
+    if (!SHEET_API_URL) return { ok: false, error: 'Spreadsheet connection not configured.' };
+
+    try {
+      const response = await fetch(SHEET_API_URL, {
+        method: 'POST',
+        redirect: 'follow',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'resetPassword', token, newPassword })
+      });
+      if (!response.ok) return { ok: false, error: `Server error HTTP ${response.status}` };
+      return JSON.parse(await response.text()) as SimpleResult;
+    } catch {
+      return { ok: false, error: 'Could not reach the club server. Please check your connection and try again.' };
     }
   }, []);
 
@@ -591,6 +726,10 @@ export function useSiteContent(): SiteContent {
     submitMemberJoin,
     loginMember,
     syncProfile,
+    logout,
+    verifyEmail,
+    requestPasswordReset,
+    resetPassword,
     subscribeNewsletter
   };
 }
