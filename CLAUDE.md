@@ -26,7 +26,9 @@ npm run build
 ## Deployment (GitHub Pages)
 
 `.github/workflows/deploy-gh-pages.yml` runs `npm ci && npm run build` and
-publishes `dist/` via `actions/deploy-pages`. It replaced a stock
+publishes `dist/` via `actions/deploy-pages`. Always ensure `package-lock.json`
+stays in sync with `package.json` (run `npm install` when adding packages) or
+`npm ci` will fail and GitHub Pages will serve stale builds. It replaced a stock
 "Jekyll + GitHub Pages" workflow that copied the raw source unbuilt — Jekyll
 never ran Vite, so `index.html`'s `<script src="/src/main.tsx">` shipped as-is
 and the browser 404'd trying to fetch uncompiled TypeScript as a module.
