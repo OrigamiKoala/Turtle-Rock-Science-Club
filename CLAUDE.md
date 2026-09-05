@@ -556,9 +556,14 @@ All mathematical expressions, chemical formulas, reaction equations, and physica
 - `<Latex math="..." displayMode={false|true} />`: Renders pure KaTeX expressions directly (e.g. formulas, step equations, variable readouts).
 - `<Chem formula="..." />`: Automatically tokenizes chemical formulas (`H2O`, `CH3COOH`, `Fe2O3`, `(NH4)2SO4`, `CO3^2-`) into standard chemical LaTeX notation (`\text{H}_2\text{O}`, `\text{CH}_3\text{COOH}`, etc.).
 - `<MathText text="..." />`: Parses mixed prose strings with inline `$math$` and block `$$math$$` expressions (and chemistry formulas) into KaTeX spans without string interpolation bugs.
-- `SafeHtml.tsx`: Formats any Sheet-published announcements, missions, or logs containing `$math$` or `$$math$$` via KaTeX.
+- `SafeHtml.tsx`: Formats any Sheet-published announcements, missions, or logs containing `$math$` or `$$math$$` via KaTeX. Safely renders HTML tags (e.g. `<a href="...">`, formatting tags, lists) and autolinks bare URLs using DOMPurify with automatic `target="_blank"` and `rel="noopener noreferrer"`.
 - Dark mode: `katex/dist/katex.min.css` is imported in `main.tsx`, and `:root.dark .katex` in `index.css` ensures all equations inherit text colors with high contrast.
 
+## Hero Scroll
 
-
-
+`src/useHeroScroll.ts` drives the landing hero screen transitions:
+- Light scroll gestures (`WHEEL_MIN_DELTA = 3`) immediately advance to the next screen and stop.
+- Per-gesture lock isolates trackpad inertia tails so a single scroll cannot advance past multiple screens.
+- Re-arms upon brief idle pause (~110ms), direction reversal, or distinct swipe acceleration, allowing rapid scrolling to proceed screen-by-screen.
+- Smoothly glides and stops at each resting moment.
+- At finale, forward scroll unlocks the document for natural page scrolling.

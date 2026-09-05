@@ -67,7 +67,7 @@ export default function LabLogAnnouncements({ logs, announcements, contentStatus
                 <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-2 text-[11px] font-bold text-[#9AA6A6]"><Clock className="w-3.5 h-3.5" /><span>{log.date}</span></div>
-                    <h4 className="font-display font-bold text-base leading-snug text-[#1F3A42]">{log.title}</h4>
+                    <SafeHtml as="h4" content={log.title} className="font-display font-bold text-base leading-snug text-[#1F3A42]" />
                     <SafeHtml content={log.summary} className="text-xs leading-relaxed line-clamp-2 text-[#4B6169]" />
                   </div>
                   <div className="pt-3 border-t-2 border-[#1F3A42]/8 flex items-center justify-between text-[11px] font-bold text-[#4B6169]">
@@ -103,7 +103,7 @@ export default function LabLogAnnouncements({ logs, announcements, contentStatus
                   <span className="px-2.5 py-1 rounded-full text-[10px] font-display font-bold bg-[#E4F5DA] text-[#2E7D46]">{ann.category}</span>
                   <span className="text-[10px] text-[#9AA6A6] font-bold">{ann.date}</span>
                 </div>
-                <h5 className="font-display font-bold text-sm tracking-tight leading-snug text-[#1F3A42]">{ann.title}</h5>
+                <SafeHtml as="h5" content={ann.title} className="font-display font-bold text-sm tracking-tight leading-snug text-[#1F3A42]" />
                 <SafeHtml content={ann.content} className="text-xs leading-relaxed text-[#4B6169]" />
               </div>
             ))
@@ -124,7 +124,7 @@ export default function LabLogAnnouncements({ logs, announcements, contentStatus
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent flex items-end p-6">
                 <div className="text-white space-y-1">
                   <span className="bg-[#1F3A42] text-white dark:bg-[#6CC24A] dark:text-[#14351F] text-[10px] font-display font-bold px-2.5 py-1 rounded-full capitalize">{activeLog.category}</span>
-                  <h3 className="font-display font-bold text-lg sm:text-2xl tracking-tight leading-tight text-white">{activeLog.title}</h3>
+                  <SafeHtml as="h3" content={activeLog.title} className="font-display font-bold text-lg sm:text-2xl tracking-tight leading-tight text-white" />
                 </div>
               </div>
             </div>
