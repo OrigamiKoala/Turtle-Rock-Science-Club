@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { LabLog, Announcement } from '../types';
 import { ContentStatus } from '../useSiteContent';
 import { Clock, User, X, MessageSquare } from 'lucide-react';
@@ -111,7 +112,7 @@ export default function LabLogAnnouncements({ logs, announcements, contentStatus
         </div>
       </div>
 
-      {activeLog && (
+      {activeLog && createPortal(
         <div
           className="fixed inset-0 z-[100] overflow-y-auto bg-[#1F3A42]/75 will-change-transform flex items-center justify-center p-4 sm:p-6"
           onClick={(e) => {
@@ -170,7 +171,8 @@ export default function LabLogAnnouncements({ logs, announcements, contentStatus
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </section>
   );

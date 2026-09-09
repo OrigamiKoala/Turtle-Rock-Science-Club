@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { UserProfile } from '../types';
 import { LoginParams, LoginResult, SimpleResult } from '../useSiteContent';
 import { ACCOUNT_EMAILS_ENABLED } from '../config';
@@ -103,7 +104,7 @@ export default function LoginModal({ onClose, onLoginSubmit, onLoginSuccess, onR
     setView('forgotSent');
   };
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 overflow-y-auto bg-[#1F3A42]/60 will-change-transform flex items-center justify-center p-4">
       <div
         id="login-club-modal"
@@ -329,6 +330,7 @@ export default function LoginModal({ onClose, onLoginSubmit, onLoginSuccess, onR
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

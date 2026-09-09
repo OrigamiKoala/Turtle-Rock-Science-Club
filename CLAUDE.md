@@ -282,55 +282,64 @@ has the remainder to do.
 
 ## Site conventions
 
-- **Every full-screen modal overlay (`fixed inset-0 ...`) carries
-  `will-change-transform`, and none of them use `backdrop-blur-*`.** Both
-  are fixes for two *separate*, confirmed-via-DevTools Chromium compositor
-  bugs that this exact pattern (a `fixed inset-0` div, conditionally mounted
-  as `{show && <Modal/>}` rather than hidden/animated out) hits, and both
-  looked identical to a z-index/stacking bug from a screenshot alone —
-  every modal here already has a correct, unambiguously highest z-index, so
-  don't "fix" this again by touching z-index:
-  1. **Paint-vs-layout desync when the page is already scrolled at mount
-     time.** `getBoundingClientRect()` on the wrapper reported the fully
-     correct, scroll-independent box (`position: fixed; top: 0`, exactly
-     `{x:0, y:0, width: <viewport width>, height: <viewport height>}`) —
-     but the *rendered pixels* were visibly offset downward by almost
-     exactly `window.scrollY` at the time, as if the compositor grabbed the
-     newly-inserted fixed layer into the page's already-scrolled bitmap
-     instead of giving it its own scroll-independent layer. `will-change:
-     transform` (Tailwind's `will-change-transform`) forces a dedicated
-     compositing layer up front and fixes it. This is why `Header` never
-     shows either bug without needing this class itself: `motion.header`'s
-     `y` value already gives it an inline `transform`, which has the same
-     layer-promoting effect incidentally.
-  2. **Stale frame left on screen after the element unmounts.** With no CSS
+- **Every full-screen modal (`ConfirmEmailModal`, `SignupModal`,
+  `LoginModal`, `ResetPasswordModal`, `LabLogAnnouncements`'s log modal,
+  `App.tsx`'s level-up modal) renders via `createPortal(..., document.body)`,
+  not as a plain JSX sibling inline in the tree.** This is load-bearing, not
+  a style preference — don't revert it back to an inline `{show && <div
+  className="fixed inset-0 ...">}` even if it looks like unnecessary
+  indirection.
+
+  The actual bug: `Hero.tsx` dynamically switches its own root panel between
+  `position: relative` (unlocked, normal scroll) and `position: fixed inset-0
+  z-40` (locked, scroll-hijacked intro) based on `useHeroScroll`'s `locked`
+  state (`Hero.tsx:866`). Scrolling back up to the top re-triggers `relock()`
+  in `useHeroScroll.ts`, flipping Hero back to `fixed` **while a modal is
+  already open, mounted above it in the same stacking context**. On paper
+  this is harmless — Hero's `z-40` is still less than any modal's `z-50`+ —
+  but a sibling *dynamically* toggling its own element to `position: fixed`
+  while other fixed, GPU-layered elements are already stacked above it is a
+  real trigger for Chromium to get the paint order wrong until a full
+  re-layout happens, and the effect is scroll-position-dependent: reported
+  live (not just in a screenshot) as "scroll up and the modal vanishes
+  behind Hero's dark background." A portal sidesteps the whole problem by
+  moving the modal completely outside the tree that contains Hero, so there
+  is no shared stacking context for Hero's runtime position changes to ever
+  interfere with, regardless of what Hero does.
+
+  Two *other*, real, separately-confirmed-via-DevTools bugs were fixed along
+  the way and are still worth keeping even with the portal in place:
+  1. **Stale frame left on screen after the modal unmounts.** With no CSS
      transition-out, a `backdrop-filter` (`backdrop-blur-*`) layer can be
      left composited on screen after its element is already gone from the
      DOM — confirmed by searching the Elements panel for the still-visible
-     modal's own `id`, which found nothing, while the "dimmed" area was
-     still hit-testing to whatever was actually underneath it (e.g.
-     `Hero`'s content). Removing `backdrop-filter` entirely removes this bug
-     category; the visual effect is a plain translucent background instead
-     (bumped a bit higher in opacity than while blur was doing part of the
-     visual work).
+     modal's own `id`, which found nothing. None of these modals use
+     `backdrop-blur-*` any more; the dimming is a plain translucent
+     background instead (opacity bumped up a bit to compensate).
+  2. A `will-change-transform` class on each wrapper, which helps Chromium
+     give the newly-inserted fixed layer its own compositing layer instead
+     of reusing a stale one — cheap insurance, kept even though the portal
+     is the fix for the actual reported bug.
 
-  `ConfirmEmailModal`, `SignupModal`, `LoginModal`, `ResetPasswordModal`,
-  `LabLogAnnouncements`'s log modal, and `App.tsx`'s level-up modal all need
-  both. `Header`'s `backdrop-blur-xl` is fine to leave alone — it's mounted
-  once for the life of the app and never unmounts, so bug 2's trigger
-  (unmount without a transition-out) never applies to it, and its own
-  `transform` already covers bug 1.
+  `Header` never needed any of this: it's mounted once for the app's whole
+  life (bug 1 never applies) and is a sibling of Hero but never toggles its
+  *own* position dynamically, and `motion.header`'s `y` value already gives
+  it an inline `transform` (covering bug 2 incidentally). It also isn't
+  portaled — it doesn't need to be, since nothing else in the tree
+  dynamically fights it for a stacking slot the way modals do against Hero.
 
-  Earlier passes at this bug got the diagnosis wrong twice before landing
-  here — first blaming a Safari-only `fixed`+`backdrop-filter`-while-
-  scrolling quirk (the reporter was on Chrome, so `will-change-transform`
-  did nothing on its own the first time it was tried, for the wrong
-  reason), then, after removing `backdrop-filter` alone fixed bug 2, wrongly
-  concluding bug 1 didn't exist because the *symptom looked identical* in a
-  screenshot. It took an actual `getBoundingClientRect()` + `scrollY`
-  reading in DevTools to tell the two bugs apart — if this regresses again,
-  get that reading again before changing anything, rather than trusting how
-  it looks in a static screenshot.
+  This took four passes to actually fix, each wrong for a specific,
+  instructive reason: (1) blamed a Safari-only bug when the reporter was on
+  Chrome; (2) correctly fixed the stale-frame bug but wrongly concluded that
+  fixed the whole thing because the remaining symptom *looked* identical in
+  a screenshot; (3) correctly fixed a real paint/layout desync bug via
+  `will-change-transform`, which also didn't touch the actual reported bug
+  for the same screenshot-shaped reason. What actually broke the deadlock
+  was the reporter noticing the bug was tied to a specific *interaction*
+  (scrolling up) rather than trusting any single static screenshot — if this
+  regresses, get a repro tied to a specific interaction and a
+  `getBoundingClientRect()`/`scrollY` DevTools reading before changing
+  anything, rather than pattern-matching off what a screenshot looks like.
 - **`STYLE.md` is the brand/style guide** — palette (with dark-mode
   counterparts and measured contrast), type scale, component recipes, motion,
   iconography, and voice. Read it before adding UI or writing visitor-facing

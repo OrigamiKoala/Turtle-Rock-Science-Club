@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Mission } from '../types';
 import { SignupDetails, SignupResult } from '../useSiteContent';
 import { X, Calendar, Clock, MapPin, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
@@ -62,7 +63,7 @@ export default function SignupModal({ mission, onClose, onSubmit, onSuccess }: S
     onSuccess(mission.id);
   };
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 overflow-y-auto bg-[#1F3A42]/60 will-change-transform flex items-center justify-center p-4" onClick={onClose} role="dialog" aria-modal="true" aria-label={`Sign up for ${mission.title}`}>
       <div className="bg-[#FBF7EC] rounded-[24px] w-full max-w-md shadow-2xl animate-fade-in overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="p-5 flex items-start justify-between gap-4 bg-white border-b-2 border-[#1F3A42]/8">
@@ -141,6 +142,7 @@ export default function SignupModal({ mission, onClose, onSubmit, onSuccess }: S
           </form>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

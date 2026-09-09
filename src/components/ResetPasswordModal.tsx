@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { SimpleResult } from '../useSiteContent';
 import { X, ShieldAlert, CheckCircle, KeyRound } from 'lucide-react';
 
@@ -46,7 +47,7 @@ export default function ResetPasswordModal({ token, onClose, onResetPassword }: 
     setDone(true);
   };
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 overflow-y-auto bg-[#1F3A42]/60 will-change-transform flex items-center justify-center p-4">
       <div
         id="reset-password-modal"
@@ -134,6 +135,7 @@ export default function ResetPasswordModal({ token, onClose, onResetPassword }: 
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

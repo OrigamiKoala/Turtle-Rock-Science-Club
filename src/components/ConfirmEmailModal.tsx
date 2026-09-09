@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { MailCheck, AlertTriangle } from 'lucide-react';
 
 interface ConfirmEmailModalProps {
@@ -20,7 +21,7 @@ export default function ConfirmEmailModal({ onClose }: ConfirmEmailModalProps) {
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-[60] overflow-y-auto bg-[#1F3A42]/75 will-change-transform flex items-center justify-center p-4"
       onClick={onClose}
@@ -80,6 +81,7 @@ export default function ConfirmEmailModal({ onClose }: ConfirmEmailModalProps) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
