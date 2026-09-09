@@ -96,16 +96,29 @@ state rather than demo data.
 
 ## Sign-up flow
 
-Each event card opens `SignupModal` asking for Student Name + School. On submit
-the script, under a `LockService` lock:
+Each event card opens `SignupModal` asking for Student Name + School + a
+Parent/Guardian Email (required client-side). On submit the script, under a
+`LockService` lock:
 
-1. appends a row to **Signups** (`Timestamp`, `Event`, `Student Name`, `School`)
+1. appends a row to **Signups** (`Timestamp`, `Event`, `Student Name`, `School`,
+   `Parent Email`)
 2. increments that event's **Spots Taken** by 1
 3. patches *only that event's* `spotsReserved` inside the `_Published` snapshot
+4. subscribes the parent email to Sender.net under `newsletter` (see
+   "Newsletter" below) — this is what the post-signup "check your email/spam
+   folder" `ConfirmEmailModal` is confirming
 
 Step 3 is why the live "spots left" counter stays honest without republishing
 anything still being drafted. If you change how events are published, keep
 `bumpPublishedSpots_` in sync.
+
+The logged-in-member fast path (`App.tsx`'s `handleSignUp`, used when an
+already-logged-in visitor signs up for an event they haven't reserved yet)
+skips `SignupModal` entirely and calls `submitSignup` directly with no
+`parentEmail` — members have no email on file to send, so that path neither
+prompts for one nor triggers the confirm-email modal. `parentEmail` is
+therefore optional in `SignupDetails`/`handleSignup_` even though the modal
+itself requires it.
 
 ## Newsletter (Sender.net)
 
@@ -117,6 +130,23 @@ addresses into Sender.net, routed by where they came from:
 | Footer subscribe box | `newsletter` | **Newsletter** |
 | Join form, Parent Email | `parent` | **Parents** + **Newsletter** |
 | Join form, Student Email | `student` | **Students** + **Newsletter** |
+| Event sign-up, Parent Email | `newsletter` | **Newsletter** |
+
+Event sign-up deliberately uses the plain `newsletter` audience, not `parent`
+— RSVPing a kid into one event isn't joining the club, so that email
+shouldn't land in **Parents** (a segment implying club membership). It gets
+the same "check your spam folder" `ConfirmEmailModal` treatment as everyone
+else who reaches **Newsletter**, just from a different `source` string
+(`'Event sign-up'`) for the same reason `audienceForRow_` cares about
+**Source** at all — see below.
+
+**A family that reuses the guardian's address as the "student email" during
+Join must not also land in Students.** `handleJoin_` skips the second
+`subscribeEmail_` call (the one that adds **Students** + **Newsletter**) when
+`studentEmail` normalises to the same address as the Parent 1 email — that
+address already got **Parents** + **Newsletter** from the first call, and it
+belongs to an adult, not a student, so it shouldn't carry the Students
+segment. Comparison is case-insensitive/trimmed via `normaliseEmail_`.
 
 **Campaigns go to the Confirmed *segment*, never to a raw group.**
 `senderSubscribe_` writes every signup straight into its audience groups, so
@@ -218,10 +248,29 @@ has the remainder to do.
   it when the tab is *missing* — an existing tab keeps its old header until
   someone runs 🐢 Website ▸ ⚙️ Set Up / Repair Sheets. The Members tab's 7th column
   went from `Age` to `Grade` this way, so a sheet that predates that change
-  still reads `Age` over grade values until it is repaired.
+  still reads `Age` over grade values until it is repaired. The same applies
+  to *adding* a column: an existing Signups tab won't grow the new `Parent
+  Email` header on its own — `handleSignup_` will still append the value into
+  column 5, but the header cell stays blank until 🐢 Website ▸ ⚙️ Set Up /
+  Repair Sheets is run.
 
 ## Site conventions
 
+- **Every full-screen modal overlay (`fixed inset-0 ... backdrop-blur-*`) also
+  carries `[transform:translateZ(0)]`.** WebKit has a real bug where a
+  `position: fixed` element that also has `backdrop-filter` (Tailwind's
+  `backdrop-blur-*`) stops tracking the viewport on scroll and instead stays
+  pinned to wherever it was in the *document* — it looks exactly like a
+  z-index/stacking bug (the header and page content above it render
+  unaffected, undimmed, while the modal's backdrop only covers a band
+  partway down the page) but isn't one; every modal here already has a
+  correct, unambiguously-highest z-index. Forcing the element onto its own
+  GPU compositing layer with a no-op transform is the standard fix. Don't
+  remove it as a "no-op leftover" — `ConfirmEmailModal`, `SignupModal`,
+  `LoginModal`, `ResetPasswordModal`, `LabLogAnnouncements`'s log modal, and
+  `App.tsx`'s level-up modal all need it. `Header` doesn't, only because
+  `motion.header`'s `y` value already forces it onto its own layer via an
+  inline `transform` — that's incidental, not a pattern to rely on elsewhere.
 - **`STYLE.md` is the brand/style guide** — palette (with dark-mode
   counterparts and measured contrast), type scale, component recipes, motion,
   iconography, and voice. Read it before adding UI or writing visitor-facing

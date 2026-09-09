@@ -9,6 +9,8 @@ export interface SignupDetails {
   eventTitle: string;
   studentName: string;
   school: string;
+  /** Not collected by the logged-in-member fast path (App.tsx's `handleSignUp`) — only the guest-facing SignupModal asks for it. */
+  parentEmail?: string;
 }
 
 export interface SignupResult {

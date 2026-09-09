@@ -12,11 +12,14 @@ interface SignupModalProps {
 
 const LAST_SCHOOL_KEY = 'tr_sc_last_school';
 
+const isEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+
 export default function SignupModal({ mission, onClose, onSubmit, onSuccess }: SignupModalProps) {
   const [studentName, setStudentName] = useState('');
   const [school, setSchool] = useState(() => {
     try { return localStorage.getItem(LAST_SCHOOL_KEY) ?? ''; } catch { return ''; }
   });
+  const [parentEmail, setParentEmail] = useState('');
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,14 +41,17 @@ export default function SignupModal({ mission, onClose, onSubmit, onSuccess }: S
 
     const trimmedName = studentName.trim();
     const trimmedSchool = school.trim();
+    const trimmedParentEmail = parentEmail.trim();
 
     if (!trimmedName) { setError('Please enter the student’s name.'); return; }
     if (!trimmedSchool) { setError('Please enter the school.'); return; }
+    if (!trimmedParentEmail) { setError('Please enter a parent/guardian email.'); return; }
+    if (!isEmail(trimmedParentEmail)) { setError('That email doesn’t look right — check for a typo.'); return; }
 
     setSubmitting(true);
     setError(null);
 
-    const result = await onSubmit({ eventId: mission.id, eventTitle: mission.title, studentName: trimmedName, school: trimmedSchool });
+    const result = await onSubmit({ eventId: mission.id, eventTitle: mission.title, studentName: trimmedName, school: trimmedSchool, parentEmail: trimmedParentEmail });
     setSubmitting(false);
 
     if (!result.ok) { setError(result.error ?? 'Something went wrong. Please try again.'); return; }
@@ -57,7 +63,7 @@ export default function SignupModal({ mission, onClose, onSubmit, onSuccess }: S
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-[#1F3A42]/45 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose} role="dialog" aria-modal="true" aria-label={`Sign up for ${mission.title}`}>
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-[#1F3A42]/45 backdrop-blur-sm [transform:translateZ(0)] flex items-center justify-center p-4" onClick={onClose} role="dialog" aria-modal="true" aria-label={`Sign up for ${mission.title}`}>
       <div className="bg-[#FBF7EC] rounded-[24px] w-full max-w-md shadow-2xl animate-fade-in overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="p-5 flex items-start justify-between gap-4 bg-white border-b-2 border-[#1F3A42]/8">
           <div className="text-left min-w-0">
@@ -110,6 +116,12 @@ export default function SignupModal({ mission, onClose, onSubmit, onSuccess }: S
                 className="w-full px-3.5 py-2.5 rounded-xl text-sm border-2 border-[#1F3A42]/12 bg-white text-[#1F3A42] placeholder:text-[#9AA6A6] focus:outline-none disabled:opacity-50" />
             </div>
 
+            <div className="space-y-1.5">
+              <label htmlFor="signup-parent-email" className="block text-[11px] font-extrabold text-[#4B6169]">Parent/Guardian Email</label>
+              <input id="signup-parent-email" type="email" value={parentEmail} onChange={(e) => setParentEmail(e.target.value)} placeholder="parent@example.com" autoComplete="email" disabled={submitting}
+                className="w-full px-3.5 py-2.5 rounded-xl text-sm border-2 border-[#1F3A42]/12 bg-white text-[#1F3A42] placeholder:text-[#9AA6A6] focus:outline-none disabled:opacity-50" />
+            </div>
+
             {error && (
               <div className="flex items-start gap-2 text-[12px] text-red-600 bg-red-50 border-2 border-red-200 rounded-xl px-3.5 py-2.5">
                 <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
@@ -123,7 +135,8 @@ export default function SignupModal({ mission, onClose, onSubmit, onSuccess }: S
             </button>
 
             <p className="text-[11px] text-[#9AA6A6] font-sans text-center leading-relaxed">
-              We only record the student’s name and school so mentors know who to expect.
+              We record the student’s name and school so mentors know who to expect, and the parent
+              email so we can send updates about this event.
             </p>
           </form>
         )}

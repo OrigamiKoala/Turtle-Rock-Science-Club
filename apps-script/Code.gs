@@ -75,7 +75,7 @@ var LABLOG_HEADERS = [
   'Show on Site'
 ];
 
-var SIGNUP_HEADERS = ['Timestamp', 'Event', 'Student Name', 'School'];
+var SIGNUP_HEADERS = ['Timestamp', 'Event', 'Student Name', 'School', 'Parent Email'];
 var MEMBER_HEADERS = [
   'Timestamp',
   'Scientist Name',
@@ -538,7 +538,7 @@ function styleLabLogSheet_(sheet) {
 }
 
 function styleSignupsSheet_(sheet) {
-  setWidths_(sheet, [180, 260, 220, 260]);
+  setWidths_(sheet, [180, 260, 220, 260, 260]);
   var body = Math.min(100, Math.max(20, sheet.getLastRow() - 1));
   if (body <= 0) return;
   sheet.getRange(2, 1, body, 1).setNumberFormat('yyyy-mm-dd hh:mm:ss');
@@ -1165,7 +1165,11 @@ function handleJoin_(body) {
     if (email) {
       subscribed = subscribeEmail_(ss, email, parentName || name, 'Club join — guardian', AUDIENCE_PARENT).ok || subscribed;
     }
-    if (studentEmail) {
+    // A family that reuses the guardian's address as the "student email" (no
+    // separate inbox for the kid) must not also land in the Students group —
+    // that address is a parent's, not a student's, so it already got
+    // Parents + Newsletter from the call above.
+    if (studentEmail && normaliseEmail_(studentEmail) !== normaliseEmail_(email)) {
       subscribed = subscribeEmail_(ss, studentEmail, name, 'Club join — student', AUDIENCE_STUDENT).ok || subscribed;
     }
   }
@@ -1514,10 +1518,17 @@ function handleSignup_(body) {
   var studentName = String(body.studentName || '').trim();
   var school = String(body.school || '').trim();
   var eventId = String(body.eventId || '').trim();
+  // Optional: the logged-in-member fast path (App.tsx's `handleSignUp`) has no
+  // email on file to send, so it never sends this field. The guest-facing
+  // SignupModal always sends one and requires it client-side.
+  var parentEmail = normaliseEmail_(body.parentEmail);
 
   if (!studentName) return { ok: false, error: 'Please enter the student’s name.' };
   if (!school) return { ok: false, error: 'Please enter the school.' };
   if (!eventId) return { ok: false, error: 'Missing which event this is for.' };
+  if (parentEmail && !isEmail_(parentEmail)) {
+    return { ok: false, error: 'That email doesn’t look right — check for a typo.' };
+  }
 
   // Two families submitting at once must not both read the same "Spots Taken".
   var lock = LockService.getScriptLock();
@@ -1548,11 +1559,20 @@ function handleSignup_(body) {
       signups = ensureSheet_(ss, SIGNUPS_SHEET, SIGNUP_HEADERS, SIGNUP_HEADER_COLOR);
       styleSignupsSheet_(signups);
     }
-    signups.appendRow([new Date(), title, studentName, school]);
+    signups.appendRow([new Date(), title, studentName, school, parentEmail]);
 
     var updatedTaken = taken + 1;
     eventsSheet.getRange(rowNumber, EVENT_COL_SPOTS_TAKEN).setValue(updatedTaken);
     bumpPublishedSpots_(ss, eventId, updatedTaken);
+
+    // Same "write first, subscribe second, swallow Sender failures" shape as
+    // subscribeEmail_'s other callers — a Sender outage must not fail the
+    // signup, and the parent already sees "check your email" regardless of
+    // whether this call actually succeeds (🔁 Sync Pending Subscribers retries
+    // it from the Newsletter tab either way).
+    if (parentEmail) {
+      subscribeEmail_(ss, parentEmail, studentName, 'Event sign-up', AUDIENCE_NEWSLETTER);
+    }
 
     return {
       ok: true,

@@ -137,11 +137,18 @@ the sheet stays private.
 ## Event sign-ups
 
 Each event card on the site has a **Sign Up for This Event** button. It asks for
-the **Student Name** and **School**, and on submit the script:
+the **Student Name**, **School**, and a **Parent/Guardian Email**, and on submit
+the script:
 
-1. appends a row to the **Signups** tab — `Timestamp`, `Event`, `Student Name`, `School`
+1. appends a row to the **Signups** tab — `Timestamp`, `Event`, `Student Name`, `School`, `Parent Email`
 2. adds **1** to that event's **Spots Taken** in the Events tab
 3. updates the live "spots left" counter on the site
+4. subscribes the parent email to the **Newsletter** group in Sender.net (see
+   below) and shows a "check your email / spam folder" confirmation message
+
+If your Signups tab was created before this Parent Email column existed, run
+🐢 Website ▸ ⚙️ Set Up / Repair Sheets so the header row picks it up — new
+sign-ups are recorded either way, but the header stays blank until you do.
 
 Sign-ups are the one thing that does **not** wait for Publish — they are
 recorded immediately, and only that one number is updated, so anything else you
@@ -167,11 +174,18 @@ Publish.
 | Join the Club form — **Parent Email** | **Parents** *and* **Newsletter** |
 | Join the Club form — **Student Email** (optional) | **Students** *and* **Newsletter** |
 | **Get the Club Newsletter** box in the site footer | **Newsletter** only |
+| Event sign-up — **Parent/Guardian Email** | **Newsletter** only |
 
 People who join the club go into Newsletter too, so one newsletter sent to the
 Newsletter group reaches everybody, while you can still write to just parents or
-just students when you need to. Someone who only used the footer box is in
-Newsletter alone — they have not joined the club.
+just students when you need to. Someone who only used the footer box, or only
+signed up for one event, is in Newsletter alone — they have not joined the
+club.
+
+If the Join form's Student Email is typed as the same address as the Parent
+Email (no separate inbox for the kid), that address only gets **Parents** *and*
+**Newsletter** — it is not also added to **Students**, since it belongs to a
+parent, not a student.
 
 Every address is also written to the **Newsletter** tab of the spreadsheet, with
 the groups it was added to and whether Sender accepted it.
