@@ -134,6 +134,7 @@ var MEM_IDX_VIDEO_CONSENT = 24;
 var MEM_IDX_WAIVER_CONSENT = 25;
 
 // The same positions, 1-based, for `sheet.getRange(row, col)`.
+var MEM_COL_NEWSLETTER_OPTIN = MEM_IDX_NEWSLETTER_OPTIN + 1;
 var MEM_COL_LEVEL = MEM_IDX_LEVEL + 1;
 var MEM_COL_XP = MEM_IDX_XP + 1;
 var MEM_COL_BADGES = MEM_IDX_BADGES + 1;
@@ -1071,6 +1072,8 @@ function doPost(e) {
       result = handleLogout_(body);
     } else if (body.action === 'subscribe') {
       result = handleSubscribe_(body);
+    } else if (body.action === 'subscribeMember') {
+      result = handleSubscribeMember_(body);
     } else {
       throw new Error('Unknown action.');
     }
@@ -1162,15 +1165,24 @@ function handleJoin_(body) {
   // must not fail the join.
   var subscribed = false;
   if (newsletterOptIn) {
+    // Dedupe by normalised address across Parent 1, Parent 2, and Student —
+    // whichever field's address is seen first wins its audience group, so a
+    // family that reuses one address across two fields (no separate inbox
+    // for the kid, or one guardian entered as both parents) never lands in a
+    // group that address doesn't belong to and never gets subscribeEmail_'d
+    // twice.
+    var joinSubscribedEmails = {};
     if (email) {
       subscribed = subscribeEmail_(ss, email, parentName || name, 'Club join — guardian', AUDIENCE_PARENT).ok || subscribed;
+      joinSubscribedEmails[normaliseEmail_(email)] = true;
     }
-    // A family that reuses the guardian's address as the "student email" (no
-    // separate inbox for the kid) must not also land in the Students group —
-    // that address is a parent's, not a student's, so it already got
-    // Parents + Newsletter from the call above.
-    if (studentEmail && normaliseEmail_(studentEmail) !== normaliseEmail_(email)) {
+    if (parent2Email && isEmail_(parent2Email) && !joinSubscribedEmails[normaliseEmail_(parent2Email)]) {
+      subscribed = subscribeEmail_(ss, parent2Email, parent2Name || parentName || name, 'Club join — guardian 2', AUDIENCE_PARENT).ok || subscribed;
+      joinSubscribedEmails[normaliseEmail_(parent2Email)] = true;
+    }
+    if (studentEmail && !joinSubscribedEmails[normaliseEmail_(studentEmail)]) {
       subscribed = subscribeEmail_(ss, studentEmail, name, 'Club join — student', AUDIENCE_STUDENT).ok || subscribed;
+      joinSubscribedEmails[normaliseEmail_(studentEmail)] = true;
     }
   }
 
@@ -1672,6 +1684,67 @@ function handleSubscribe_(body) {
 
     // The address is safely recorded either way, so an API-side problem is not
     // the visitor's to fix or to read about — it surfaces in the sheet instead.
+    return {
+      ok: true,
+      alreadySubscribed: !!outcome.alreadySubscribed,
+      pending: !outcome.ok
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * A logged-in member clicking "Sign up" on the "you're not getting updates"
+ * banner. This is the exact same `subscribeEmail_` + `AUDIENCE_NEWSLETTER`
+ * path as the footer box (`handleSubscribe_`) — the only difference is the
+ * email comes from the member's own Members row, looked up by session token,
+ * instead of being typed into a box. That also means this can't be used to
+ * subscribe an address that isn't the caller's own.
+ */
+function handleSubscribeMember_(body) {
+  var sessionToken = String(body.sessionToken || '').trim();
+  if (!sessionToken) return { ok: false, error: 'Missing session token. Please log in again.' };
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var members = ss.getSheetByName(MEMBERS_SHEET);
+  if (!members) return { ok: false, error: 'No member records found in spreadsheet.' };
+
+  var rows = bodyRows_(members, MEMBER_HEADERS.length);
+  var targetIndex = -1;
+  for (var i = 0; i < rows.length; i++) {
+    if (String(rows[i][MEM_IDX_SESSION_TOKEN] || '') === sessionToken) {
+      targetIndex = i;
+      break;
+    }
+  }
+
+  if (targetIndex === -1) return { ok: false, error: 'Session expired. Please log in again.' };
+  var row = rows[targetIndex];
+  if (tokenExpired_(row[MEM_IDX_SESSION_TOKEN_EXPIRES])) {
+    return { ok: false, error: 'Session expired. Please log in again.' };
+  }
+
+  var email = pickAccountEmail_(row[MEM_IDX_PARENT_EMAIL], row[MEM_IDX_STUDENT_EMAIL]);
+  if (!email) return { ok: false, error: 'No email address on file for this account.' };
+
+  var name = String(row[MEM_IDX_GUARDIAN_NAME] || row[MEM_IDX_NAME] || '').trim();
+  var sheetRow = targetIndex + 2;
+
+  // Two people subscribing at once must not each append their own copy of the
+  // same address, and must not both claim row N — same reasoning as
+  // handleSubscribe_.
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(15000);
+  } catch (err) {
+    return { ok: false, error: 'The server is busy. Please try again in a moment.' };
+  }
+
+  try {
+    var outcome = subscribeEmail_(ss, email, name, 'Member newsletter banner', AUDIENCE_NEWSLETTER);
+    members.getRange(sheetRow, MEM_COL_NEWSLETTER_OPTIN).setValue(true);
+
     return {
       ok: true,
       alreadySubscribed: !!outcome.alreadySubscribed,

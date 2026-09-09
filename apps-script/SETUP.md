@@ -171,16 +171,27 @@ Publish.
 
 | Where someone typed it | Sender.net groups |
 |---|---|
-| Join the Club form — **Parent Email** | **Parents** *and* **Newsletter** |
+| Join the Club form — **Parent 1 Email** | **Parents** *and* **Newsletter** |
+| Join the Club form — **Parent 2 Email** (optional) | **Parents** *and* **Newsletter** |
 | Join the Club form — **Student Email** (optional) | **Students** *and* **Newsletter** |
 | **Get the Club Newsletter** box in the site footer | **Newsletter** only |
 | Event sign-up — **Parent/Guardian Email** | **Newsletter** only |
+| A logged-in member's dashboard "Sign up" banner (shown until they opt in) | **Newsletter** only |
 
 People who join the club go into Newsletter too, so one newsletter sent to the
 Newsletter group reaches everybody, while you can still write to just parents or
 just students when you need to. Someone who only used the footer box, or only
 signed up for one event, is in Newsletter alone — they have not joined the
 club.
+
+If the same address is typed into more than one of the Join form's three
+email fields, it is only ever subscribed once — under whichever field it was
+typed into first (Parent 1, then Parent 2, then Student).
+
+Any member who joined without checking the newsletter box sees a banner at
+the top of the site asking them to sign up; clicking it subscribes their own
+Parent/Student email (whichever is on file) to Newsletter, the same as
+everyone else who reaches that group.
 
 If the Join form's Student Email is typed as the same address as the Parent
 Email (no separate inbox for the kid), that address only gets **Parents** *and*

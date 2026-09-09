@@ -104,6 +104,12 @@ export interface SiteContent {
   resetPassword: (token: string, newPassword: string) => Promise<SimpleResult>;
   /** Adds an address to the Newsletter tab, which mirrors it into Sender.net. */
   subscribeNewsletter: (email: string, source?: string) => Promise<NewsletterResult>;
+  /**
+   * Same as `subscribeNewsletter`, but for a logged-in member who hasn't
+   * opted in — the server looks up the member's own email by session token
+   * rather than the caller supplying one.
+   */
+  subscribeMemberNewsletter: (sessionToken: string) => Promise<NewsletterResult>;
 }
 
 interface SheetPayload {
@@ -704,6 +710,30 @@ export function useSiteContent(): SiteContent {
     []
   );
 
+  const subscribeMemberNewsletter = useCallback(async (sessionToken: string): Promise<NewsletterResult> => {
+    if (!SHEET_API_URL) {
+      return { ok: false, error: 'The newsletter is not connected yet. Please check back soon.' };
+    }
+
+    try {
+      const response = await fetch(SHEET_API_URL, {
+        method: 'POST',
+        redirect: 'follow',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'subscribeMember', sessionToken })
+      });
+
+      if (!response.ok) return { ok: false, error: `The server returned HTTP ${response.status}.` };
+
+      return JSON.parse(await response.text()) as NewsletterResult;
+    } catch {
+      return {
+        ok: false,
+        error: 'Could not reach the sign-up server. Check your connection and try again.'
+      };
+    }
+  }, []);
+
   const sheetMissions = toMissions(payload?.events);
   const sheetAnnouncements = toAnnouncements(payload?.announcements);
   const sheetLabLogs = toLabLogs(payload?.labLogs);
@@ -732,6 +762,7 @@ export function useSiteContent(): SiteContent {
     verifyEmail,
     requestPasswordReset,
     resetPassword,
-    subscribeNewsletter
+    subscribeNewsletter,
+    subscribeMemberNewsletter
   };
 }

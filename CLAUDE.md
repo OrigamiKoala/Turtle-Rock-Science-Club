@@ -128,9 +128,11 @@ addresses into Sender.net, routed by where they came from:
 | Source | `audience` | Sender groups |
 |---|---|---|
 | Footer subscribe box | `newsletter` | **Newsletter** |
-| Join form, Parent Email | `parent` | **Parents** + **Newsletter** |
+| Join form, Parent 1 Email | `parent` | **Parents** + **Newsletter** |
+| Join form, Parent 2 Email (optional) | `parent` | **Parents** + **Newsletter** |
 | Join form, Student Email | `student` | **Students** + **Newsletter** |
 | Event sign-up, Parent Email | `newsletter` | **Newsletter** |
+| "You're not getting updates" banner | `newsletter` | **Newsletter** |
 
 Event sign-up deliberately uses the plain `newsletter` audience, not `parent`
 — RSVPing a kid into one event isn't joining the club, so that email
@@ -140,13 +142,37 @@ else who reaches **Newsletter**, just from a different `source` string
 (`'Event sign-up'`) for the same reason `audienceForRow_` cares about
 **Source** at all — see below.
 
-**A family that reuses the guardian's address as the "student email" during
-Join must not also land in Students.** `handleJoin_` skips the second
-`subscribeEmail_` call (the one that adds **Students** + **Newsletter**) when
-`studentEmail` normalises to the same address as the Parent 1 email — that
-address already got **Parents** + **Newsletter** from the first call, and it
-belongs to an adult, not a student, so it shouldn't carry the Students
-segment. Comparison is case-insensitive/trimmed via `normaliseEmail_`.
+**The same address typed into two Join fields only ever gets subscribed
+once, under whichever field it was seen in first.** `handleJoin_` tracks
+normalised (case-insensitive/trimmed via `normaliseEmail_`) addresses it has
+already subscribed in a plain object as it works through Parent 1 → Parent 2
+→ Student, in that order, and skips `subscribeEmail_` entirely for a later
+field whose address it has already seen. This is what stops a family that
+reuses the guardian's address as the "student email" (no separate inbox for
+the kid) from also landing in **Students** — that address already got
+**Parents** + **Newsletter** from the Parent 1 call, and it belongs to an
+adult, not a student. The same logic covers Parent 2 typing the same address
+as Parent 1 (or, less usefully but harmlessly, as the student).
+
+**Parent 2's email is optional and only subscribed if it looks like a valid
+email** (`isEmail_`) — unlike Parent 1 and Student, which the Join form
+requires client-side, so `handleJoin_` never validates their format itself.
+
+**A logged-in member who never opted in sees a dismissible banner at the top
+of every page** (`App.tsx`, right below the `showConfirmedBanner` block)
+offering a "Sign up" button. Clicking it hits a new `subscribeMember` action
+(`handleSubscribeMember_` in `Code.gs`) — the *session token*, not a typed
+email, identifies the member; the handler looks up their own Parent/Student
+email from their Members row (`pickAccountEmail_`, same "prefer the guardian's
+address" rule used for account-verification emails) and calls the exact same
+`subscribeEmail_(..., AUDIENCE_NEWSLETTER)` the footer box uses, then flips
+that member's **Newsletter Opt-In** column to `true` so the banner stays gone
+on future logins/devices too, not just in this browser. Dismissing the banner
+without subscribing is separate and purely local: `tr_sc_newsletter_banner_dismissed`
+in localStorage, permanent until cleared, alongside the site's other `tr_sc_*`
+keys (see "Site conventions"). Reuses the same `ConfirmEmailModal` as
+everywhere else, skipped if `alreadySubscribed` comes back true (mirrors the
+footer box's own handling of that case).
 
 **Campaigns go to the Confirmed *segment*, never to a raw group.**
 `senderSubscribe_` writes every signup straight into its audience groups, so
@@ -283,7 +309,9 @@ has the remainder to do.
   `tr_sc_game_progress` (per-game solved-level indices, see "Minigames"
   below), `tr_sc_cave_best` (SF Cave's personal-best distance — that game has
   no discrete levels, so its high score lives outside `tr_sc_game_progress`),
-  `tr_sc_titration_progress` (per-module progress, trials notebook, and mystery samples).
+  `tr_sc_titration_progress` (per-module progress, trials notebook, and mystery samples),
+  `tr_sc_newsletter_banner_dismissed` (permanently hides the "you're not
+  signed up for updates" member banner once closed — see "Newsletter" above).
   Clear `tr_sc_sheet_content_v1` when testing a fresh publish.
 - FAQ copy, press mentions, and the seed gallery photos are static site
   content unrelated to the Sheet. They live inline as local constants in

@@ -21,7 +21,7 @@ import LoginModal from './components/LoginModal';
 import ResetPasswordModal from './components/ResetPasswordModal';
 import SignupModal from './components/SignupModal';
 
-import { Trophy, Star, MailCheck, X } from 'lucide-react';
+import { Trophy, Star, MailCheck, Mail, X, Loader2 } from 'lucide-react';
 
 export default function App() {
   const [pathname, setPathname] = useState<string>(() => window.location.pathname);
@@ -48,6 +48,15 @@ export default function App() {
   // pages a visitor sees otherwise.
   const [emailVerifiedBanner, setEmailVerifiedBanner] = useState<'success' | 'error' | null>(null);
   const [resetToken, setResetToken] = useState<string | null>(null);
+
+  // Permanent once dismissed — a member who closes this shouldn't see it
+  // again next visit, only if they explicitly opt in (which also hides it,
+  // since the banner's own condition below requires `!newsletterSubscribed`).
+  const [newsletterBannerDismissed, setNewsletterBannerDismissed] = useState<boolean>(() => {
+    try { return localStorage.getItem('tr_sc_newsletter_banner_dismissed') === '1'; } catch { return false; }
+  });
+  const [subscribingFromBanner, setSubscribingFromBanner] = useState<boolean>(false);
+  const [newsletterBannerError, setNewsletterBannerError] = useState<string | null>(null);
 
   useEffect(() => {
     const handlePopState = () => {
@@ -245,6 +254,29 @@ export default function App() {
 
   const isLoggedIn = userProfile.level > 0 && !!userProfile.name && !!userProfile.school;
 
+  const dismissNewsletterBanner = () => {
+    setNewsletterBannerDismissed(true);
+    try { localStorage.setItem('tr_sc_newsletter_banner_dismissed', '1'); } catch {}
+  };
+
+  const handleBannerNewsletterSignUp = async () => {
+    if (subscribingFromBanner || !sessionToken) return;
+    setSubscribingFromBanner(true);
+    setNewsletterBannerError(null);
+    const result = await content.subscribeMemberNewsletter(sessionToken);
+    setSubscribingFromBanner(false);
+
+    if (!result.ok) {
+      setNewsletterBannerError(result.error ?? 'Something went wrong. Please try again.');
+      return;
+    }
+
+    setUserProfile((prev) => ({ ...prev, newsletterSubscribed: true }));
+    // Only brand-new subscribers get a confirmation email — same reasoning
+    // as the footer box's `alreadySubscribed` branch.
+    if (!result.alreadySubscribed) setShowConfirmEmailModal(true);
+  };
+
   const handleSignUp = async (mission: Mission) => {
     const alreadyReserved = signedUpIds.includes(mission.id);
     if (!isLoggedIn || alreadyReserved) { setSignupMission(mission); return; }
@@ -313,6 +345,41 @@ export default function App() {
               onClick={() => setShowConfirmedBanner(false)}
               aria-label="Dismiss"
               className="p-1.5 rounded-full hover:bg-[#14351F]/10 transition cursor-pointer shrink-0"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {isLoggedIn && !userProfile.newsletterSubscribed && !newsletterBannerDismissed && (
+        <div className="relative z-20 bg-[#1F3A42] text-[#FBF7EC]">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center gap-3">
+            <Mail className="w-6 h-6 shrink-0 text-[#F2C94C]" strokeWidth={2} />
+            <div className="flex-1 text-left">
+              <p className="font-display font-bold text-sm sm:text-base leading-tight">
+                You're not signed up for club updates
+              </p>
+              <p className="text-xs sm:text-sm leading-snug mt-0.5 text-[#FBF7EC]/80">
+                You'll miss session announcements and sign-up links until you join the newsletter.
+              </p>
+              {newsletterBannerError && (
+                <p className="text-xs sm:text-sm leading-snug mt-1 text-[#E4574B] font-bold">{newsletterBannerError}</p>
+              )}
+            </div>
+            <button
+              id="newsletter-banner-signup"
+              onClick={handleBannerNewsletterSignUp}
+              disabled={subscribingFromBanner}
+              className="shrink-0 px-4 py-2 rounded-full font-display font-bold text-xs sm:text-sm transition flex items-center gap-1.5 cursor-pointer bg-[#6CC24A] text-[#14351F] shadow-[0_3px_0_#4C9A3A] disabled:opacity-60 disabled:cursor-wait"
+            >
+              {subscribingFromBanner ? (<><Loader2 className="w-3.5 h-3.5 animate-spin" />Signing up…</>) : ('Sign up')}
+            </button>
+            <button
+              id="dismiss-newsletter-banner"
+              onClick={dismissNewsletterBanner}
+              aria-label="Dismiss"
+              className="p-1.5 rounded-full hover:bg-white/10 transition cursor-pointer shrink-0"
             >
               <X className="w-5 h-5" />
             </button>
