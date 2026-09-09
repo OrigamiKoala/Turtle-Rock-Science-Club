@@ -282,21 +282,33 @@ has the remainder to do.
 
 ## Site conventions
 
-- **Every full-screen modal overlay (`fixed inset-0 ... backdrop-blur-*`) also
-  carries `[transform:translateZ(0)]`.** WebKit has a real bug where a
-  `position: fixed` element that also has `backdrop-filter` (Tailwind's
-  `backdrop-blur-*`) stops tracking the viewport on scroll and instead stays
-  pinned to wherever it was in the *document* — it looks exactly like a
-  z-index/stacking bug (the header and page content above it render
-  unaffected, undimmed, while the modal's backdrop only covers a band
-  partway down the page) but isn't one; every modal here already has a
-  correct, unambiguously-highest z-index. Forcing the element onto its own
-  GPU compositing layer with a no-op transform is the standard fix. Don't
-  remove it as a "no-op leftover" — `ConfirmEmailModal`, `SignupModal`,
-  `LoginModal`, `ResetPasswordModal`, `LabLogAnnouncements`'s log modal, and
-  `App.tsx`'s level-up modal all need it. `Header` doesn't, only because
-  `motion.header`'s `y` value already forces it onto its own layer via an
-  inline `transform` — that's incidental, not a pattern to rely on elsewhere.
+- **No full-screen modal overlay (`fixed inset-0 ...`) uses `backdrop-blur-*`,
+  and that's deliberate — don't add it back.** Combining `position: fixed`
+  with `backdrop-filter` on a conditionally-mounted element (every modal here
+  is `{show && <Modal/>}`, unmounted outright rather than hidden) hits a real
+  Chromium bug: when the element unmounts with no CSS transition-out to
+  signal the compositor, its GPU-composited backdrop-filter layer can be left
+  on screen as a stale frame — the pixels stay visible even though the DOM
+  node is already gone (confirmed by DevTools: searching the Elements panel
+  for the still-visible modal's own `id` found nothing, while the visually
+  "dimmed" area was actually still hit-testing to whatever's underneath it,
+  e.g. `Hero`'s content). It looks exactly like a z-index/stacking bug or a
+  positioning bug — every modal here already has a correct, unambiguously
+  highest z-index and no ancestor establishes a wrong containing block — but
+  it's neither; the element simply isn't there anymore, only its old paint
+  is. The fix that was tried first, forcing the element onto its own
+  compositing layer via a no-op `[transform:translateZ(0)]`, does not help
+  (it doesn't address layer retention, and this bug reproduces in Chrome, not
+  the Safari `fixed`+`backdrop-filter`-while-scrolling bug that hack targets)
+  — don't reintroduce it. The actual fix is to drop `backdrop-filter`
+  entirely and lean on a plain translucent background instead (bumped a bit
+  higher in opacity than while blur was doing part of the visual work) —
+  `ConfirmEmailModal`, `SignupModal`, `LoginModal`, `ResetPasswordModal`,
+  `LabLogAnnouncements`'s log modal, and `App.tsx`'s level-up modal all made
+  this switch. `Header`'s `backdrop-blur-xl` is unaffected by any of this —
+  it's mounted once for the life of the app and never unmounts, so the
+  layer-retention trigger (unmount without a transition-out) never applies to
+  it.
 - **`STYLE.md` is the brand/style guide** — palette (with dark-mode
   counterparts and measured contrast), type scale, component recipes, motion,
   iconography, and voice. Read it before adding UI or writing visitor-facing

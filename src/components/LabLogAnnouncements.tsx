@@ -113,7 +113,7 @@ export default function LabLogAnnouncements({ logs, announcements, contentStatus
 
       {activeLog && (
         <div
-          className="fixed inset-0 z-[100] overflow-y-auto bg-[#1F3A42]/60 backdrop-blur-md [transform:translateZ(0)] flex items-center justify-center p-4 sm:p-6"
+          className="fixed inset-0 z-[100] overflow-y-auto bg-[#1F3A42]/75 flex items-center justify-center p-4 sm:p-6"
           onClick={(e) => {
             if (e.target === e.currentTarget) setActiveLogId(null);
           }}
