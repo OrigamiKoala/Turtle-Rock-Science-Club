@@ -47,7 +47,7 @@ export default function ResetPasswordModal({ token, onClose, onResetPassword }: 
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-[#1F3A42]/60 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-[#1F3A42]/60 will-change-transform flex items-center justify-center p-4">
       <div
         id="reset-password-modal"
         className="w-full max-w-md rounded-[28px] overflow-hidden shadow-2xl bg-[#FBF7EC] flex flex-col justify-between animate-fade-in"

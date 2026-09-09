@@ -63,7 +63,7 @@ export default function SignupModal({ mission, onClose, onSubmit, onSuccess }: S
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-[#1F3A42]/60 flex items-center justify-center p-4" onClick={onClose} role="dialog" aria-modal="true" aria-label={`Sign up for ${mission.title}`}>
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-[#1F3A42]/60 will-change-transform flex items-center justify-center p-4" onClick={onClose} role="dialog" aria-modal="true" aria-label={`Sign up for ${mission.title}`}>
       <div className="bg-[#FBF7EC] rounded-[24px] w-full max-w-md shadow-2xl animate-fade-in overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="p-5 flex items-start justify-between gap-4 bg-white border-b-2 border-[#1F3A42]/8">
           <div className="text-left min-w-0">

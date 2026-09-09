@@ -22,7 +22,7 @@ export default function ConfirmEmailModal({ onClose }: ConfirmEmailModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-[60] overflow-y-auto bg-[#1F3A42]/75 flex items-center justify-center p-4"
+      className="fixed inset-0 z-[60] overflow-y-auto bg-[#1F3A42]/75 will-change-transform flex items-center justify-center p-4"
       onClick={onClose}
       role="dialog"
       aria-modal="true"

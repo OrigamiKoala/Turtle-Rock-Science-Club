@@ -282,33 +282,55 @@ has the remainder to do.
 
 ## Site conventions
 
-- **No full-screen modal overlay (`fixed inset-0 ...`) uses `backdrop-blur-*`,
-  and that's deliberate — don't add it back.** Combining `position: fixed`
-  with `backdrop-filter` on a conditionally-mounted element (every modal here
-  is `{show && <Modal/>}`, unmounted outright rather than hidden) hits a real
-  Chromium bug: when the element unmounts with no CSS transition-out to
-  signal the compositor, its GPU-composited backdrop-filter layer can be left
-  on screen as a stale frame — the pixels stay visible even though the DOM
-  node is already gone (confirmed by DevTools: searching the Elements panel
-  for the still-visible modal's own `id` found nothing, while the visually
-  "dimmed" area was actually still hit-testing to whatever's underneath it,
-  e.g. `Hero`'s content). It looks exactly like a z-index/stacking bug or a
-  positioning bug — every modal here already has a correct, unambiguously
-  highest z-index and no ancestor establishes a wrong containing block — but
-  it's neither; the element simply isn't there anymore, only its old paint
-  is. The fix that was tried first, forcing the element onto its own
-  compositing layer via a no-op `[transform:translateZ(0)]`, does not help
-  (it doesn't address layer retention, and this bug reproduces in Chrome, not
-  the Safari `fixed`+`backdrop-filter`-while-scrolling bug that hack targets)
-  — don't reintroduce it. The actual fix is to drop `backdrop-filter`
-  entirely and lean on a plain translucent background instead (bumped a bit
-  higher in opacity than while blur was doing part of the visual work) —
+- **Every full-screen modal overlay (`fixed inset-0 ...`) carries
+  `will-change-transform`, and none of them use `backdrop-blur-*`.** Both
+  are fixes for two *separate*, confirmed-via-DevTools Chromium compositor
+  bugs that this exact pattern (a `fixed inset-0` div, conditionally mounted
+  as `{show && <Modal/>}` rather than hidden/animated out) hits, and both
+  looked identical to a z-index/stacking bug from a screenshot alone —
+  every modal here already has a correct, unambiguously highest z-index, so
+  don't "fix" this again by touching z-index:
+  1. **Paint-vs-layout desync when the page is already scrolled at mount
+     time.** `getBoundingClientRect()` on the wrapper reported the fully
+     correct, scroll-independent box (`position: fixed; top: 0`, exactly
+     `{x:0, y:0, width: <viewport width>, height: <viewport height>}`) —
+     but the *rendered pixels* were visibly offset downward by almost
+     exactly `window.scrollY` at the time, as if the compositor grabbed the
+     newly-inserted fixed layer into the page's already-scrolled bitmap
+     instead of giving it its own scroll-independent layer. `will-change:
+     transform` (Tailwind's `will-change-transform`) forces a dedicated
+     compositing layer up front and fixes it. This is why `Header` never
+     shows either bug without needing this class itself: `motion.header`'s
+     `y` value already gives it an inline `transform`, which has the same
+     layer-promoting effect incidentally.
+  2. **Stale frame left on screen after the element unmounts.** With no CSS
+     transition-out, a `backdrop-filter` (`backdrop-blur-*`) layer can be
+     left composited on screen after its element is already gone from the
+     DOM — confirmed by searching the Elements panel for the still-visible
+     modal's own `id`, which found nothing, while the "dimmed" area was
+     still hit-testing to whatever was actually underneath it (e.g.
+     `Hero`'s content). Removing `backdrop-filter` entirely removes this bug
+     category; the visual effect is a plain translucent background instead
+     (bumped a bit higher in opacity than while blur was doing part of the
+     visual work).
+
   `ConfirmEmailModal`, `SignupModal`, `LoginModal`, `ResetPasswordModal`,
-  `LabLogAnnouncements`'s log modal, and `App.tsx`'s level-up modal all made
-  this switch. `Header`'s `backdrop-blur-xl` is unaffected by any of this —
-  it's mounted once for the life of the app and never unmounts, so the
-  layer-retention trigger (unmount without a transition-out) never applies to
-  it.
+  `LabLogAnnouncements`'s log modal, and `App.tsx`'s level-up modal all need
+  both. `Header`'s `backdrop-blur-xl` is fine to leave alone — it's mounted
+  once for the life of the app and never unmounts, so bug 2's trigger
+  (unmount without a transition-out) never applies to it, and its own
+  `transform` already covers bug 1.
+
+  Earlier passes at this bug got the diagnosis wrong twice before landing
+  here — first blaming a Safari-only `fixed`+`backdrop-filter`-while-
+  scrolling quirk (the reporter was on Chrome, so `will-change-transform`
+  did nothing on its own the first time it was tried, for the wrong
+  reason), then, after removing `backdrop-filter` alone fixed bug 2, wrongly
+  concluding bug 1 didn't exist because the *symptom looked identical* in a
+  screenshot. It took an actual `getBoundingClientRect()` + `scrollY`
+  reading in DevTools to tell the two bugs apart — if this regresses again,
+  get that reading again before changing anything, rather than trusting how
+  it looks in a static screenshot.
 - **`STYLE.md` is the brand/style guide** — palette (with dark-mode
   counterparts and measured contrast), type scale, component recipes, motion,
   iconography, and voice. Read it before adding UI or writing visitor-facing

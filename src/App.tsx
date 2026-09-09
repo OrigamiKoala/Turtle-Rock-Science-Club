@@ -536,7 +536,7 @@ export default function App() {
       )}
 
       {showLevelUpAlert && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-[#1F3A42]/65 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-[#1F3A42]/65 will-change-transform flex items-center justify-center p-4">
           <div className="bg-[#FBF7EC] border-2 border-[#F2C94C]/60 rounded-[28px] p-8 max-w-sm text-center relative shadow-2xl space-y-4 animate-fade-in">
             <div className="absolute -top-12 left-1/2 -translate-x-1/2 p-4 bg-[#F2C94C] text-[#4A3900] rounded-full shadow-lg ring-4 ring-[#F2C94C]/40">
               <Trophy className="w-10 h-10" />
