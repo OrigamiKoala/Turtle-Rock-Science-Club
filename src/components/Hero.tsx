@@ -144,15 +144,8 @@ interface HeroProps {
 // Moment 7's own internal spacing (relative to CARDS_FADE_START) is
 // likewise unchanged in absolute terms — only its start got pushed out to
 // make room.
-const BUBBLE_END = 0.024;
-const TITLE_LIT_END = 0.018;
-const CTA_START = 0.008;
-const CTA_END = 0.021;
-// The "Scroll" hint used to fade out by 0.007 — i.e. the instant any scroll
-// input arrived at all, which on a scrub means the moment the visitor so much
-// as twitches the wheel. It now holds through the whole opening beat and the
-// lit-title moment that follows, and leaves with the title itself, so it is
-// still there while the invitation it makes is still the point.
+// The landing screen starts directly at the lit "Turtle Rock Science Club"
+// title with navbar visible and Join button up.
 const TITLE_EXIT_START = 0.029;
 const TITLE_EXIT_END = 0.049;
 // Both this and the title's exit are translate-based (see titleGroupExitY/
@@ -237,21 +230,14 @@ const EXPLORE_LIT = cardsGlobal(SPOTLIGHT_P1 + SPOTLIGHT_HALF);
 const JOIN_LIT = cardsGlobal(SPOTLIGHT_P2 + SPOTLIGHT_HALF);
 
 export const HERO_STOPS = [
-  // 1. The landing frame: title dim, bubbles below the fold, no button yet.
-  //    The opening beat is the visitor's first scroll — the bubbles rise
-  //    under their hand, they don't play themselves. Auto-playing it on mount
-  //    was tried while the sequence still snapped between moments (a snap
-  //    can't rest on a half-finished frame, so the beat had nowhere to live)
-  //    and was reported straight back: "it just automatically goes up now".
-  //    Scrubbing has no such constraint, so it went back on the scroll axis.
-  0,
-  TITLE_EXIT_START,    // 2. "Turtle Rock Science Club", lit, Join button up
-  SCIENCE_ENTER_END,   // 3. "It's more than just Science."
-  MORPH_END,           // 4. "It's a community." (+ the carousel strip)
-  COMMUNITY_EXIT_END,  // 5. Cards in, spotlight on Learn
-  EXPLORE_LIT,         // 6. Spotlight on Explore
-  JOIN_LIT,            // 7. Spotlight on Join a community
-  SEQUENCE_END         // 8. Bubbles back + "Let's Explore Science" + sign-up
+  // 1. The landing frame: "Turtle Rock Science Club", lit, Join button up, navbar visible
+  TITLE_EXIT_START,
+  SCIENCE_ENTER_END,   // 2. "It's more than just Science."
+  MORPH_END,           // 3. "It's a community." (+ the carousel strip)
+  COMMUNITY_EXIT_END,  // 4. Cards in, spotlight on Learn
+  EXPLORE_LIT,         // 5. Spotlight on Explore
+  JOIN_LIT,            // 6. Spotlight on Join a community
+  SEQUENCE_END         // 7. Bubbles back + "Let's Explore Science" + sign-up
 ];
 
 // `weight` is how much this hand-off costs relative to the others — both in
@@ -268,7 +254,6 @@ export const HERO_STOPS = [
 // `MAX_STEPS_PER_SEC`) — change that when the whole sequence is off, not
 // these, which are only about the balance between one moment and the next.
 export const HERO_TRANSITIONS = [
-  { from: 0, to: TITLE_EXIT_START, weight: 1 },
   { from: TITLE_EXIT_START, to: SCIENCE_ENTER_END, weight: 1.25 },
   { from: MORPH_START, to: MORPH_END, weight: 1 },
   { from: COMMUNITY_EXIT_START, to: COMMUNITY_EXIT_END, weight: 1.05 },
@@ -489,40 +474,6 @@ const BUBBLES: BubbleSpec[] = [
   { left: '68%', top: '78%', size: 105, delay: 0.06, travel: 1080, tint: '108,194,74', peak: 0.3 },
 ];
 
-const Bubble: React.FC<{ spec: BubbleSpec; progress: MotionValue<number> }> = ({ spec, progress }) => {
-  // A three-point range (rather than [start, BUBBLE_END]) so a bubble with
-  // delay > 0 holds still at y=0 until its turn instead of extrapolating
-  // early motion. The input array must be strictly increasing, so the
-  // scaled delay is nudged off 0.
-  const start = Math.max(0.001, spec.delay) * BUBBLE_END;
-  const y = useTransform(progress, [0, start, BUBBLE_END], [0, 0, -spec.travel]);
-  // Dim at rest, lights up over the same stretch of scroll as the title and
-  // Join button so the whole scene wakes up together.
-  const opacity = useTransform(progress, [0, TITLE_LIT_END], [spec.peak * 0.3, spec.peak]);
-  // Soft glass, not a cartoon sticker: a small white specular highlight, a
-  // faint tinted rim glow, and a barely-there overall wash, plus a thin
-  // translucent edge and soft shadow for roundness — meant to read as part
-  // of the panel's atmosphere, not a graphic sitting on top of it.
-  return (
-    <motion.div
-      className="absolute rounded-full pointer-events-none"
-      style={{
-        left: spec.left,
-        top: spec.top,
-        width: spec.size,
-        height: spec.size,
-        y,
-        opacity,
-        background: `radial-gradient(circle at 30% 25%, rgba(255,255,255,0.5), rgba(255,255,255,0) 32%),
-          radial-gradient(circle at 68% 72%, rgba(${spec.tint},0.55), rgba(${spec.tint},0) 48%),
-          radial-gradient(circle, rgba(228,245,218,0.12), rgba(228,245,218,0.02) 72%)`,
-        border: '1px solid rgba(228,245,218,0.16)',
-        boxShadow: `inset 0 0 ${Math.round(spec.size * 0.08)}px rgba(255,255,255,0.18), 0 0 ${Math.round(spec.size * 0.12)}px rgba(${spec.tint},0.15)`
-      }}
-    />
-  );
-};
-
 // The same bubbles "coming back" for the sequence's final moment — direct
 // request. Reuses the exact same BUBBLES specs (position, size, tint) rather
 // than a new set, so they read as the literal same bubbles returning, not a
@@ -659,12 +610,7 @@ export default function Hero({ onOpenJoin, progress, locked, photos }: HeroProps
   const enterTravel = exitTravel;
 
   // --- Moment 1: Turtle Rock Science Club ---
-  const titleOpacity = useTransform(progress, [0, TITLE_LIT_END], [0.55, 1]);
-  const titleBrightness = useTransform(progress, [0, TITLE_LIT_END], [0.75, 1.1]);
-  const titleFilter = useTransform(titleBrightness, (b) => `brightness(${b})`);
-  const ctaOpacity = useTransform(progress, [CTA_START, CTA_END], [0, 1]);
-  const ctaY = useTransform(progress, [CTA_START, CTA_END], [24, 0], { ease: DECEL_EASE });
-  const scrollHintOpacity = useTransform(progress, [0, TITLE_EXIT_START, TITLE_EXIT_END], [1, 1, 0]);
+  const scrollHintOpacity = useTransform(progress, [TITLE_EXIT_START, TITLE_EXIT_END], [1, 0]);
   // Title + Join button leave together, as one block — translated up and out
   // (not faded): this specific handoff is meant to read as scrolling between
   // two separate slides, per direct request reversing the earlier "fade in
@@ -827,12 +773,12 @@ export default function Hero({ onOpenJoin, progress, locked, photos }: HeroProps
   // --- Background: crossfades during each text transition, not before/after it ---
   const bgTop = useTransform(
     progress,
-    [0, TITLE_EXIT_END, SCIENCE_ENTER_END, MORPH_START, MORPH_END],
+    [TITLE_EXIT_START, TITLE_EXIT_END, SCIENCE_ENTER_END, MORPH_START, MORPH_END],
     ['#0B2A2E', '#0B2A2E', '#1F3A42', '#1F3A42', '#12181A']
   );
   const bgBottom = useTransform(
     progress,
-    [0, TITLE_EXIT_END, SCIENCE_ENTER_END, MORPH_START, MORPH_END],
+    [TITLE_EXIT_START, TITLE_EXIT_END, SCIENCE_ENTER_END, MORPH_START, MORPH_END],
     ['#123B38', '#123B38', '#14282e', '#14282e', '#1B2426']
   );
   const backgroundImage = useMotionTemplate`linear-gradient(to bottom, ${bgTop}, ${bgBottom})`;
@@ -898,10 +844,6 @@ export default function Hero({ onOpenJoin, progress, locked, photos }: HeroProps
           style={{ background: 'radial-gradient(ellipse at center, rgba(0,0,0,0) 35%, rgba(0,0,0,0.45) 100%)' }}
         />
 
-        {BUBBLES.map((spec, i) => (
-          <Bubble key={i} spec={spec} progress={progress} />
-        ))}
-
         <div className="relative z-10 h-full flex flex-col items-center justify-center px-4 text-center">
           {/* Moment 1 */}
           {/* `willChange: 'transform'` on this and the two other groups that
@@ -912,16 +854,16 @@ export default function Hero({ onOpenJoin, progress, locked, photos }: HeroProps
               purpose — will-change costs memory per layer, so it is not
               something to sprinkle on everything that happens to move. */}
           <motion.div style={{ y: titleGroupExitY, willChange: 'transform' }} className="flex flex-col items-center">
-            <motion.div style={{ opacity: titleOpacity, filter: titleFilter }} className="flex flex-col items-center">
+            <div style={{ filter: 'brightness(1.1)' }} className="flex flex-col items-center">
               <h1 className="font-hero font-extrabold uppercase tracking-tight text-[#FBF7EC] text-[20vw] sm:text-[17vw] md:text-[15vw] lg:text-[13vw] leading-[0.88]">
                 Turtle Rock
               </h1>
               <p className="font-hero italic font-bold text-[#8FE07A] text-[17vw] sm:text-[14vw] md:text-[12vw] lg:text-[10vw] mt-1 tracking-tight leading-[0.9]">
                 Science Club
               </p>
-            </motion.div>
+            </div>
 
-            <motion.div style={{ opacity: ctaOpacity, y: ctaY }} className="mt-10">
+            <div className="mt-10">
               {/* Bumped from the original px-7 py-3.5 text-sm to match Moment
                   7's "Sign Me Up!" button (hero-final-signup-btn) — direct
                   request: modestly bigger than before, not a dramatic jump,
@@ -935,7 +877,7 @@ export default function Hero({ onOpenJoin, progress, locked, photos }: HeroProps
                 <span>Join the Club</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
-            </motion.div>
+            </div>
           </motion.div>
 
           {/* Moments 2 & 3, absolutely stacked in the same slot the title

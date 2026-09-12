@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { motion, MotionValue, useMotionValue, useTransform } from 'motion/react';
 import { UserProfile } from '../types';
 import TurtleRockLogo from './TurtleRockLogo';
 import { Trophy, Menu, X, LogOut, LayoutDashboard } from 'lucide-react';
@@ -11,11 +10,7 @@ interface HeaderProps {
   onOpenJoin: () => void;
   onOpenLogin: () => void;
   onLogout: () => void;
-  /** Only passed on the missions/home tab, where the pill fades in as the
-   * user scrolls through the Hero intro (see useHeroScroll). Absent on every
-   * other tab, where the pill is just always visible — there's no intro to
-   * scroll through there. */
-  revealProgress?: MotionValue<number>;
+  hasTopBanner?: boolean;
 }
 
 export default function Header({
@@ -25,7 +20,7 @@ export default function Header({
   onOpenJoin,
   onOpenLogin,
   onLogout,
-  revealProgress
+  hasTopBanner = false
 }: HeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   // Replaces the old separate "exit" icon button next to the profile chip —
@@ -34,20 +29,6 @@ export default function Header({
   // dismissal, matching `menuOpen` above (the mobile drawer doesn't have one
   // either) — picking an item, or re-clicking the chip, closes it.
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
-
-  // Fully visible/interactive by default; only the home tab's revealProgress
-  // ties these to scroll position, fading the pill in behind the Hero intro
-  // — roughly alongside the Join button's own CTA_START/CTA_END window in
-  // Hero.tsx (kept as a separately-tuned local range rather than an import,
-  // like every other scroll-distance constant in this codebase, but it must
-  // be re-checked whenever Hero.tsx's phase constants are rescaled — it
-  // drifted out of sync once already when LOCK_DISTANCE grew and the whole
-  // sequence's fractions shrank under it).
-  const fallbackProgress = useMotionValue(1);
-  const source = revealProgress ?? fallbackProgress;
-  const revealOpacity = useTransform(source, [0.008, 0.021], [0, 1]);
-  const revealY = useTransform(source, [0.008, 0.021], [-16, 0]);
-  const revealPointerEvents = useTransform(revealOpacity, (o) => (o < 0.05 ? 'none' : 'auto'));
 
   const navItems = [
     { id: 'home', label: 'Home' },
@@ -60,9 +41,10 @@ export default function Header({
   ];
 
   return (
-    <motion.header
-      style={{ opacity: revealOpacity, y: revealY, pointerEvents: revealPointerEvents }}
-      className="fixed top-4 left-1/2 -translate-x-1/2 z-50 max-w-[calc(100vw-1.5rem)] rounded-full border border-[#E4F5DA]/12 bg-[#0B2A2E]/55 text-[#FBF7EC] backdrop-blur-xl shadow-[0_8px_30px_rgba(0,0,0,0.35)]"
+    <header
+      className={`fixed left-1/2 -translate-x-1/2 z-50 max-w-[calc(100vw-1.5rem)] rounded-full border border-[#E4F5DA]/12 bg-[#0B2A2E]/55 text-[#FBF7EC] backdrop-blur-xl shadow-[0_8px_30px_rgba(0,0,0,0.35)] transition-all duration-200 ${
+        hasTopBanner ? 'top-20 sm:top-18' : 'top-4'
+      }`}
     >
       {/* overflow-x-auto + the w-max row below is a safety net, not the
           primary fix (that's the xl: breakpoint and tighter spacing) — on
@@ -265,6 +247,6 @@ export default function Header({
           )}
         </div>
       )}
-    </motion.header>
+    </header>
   );
 }

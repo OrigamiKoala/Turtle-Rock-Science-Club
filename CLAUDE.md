@@ -186,6 +186,29 @@ until you do" into a lie. Do not "simplify" this by targeting the group
 directly. Nothing in this repo enforces it — it is a discipline in the Sender
 UI, which is why it is written down here.
 
+**The confirm-click automation must use *Copy* to group, never *Move*.**
+Audited 2026-09-12: the only way into **Confirmed** is the Sender automation
+"Confirm Email", triggered by a click on the exact URL
+`https://trscienceclub.org/?confirmed=1` — no form, no import, no segment and
+no code path in this repo ever writes to that group (`SENDER_GROUP_TITLES`
+covers Parents/Students/Newsletter only). That gate is correct and should stay
+that way.
+
+What was wrong was the *action*: it was set to **Move subscriber to another
+group**, which strips the subscriber out of Newsletter, Parents, Students and
+Account Verification on the way in. Confirming therefore deleted exactly the
+audience membership the `(audience group) AND Confirmed` segment depends on —
+31 of 37 confirmed people were left in **Confirmed and nothing else**. Changed
+to **Copy subscriber to another group** and the lost memberships were restored
+from the Newsletter tab's **Sender Groups** column. If you ever rebuild this
+automation, or activate the `?confirmed=2` / `?confirmed=3` drafts (Parent /
+Student Email Confirmation — both already use Copy), check the action before
+activating.
+
+Note also that a Sender **import** does not fire automations unless the
+"Trigger active automations upon import" box is ticked — that is what makes
+bulk group repair safe, and it is unticked by default.
+
 **The Join form only subscribes when the guardian ticks the newsletter box.**
 `JoinModal`'s opt-in checkbox defaults to unchecked and rides through as
 `newsletterOptIn`; `handleJoin_` records it in the Members tab's **Newsletter
@@ -684,6 +707,7 @@ All mathematical expressions, chemical formulas, reaction equations, and physica
 ## Hero Scroll
 
 `src/useHeroScroll.ts` drives the landing hero screen transitions:
+- Landing screen loads directly with navbar visible, "Turtle Rock Science Club" lit, and "Join the Club" CTA (no dimmed opening frame).
 - Light scroll gestures (`WHEEL_MIN_DELTA = 3`) immediately advance to the next screen and stop.
 - Per-gesture lock isolates trackpad inertia tails so a single scroll cannot advance past multiple screens.
 - Re-arms upon brief idle pause (~110ms), direction reversal, or distinct swipe acceleration, allowing rapid scrolling to proceed screen-by-screen.

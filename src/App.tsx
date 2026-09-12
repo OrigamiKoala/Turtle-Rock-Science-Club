@@ -38,10 +38,7 @@ export default function App() {
   // link doesn't show the banner again.
   const [showConfirmedBanner, setShowConfirmedBanner] = useState<boolean>(false);
 
-  // Lives here rather than inside JoinPage: JoinPage is a full separate
-  // screen (see isJoinPage below) that renders instead of this component's
-  // main tree, so a modal mounted inside it would never actually show —
-  // it only appears once the visitor navigates back to the main site.
+  // Shown immediately when someone registers an account or signs up for the newsletter.
   const [showConfirmEmailModal, setShowConfirmEmailModal] = useState<boolean>(false);
 
   // Set only when the URL is an emailed `?verify=`/`?reset=` link — neither
@@ -81,9 +78,8 @@ export default function App() {
   const isTitrationPage = pathname === '/titration' || pathname === '/titration/' || pathname.startsWith('/titration');
   const isJoinPage = pathname === '/join' || pathname.startsWith('/join');
   const isHomeHero = currentTab === 'home' && !isTitrationPage && !isJoinPage;
-  // Shared with Header so the floating nav pill fades in at the same intro
-  // progress the Hero's title/Join button do — one source of truth. Only
-  // active (listens for wheel/touch/key input, locks document scroll) while
+  // Drives the Hero scroll sequence across moments. Only active
+  // (listens for wheel/touch/key input, locks document scroll) while
   // isHomeHero is true.
   const { progress: heroProgress, locked: heroLocked } = useHeroScroll(isHomeHero);
 
@@ -305,32 +301,39 @@ export default function App() {
   // /titration replaces the whole page rather than layering on top of it.
   if (isJoinPage) {
     return (
-      <JoinPage
-        // No explicit tab here on purpose: bailing out mid-wizard leaves
-        // whatever tab was active before (home, same as the site's
-        // default), but a successful join has already set currentTab to
-        // 'dashboard' via handleJoinSuccess by the time this fires from the
-        // done screen's "Go to the site" button — forcing 'home' here
-        // would silently undo that and land a brand-new member on the
-        // homepage instead of their own dashboard.
-        onClose={() => navigateTo('/')}
-        onJoinSuccess={handleJoinSuccess}
-        onJoinSubmit={async (details) => {
-          const result = await content.submitMemberJoin(details);
-          // Only opt-ins are pushed to Sender, so only they get a confirmation
-          // email to go looking for.
-          if (result.ok && details.newsletterOptIn) setShowConfirmEmailModal(true);
-          return result;
-        }}
-      />
+      <>
+        <JoinPage
+          // No explicit tab here on purpose: bailing out mid-wizard leaves
+          // whatever tab was active before (home, same as the site's
+          // default), but a successful join has already set currentTab to
+          // 'dashboard' via handleJoinSuccess by the time this fires from the
+          // done screen's "Go to the site" button — forcing 'home' here
+          // would silently undo that and land a brand-new member on the
+          // homepage instead of their own dashboard.
+          onClose={() => navigateTo('/')}
+          onJoinSuccess={handleJoinSuccess}
+          onJoinSubmit={async (details) => {
+            const result = await content.submitMemberJoin(details);
+            if (result.ok) setShowConfirmEmailModal(true);
+            return result;
+          }}
+        />
+        {showConfirmEmailModal && <ConfirmEmailModal onClose={() => setShowConfirmEmailModal(false)} />}
+      </>
     );
   }
+
+  const hasTopBanner = Boolean(
+    showConfirmedBanner ||
+    emailVerifiedBanner ||
+    (isLoggedIn && !userProfile.newsletterSubscribed && !newsletterBannerDismissed)
+  );
 
   return (
     <div className="min-h-screen flex flex-col justify-between font-sans bg-[#FBF7EC] text-[#1F3A42] relative overflow-hidden bg-dot-pattern">
 
       {showConfirmedBanner && (
-        <div className="relative z-20 bg-[#6CC24A] text-[#14351F]">
+        <div className="sticky top-0 z-[55] w-full bg-[#6CC24A] text-[#14351F] shadow-md">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center gap-3">
             <MailCheck className="w-6 h-6 shrink-0" strokeWidth={2} />
             <div className="flex-1 text-left">
@@ -353,8 +356,29 @@ export default function App() {
         </div>
       )}
 
+      {emailVerifiedBanner && (
+        <div className={`sticky top-0 z-[55] w-full shadow-md ${emailVerifiedBanner === 'success' ? 'bg-[#6CC24A] text-[#14351F]' : 'bg-red-100 text-red-700'}`}>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center gap-3">
+            <MailCheck className="w-6 h-6 shrink-0" strokeWidth={2} />
+            <div className="flex-1 text-left">
+              <p className="font-display font-bold text-sm sm:text-base leading-tight">
+                {emailVerifiedBanner === 'success' ? 'Email verified!' : 'That verification link is invalid or expired.'}
+              </p>
+            </div>
+            <button
+              id="dismiss-verified-banner"
+              onClick={() => setEmailVerifiedBanner(null)}
+              aria-label="Dismiss"
+              className="p-1.5 rounded-full hover:bg-black/10 transition cursor-pointer shrink-0"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {isLoggedIn && !userProfile.newsletterSubscribed && !newsletterBannerDismissed && (
-        <div className="relative z-20 bg-[#1F3A42] text-[#FBF7EC]">
+        <div className="sticky top-0 z-[55] w-full bg-[#1F3A42] text-[#FBF7EC] border-b border-[#E4F5DA]/15 shadow-md">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center gap-3">
             <Mail className="w-6 h-6 shrink-0 text-[#F2C94C]" strokeWidth={2} />
             <div className="flex-1 text-left">
@@ -410,7 +434,7 @@ export default function App() {
             onOpenJoin={() => navigateTo('/join')}
             onOpenLogin={() => setShowLoginModal(true)}
             onLogout={handleLogout}
-            revealProgress={isHomeHero ? heroProgress : undefined}
+            hasTopBanner={hasTopBanner}
           />
 
           {/* Every tab's content enters through the same fade-and-rise (see
@@ -426,7 +450,7 @@ export default function App() {
               would make it resolve against that ancestor rather than the
               viewport for the length of the animation. Its variant fades
               without the slide for exactly that reason — see the CSS. */}
-          <main className={`flex-1 pb-10 ${isHomeHero ? '' : 'pt-24'}`}>
+          <main className={`flex-1 pb-10 ${isHomeHero ? '' : hasTopBanner ? 'pt-36' : 'pt-24'}`}>
             {currentTab === 'home' ? (
               <div key="home" className="animate-tab-in-fade">
                 <Hero
@@ -513,27 +537,6 @@ export default function App() {
           onClose={() => setResetToken(null)}
           onResetPassword={content.resetPassword}
         />
-      )}
-
-      {emailVerifiedBanner && (
-        <div className={`relative z-20 ${emailVerifiedBanner === 'success' ? 'bg-[#6CC24A] text-[#14351F]' : 'bg-red-100 text-red-700'}`}>
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center gap-3">
-            <MailCheck className="w-6 h-6 shrink-0" strokeWidth={2} />
-            <div className="flex-1 text-left">
-              <p className="font-display font-bold text-sm sm:text-base leading-tight">
-                {emailVerifiedBanner === 'success' ? 'Email verified!' : 'That verification link is invalid or expired.'}
-              </p>
-            </div>
-            <button
-              id="dismiss-verified-banner"
-              onClick={() => setEmailVerifiedBanner(null)}
-              aria-label="Dismiss"
-              className="p-1.5 rounded-full hover:bg-black/10 transition cursor-pointer shrink-0"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
       )}
 
       {showLevelUpAlert && createPortal(
