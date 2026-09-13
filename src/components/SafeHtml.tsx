@@ -143,16 +143,28 @@ export function parseMarkdownToHtml(text: string): string {
 
   html = processedLines.join('\n');
 
-  // Line breaks
-  html = html.replace(/\n\n/g, '<br /><br />').replace(/\n/g, '<br />');
+  // If the text is primarily an HTML snippet with block elements, avoid converting single \n to <br />
+  // as it ruins table structures, grid containers, and flex layouts.
+  const hasBlockHtml = /<(?:div|table|section|article|tbody|tr|td|thead|ul|ol|header|footer)\b/i.test(working);
+  if (!hasBlockHtml) {
+    html = html.replace(/\n\n/g, '<br /><br />').replace(/\n/g, '<br />');
+  }
 
   // Swap HTML tags back in
   html = html.replace(/%%%TRSCHTMLTAG(\d+)%%%/g, (_, index) => htmlTagReplacements[Number(index)] ?? '');
 
+  // Clean up unwanted <br /> tags around block-level HTML tags so tables, divs, headings, and lists
+  // do not get broken or double-spaced by line breaks in raw HTML input.
+  const BLOCK_TAGS = 'address|article|aside|blockquote|dd|div|dl|dt|fieldset|figcaption|figure|footer|form|h[1-6]|header|hr|li|main|nav|ol|p|pre|section|table|tfoot|thead|tbody|tr|th|td|ul';
+  html = html.replace(new RegExp(`(<(?:${BLOCK_TAGS})\\b[^>]*>)(?:\\s*<br\\s*\\/?>)+`, 'gi'), '$1');
+  html = html.replace(new RegExp(`(?:<br\\s*\\/?>\\s*)+(<\\/(?:${BLOCK_TAGS})>)`, 'gi'), '$1');
+  html = html.replace(new RegExp(`(<\\/(?:${BLOCK_TAGS})>)(?:\\s*<br\\s*\\/?>)+`, 'gi'), '$1');
+  html = html.replace(new RegExp(`(?:<br\\s*\\/?>\\s*)+(<(?:${BLOCK_TAGS})\\b[^>]*>)`, 'gi'), '$1');
+
   // Sanitize the HTML to strip dangerous scripts, event handlers, and invalid tags
   if (typeof DOMPurify?.sanitize === 'function') {
     html = DOMPurify.sanitize(html, {
-      ADD_ATTR: ['target', 'rel'],
+      ADD_ATTR: ['target', 'rel', 'style', 'class', 'colspan', 'rowspan', 'width', 'align', 'cellpadding', 'cellspacing'],
     });
   }
 
@@ -169,7 +181,20 @@ export default function SafeHtml({ content, className = '', as: Component = 'div
 
   return (
     <Component
-      className={`[&_a]:text-[#4C9A3A] dark:[&_a]:text-[#6CC24A] [&_a]:underline [&_a:hover]:text-[#1F3A42] [&_ul]:list-disc [&_ul]:ml-4 [&_ol]:list-decimal [&_ol]:ml-4 ${className}`}
+      className={`[&_a]:text-[#4C9A3A] dark:[&_a]:text-[#6CC24A] [&_a]:underline [&_a:hover]:text-[#1F3A42] dark:[&_a:hover]:text-white
+        [&_ul]:list-disc [&_ul]:ml-4 [&_ol]:list-decimal [&_ol]:ml-4
+        [&_p]:mb-3 [&_p:last-child]:mb-0
+        [&_h1]:font-display [&_h1]:font-bold [&_h1]:text-2xl [&_h1]:text-[#1F3A42] dark:[&_h1]:text-white [&_h1]:mt-6 [&_h1]:mb-3
+        [&_h2]:font-display [&_h2]:font-bold [&_h2]:text-xl [&_h2]:text-[#1F3A42] dark:[&_h2]:text-white [&_h2]:mt-5 [&_h2]:mb-2.5
+        [&_h3]:font-display [&_h3]:font-bold [&_h3]:text-lg [&_h3]:text-[#1F3A42] dark:[&_h3]:text-[#8FE07A] [&_h3]:mt-4 [&_h3]:mb-2
+        [&_h4]:font-display [&_h4]:font-bold [&_h4]:text-base [&_h4]:text-[#1F3A42] dark:[&_h4]:text-white [&_h4]:mt-3 [&_h4]:mb-1.5
+        [&_table]:w-full [&_table]:border-collapse [&_table]:my-4 [&_table]:rounded-2xl [&_table]:overflow-hidden [&_table]:border [&_table]:border-[#1F3A42]/10 dark:[&_table]:border-white/10
+        [&_th]:p-3 [&_th]:text-left [&_th]:font-bold [&_th]:text-xs sm:[&_th]:text-sm [&_th]:bg-[#F5FAF2] dark:[&_th]:bg-[#1B2426] [&_th]:text-[#1F3A42] dark:[&_th]:text-white [&_th]:border-b [&_th]:border-[#1F3A42]/10 dark:[&_th]:border-white/10
+        [&_td]:p-3 [&_td]:text-xs sm:[&_td]:text-sm [&_td]:border-b [&_td]:border-[#1F3A42]/8 dark:[&_td]:border-white/5
+        [&_tr:last-child_td]:border-b-0
+        [&_img]:rounded-xl [&_img]:max-w-full [&_img]:h-auto [&_img]:my-3
+        [&_blockquote]:border-l-4 [&_blockquote]:border-[#4C9A3A] [&_blockquote]:pl-4 [&_blockquote]:py-1 [&_blockquote]:my-3 [&_blockquote]:italic
+        ${className}`}
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );

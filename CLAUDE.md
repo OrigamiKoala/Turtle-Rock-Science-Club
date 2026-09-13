@@ -274,7 +274,11 @@ Master Document study guide, parent volunteering & suggested donation, step-by-s
 event sign-up and account creation, site tour, and leadership team / school WhatsApp contacts).
 `01-info-recap.html` is the Issue 1 recap newsletter (contains all information from
 `00-welcome-letter.html` plus featured cartoon digital ink artwork below the header logo, dedicated Upcoming Events cards for the 9/19 Chemistry and Astronomy
-workshops, a "Science Tidbits" section exploring cool facts on next week's workshop topics, and a weekly "In the News" science digest section). `confirm-subscription.html` is the double opt-in confirmation email. Note: `docs/` is gitignored.
+workshops, a "Science Tidbits" section exploring cool facts on next week's workshop topics, and a weekly "In the News" science digest section). `01-lab-log-entry.html` is the web/responsive HTML version tailored for the Lab Log tab in Google Sheets (retains all Issue 1 sections, formatted cleanly without email boilerplate to fit comfortably under cell and JSON payload limits). `confirm-subscription.html` is the double opt-in confirmation email. Note: `docs/` is gitignored.
+
+`SafeHtml.tsx` parses markdown and rich HTML, stripping unwanted `<br />` tags around block-level elements (tables, headers, lists, divs) and sanitizing with DOMPurify while preserving layout styles, classes, and table attributes. `LabLogAnnouncements.tsx` renders entries in an expanded `max-w-3xl lg:max-w-4xl` modal with top-right and footer close buttons.
+
+**Newsletter Generation Skill:** `.agents/skills/trsc-newsletter-generator/` automates creating weekly newsletters from `docs/schedule.md`. It generates combined cartoon digital ink artwork using Nano Banana (`generate_image`), writes Science Tidbits for each topic, pulls recent discoveries via web search for In the News, and formats the newsletter without the onboarding program logistics while preserving the schedule, upcoming event cards, master doc link, and condensed contacts.
 
 ## Apps Script gotchas (all of these bit us)
 
@@ -722,3 +726,23 @@ All mathematical expressions, chemical formulas, reaction equations, and physica
 - Re-arms upon brief idle pause (~110ms), direction reversal, or distinct swipe acceleration, allowing rapid scrolling to proceed screen-by-screen.
 - Smoothly glides and stops at each resting moment.
 - At finale, forward scroll unlocks the document for natural page scrolling.
+
+## Lab Log & Newsletter Reader System
+
+- **Full-Height Reader Modal** (`src/components/LabLogAnnouncements.tsx`):
+  - `#log-detail-modal` is a unified scroll container (`max-h-[92vh] max-w-4xl lg:max-w-5xl`) with `overflow-y-auto`.
+  - Hero image and title are at the top of the scroll flow and scroll away naturally as the user reads down, giving 100% of the modal height to the content.
+  - Sticky close button (`#close-log-modal-btn`) floats in the top-right corner (`sticky top-0 z-30 pointer-events-none` container with `pointer-events-auto` button).
+  - Centered "Close Newsletter" button at the bottom of the article.
+- **SafeHtml HTML Snippet Handling** (`src/components/SafeHtml.tsx`):
+  - Automatically detects block HTML tags (`div`, `table`, `section`, etc.) to prevent corrupting tables and flex/grid layouts with unwanted `<br />` tags on newlines.
+- **Newsletter Design System** (`src/index.css`):
+  - `.trsc-newsletter-wrapper`: Base typography and theme-aware colors.
+  - `.trsc-card`, `.trsc-card-accent`, `.trsc-card-warning`: Distinct elevated surfaces (`#1B2426` in dark mode, `#FFFFFF` in light mode) with subtle borders and shadows.
+  - `.trsc-table-wrapper`, `.trsc-table`: Full-width responsive tables with styled headers, alternating row striping, and `.highlight-gold` row support.
+  - `.trsc-goals-grid`, `.trsc-goal-card`: Responsive 2x2 grid with green numbered badges.
+  - `.trsc-roadmap-list`, `.trsc-roadmap-row`, `.trsc-date-badge`: Clean timeline roadmap.
+  - `.trsc-grid-cards`, `.trsc-item-card`, `.trsc-topic-tag`: Structured cards for Science Tidbits and News.
+- **Newsletter 01 Post Code**:
+  - Saved in [docs/newsletter/01-lab-log-entry.html](file:///Users/carlliu/Turtle-Rock-Science-Club/docs/newsletter/01-lab-log-entry.html) for pasting into Google Sheets cell E2.
+

@@ -281,8 +281,24 @@ textarea:focus {
   background-color: rgba(108, 194, 74, 0.18) !important;
 }
 
+:root.dark .bg-\[\#F5FAF2\] {
+  background-color: rgba(108, 194, 74, 0.12) !important;
+}
+
+:root.dark .bg-\[\#FFF9EA\] {
+  background-color: rgba(232, 184, 75, 0.15) !important;
+}
+
+:root.dark .bg-\[\#FCFDFD\] {
+  background-color: #161F21 !important;
+}
+
 :root.dark .text-\[\#1F3A42\] {
   color: #E7EDE9 !important;
+}
+
+:root.dark .text-\[\#3D5259\] {
+  color: #A3B5AE !important;
 }
 
 :root.dark .text-\[\#4B6169\] {
@@ -297,6 +313,11 @@ textarea:focus {
   color: #8FE07A !important;
 }
 
+:root.dark .text-\[\#9A7318\],
+:root.dark .text-\[\#5C4A1F\] {
+  color: #F2C94C !important;
+}
+
 :root.dark .text-\[\#14351F\] {
   color: #14351F !important;
 }
@@ -307,6 +328,14 @@ textarea:focus {
 :root.dark .border-\[\#1F3A42\]\/10,
 :root.dark .border-\[\#1F3A42\]\/8 {
   border-color: rgba(255, 255, 255, 0.09) !important;
+}
+
+:root.dark .border-\[\#CBE6C5\] {
+  border-color: rgba(108, 194, 74, 0.35) !important;
+}
+
+:root.dark .border-\[\#E8B84B\] {
+  border-color: rgba(232, 184, 75, 0.45) !important;
 }
 
 /* Text inputs (join, signup, newsletter). Without this their border is dark on
@@ -375,4 +404,333 @@ textarea:focus {
 .game-robot .bg-white\/5,
 .game-adventure .bg-white\/5 {
   background-color: rgba(31, 58, 66, 0.04) !important;
+}
+
+/* ==========================================================================
+   TRSC Newsletter & Lab Log Styling System
+   Guarantees pristine magazine-quality presentation in light & dark mode
+   ========================================================================== */
+
+.trsc-newsletter-wrapper {
+  color: #3D5259;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.65;
+}
+
+:root.dark .trsc-newsletter-wrapper {
+  color: #93A6A0;
+}
+
+.trsc-newsletter-wrapper h2,
+.trsc-newsletter-wrapper h3,
+.trsc-newsletter-wrapper h4 {
+  font-family: var(--font-display, "Outfit", sans-serif);
+  font-weight: 700;
+  color: #1F3A42;
+  letter-spacing: -0.01em;
+}
+
+:root.dark .trsc-newsletter-wrapper h2,
+:root.dark .trsc-newsletter-wrapper h3,
+:root.dark .trsc-newsletter-wrapper h4 {
+  color: #E7EDE9;
+}
+
+.trsc-newsletter-wrapper strong {
+  color: #1F3A42;
+}
+
+:root.dark .trsc-newsletter-wrapper strong {
+  color: #FFFFFF;
+}
+
+/* Cards & Elevated Containers */
+.trsc-card {
+  background-color: #FFFFFF;
+  border: 1.5px solid rgba(31, 58, 66, 0.12);
+  border-radius: 20px;
+  padding: 22px 26px;
+  margin: 20px 0;
+  box-shadow: 0 4px 20px rgba(31, 58, 66, 0.04);
+}
+
+:root.dark .trsc-card {
+  background-color: #1B2426;
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+}
+
+.trsc-card-accent {
+  background-color: #F5FAF2;
+  border: 1.5px solid #CBE6C5;
+  border-radius: 20px;
+  padding: 22px 26px;
+  margin: 20px 0;
+}
+
+:root.dark .trsc-card-accent {
+  background-color: rgba(108, 194, 74, 0.1);
+  border-color: rgba(108, 194, 74, 0.3);
+}
+
+.trsc-card-warning {
+  background-color: #FFF9EA;
+  border: 1.5px solid #E8B84B;
+  border-radius: 20px;
+  padding: 22px 26px;
+  margin: 20px 0;
+}
+
+:root.dark .trsc-card-warning {
+  background-color: rgba(232, 184, 75, 0.12);
+  border-color: rgba(232, 184, 75, 0.35);
+}
+
+/* Section Headings */
+.trsc-section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-display, "Outfit", sans-serif);
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #1F3A42;
+  margin: 32px 0 14px 0;
+}
+
+:root.dark .trsc-section-title {
+  color: #FFFFFF;
+}
+
+.trsc-eyebrow {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #2E7D46;
+  margin-bottom: 8px;
+}
+
+:root.dark .trsc-eyebrow {
+  color: #6CC24A;
+}
+
+/* Core Goals Grid */
+.trsc-goals-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.trsc-goal-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background-color: rgba(31, 58, 66, 0.03);
+  font-size: 0.875rem;
+  line-height: 1.55;
+  border: 1px solid rgba(31, 58, 66, 0.06);
+}
+
+:root.dark .trsc-goal-card {
+  background-color: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+.trsc-goal-num {
+  font-weight: 800;
+  color: #2E7D46;
+  font-size: 1.05rem;
+  line-height: 1;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+:root.dark .trsc-goal-num {
+  color: #6CC24A;
+}
+
+/* Season Roadmap Timeline */
+.trsc-roadmap-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.trsc-roadmap-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background-color: rgba(31, 58, 66, 0.02);
+  border: 1px solid rgba(31, 58, 66, 0.06);
+  font-size: 0.875rem;
+}
+
+:root.dark .trsc-roadmap-row {
+  background-color: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+@media (min-width: 640px) {
+  .trsc-roadmap-row {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 18px;
+  }
+}
+
+.trsc-date-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+  background-color: #E4F5DA;
+  color: #2E7D46;
+  flex-shrink: 0;
+}
+
+:root.dark .trsc-date-badge {
+  background-color: rgba(108, 194, 74, 0.18);
+  color: #8FE07A;
+}
+
+.trsc-date-badge-gold {
+  background-color: #FFF0C2;
+  color: #8A6208;
+}
+
+:root.dark .trsc-date-badge-gold {
+  background-color: rgba(232, 184, 75, 0.22);
+  color: #F2C94C;
+}
+
+/* Table Styling (Workshop schedule, etc.) */
+.trsc-table-wrapper {
+  overflow-x: auto;
+  border-radius: 18px;
+  border: 1.5px solid rgba(31, 58, 66, 0.12);
+  margin: 18px 0 24px 0;
+  background-color: #FFFFFF;
+  box-shadow: 0 4px 16px rgba(31, 58, 66, 0.04);
+}
+
+:root.dark .trsc-table-wrapper {
+  border-color: rgba(255, 255, 255, 0.1);
+  background-color: #161F21;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+}
+
+.trsc-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.875rem;
+}
+
+.trsc-table th {
+  padding: 14px 18px;
+  font-weight: 700;
+  color: #1F3A42;
+  background-color: #F5FAF2;
+  border-bottom: 2px solid rgba(31, 58, 66, 0.12);
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+:root.dark .trsc-table th {
+  background-color: #1B2426;
+  color: #E7EDE9;
+  border-bottom-color: rgba(255, 255, 255, 0.12);
+}
+
+.trsc-table td {
+  padding: 13px 18px;
+  border-bottom: 1px solid rgba(31, 58, 66, 0.07);
+  color: #3D5259;
+  vertical-align: middle;
+}
+
+:root.dark .trsc-table td {
+  border-bottom-color: rgba(255, 255, 255, 0.06);
+  color: #93A6A0;
+}
+
+.trsc-table tr:last-child td {
+  border-bottom: none;
+}
+
+.trsc-table tr:nth-child(even) {
+  background-color: rgba(31, 58, 66, 0.015);
+}
+
+:root.dark .trsc-table tr:nth-child(even) {
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+.trsc-table tr:hover {
+  background-color: rgba(76, 154, 58, 0.05);
+}
+
+:root.dark .trsc-table tr:hover {
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+.trsc-table tr.highlight-gold {
+  background-color: #FFF9EA !important;
+}
+
+:root.dark .trsc-table tr.highlight-gold {
+  background-color: rgba(232, 184, 75, 0.15) !important;
+}
+
+/* Tidbits & News Cards Grid */
+.trsc-grid-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+  gap: 16px;
+  margin: 16px 0;
+}
+
+.trsc-item-card {
+  padding: 18px 20px;
+  border-radius: 16px;
+  background-color: #FFFFFF;
+  border: 1.5px solid rgba(31, 58, 66, 0.1);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+:root.dark .trsc-item-card {
+  background-color: #1B2426;
+  border-color: rgba(255, 255, 255, 0.09);
+}
+
+.trsc-topic-tag {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #2E7D46;
+  background-color: #E4F5DA;
+  padding: 3px 8px;
+  border-radius: 6px;
+  width: fit-content;
+}
+
+:root.dark .trsc-topic-tag {
+  color: #8FE07A;
+  background-color: rgba(108, 194, 74, 0.18);
 }

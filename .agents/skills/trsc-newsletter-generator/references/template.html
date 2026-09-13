@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Turtle Rock Science Club · {{TITLE}}</title>
+  <!--[if mso]><style>body,table,td,a{font-family:Arial,Helvetica,sans-serif !important}</style><![endif]-->
+  <style>
+    @media only screen and (max-width:620px) {
+      .wrap {
+        width: 100% !important;
+      }
+
+      .px {
+        padding-left: 22px !important;
+        padding-right: 22px !important;
+      }
+
+      .stack {
+        display: block !important;
+        width: 100% !important;
+        padding-right: 0 !important;
+        padding-bottom: 14px !important;
+      }
+
+      h1 {
+        font-size: 28px !important;
+        line-height: 34px !important;
+      }
+    }
+  </style>
+</head>
+
+<body style="margin:0;padding:0;background-color:#FBF7EC;-webkit-font-smoothing:antialiased;">
+  <!-- preheader -->
+  <div
+    style="display:none;font-size:1px;color:#FBF7EC;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">
+    {{PREHEADER}}
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#FBF7EC;">
+    <tr>
+      <td align="center" style="padding:28px 12px;">
+        <table role="presentation" class="wrap" width="600" cellpadding="0" cellspacing="0" border="0"
+          style="width:600px;max-width:600px;background-color:#ffffff;border-radius:24px;overflow:hidden;box-shadow:0 8px 24px rgba(31,58,66,0.06);">
+
+          <!-- HEADER -->
+          <tr>
+            <td align="center" style="background-color:#1F3A42;padding:34px 30px 30px 30px;">
+              <img src="https://trscienceclub.org/Logo.png" width="84" height="84" alt="Turtle Rock Science Club"
+                style="display:block;border:0;outline:none;text-decoration:none;width:84px;height:auto;margin-bottom:16px;">
+              <div
+                style="font-family:Georgia,'Times New Roman',serif;font-size:23px;line-height:30px;font-weight:bold;color:#ffffff;letter-spacing:-0.2px;">
+                Turtle Rock Science Club
+              </div>
+              <div
+                style="font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:16px;letter-spacing:2px;text-transform:uppercase;color:#6CC24A;padding-top:8px;">
+                Lab Log &nbsp;&middot;&nbsp;Issue No.&nbsp;{{ISSUE_NUM}}
+              </div>
+            </td>
+          </tr>
+
+          <!-- HERO ARTWORK -->
+          <tr>
+            <td align="center" style="padding:0;line-height:0;font-size:0;background-color:#1F3A42;">
+              <img src="{{HERO_IMAGE_URL}}" width="600" alt="{{ARTWORK_ALT}}"
+                style="display:block;width:100%;max-width:600px;height:auto;border:0;outline:none;text-decoration:none;">
+            </td>
+          </tr>
+
+          <!-- GREETING & CUSTOM MESSAGE PLACEHOLDER -->
+          <tr>
+            <td class="px" align="left"
+              style="padding:28px 44px 0 44px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:26px;color:#3D5259;">
+              <h1
+                style="margin:0 0 8px 0;font-family:Georgia,'Times New Roman',serif;font-size:32px;line-height:38px;font-weight:bold;color:#1F3A42;letter-spacing:-0.5px;">
+                Welcome to TRSC!
+              </h1>
+              <p style="margin:0 0 16px 0;">Hi there,</p>
+
+              <!-- EDITABLE CUSTOM MESSAGE -->
+              <div
+                style="margin:0 0 20px 0;background-color:#F5FAF2;border-left:4px solid #6CC24A;padding:14px 18px;border-radius:8px;color:#1F3A42;font-style:italic;">
+                [Custom organizer message, announcements, or reminders go here]
+              </div>
+            </td>
+          </tr>
+
+          <!-- UPCOMING EVENTS -->
+          <tr>
+            <td class="px" align="left" style="padding:20px 44px 0 44px;">
+              <div
+                style="font-family:Arial,Helvetica,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#4C9A3A;font-weight:bold;padding-bottom:12px;">
+                Upcoming events
+              </div>
+              {{UPCOMING_EVENT_CARDS}}
+              <p
+                style="margin:14px 0 0 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:22px;color:#4B6169;">
+                Spots are limited, so please reserve your spot on the website.
+              </p>
+            </td>
+          </tr>
+
+          <!-- SCIENCE TIDBITS -->
+          <tr>
+            <td class="px" align="left" style="padding:32px 44px 0 44px;">
+              <div
+                style="font-family:Arial,Helvetica,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#4C9A3A;font-weight:bold;padding-bottom:12px;">
+                Science tidbits
+              </div>
+              {{SCIENCE_TIDBITS_CARDS}}
+            </td>
+          </tr>
+
+          <!-- IN THE NEWS -->
+          <tr>
+            <td class="px" align="left" style="padding:32px 44px 0 44px;">
+              <div
+                style="font-family:Arial,Helvetica,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#4C9A3A;font-weight:bold;padding-bottom:12px;">
+                In the news
+              </div>
+              {{NEWS_CARDS}}
+            </td>
+          </tr>
+
+          <!-- SCHEDULE TABLE -->
+          <tr>
+            <td class="px" align="left" style="padding:32px 44px 0 44px;">
+              <div
+                style="font-family:Arial,Helvetica,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#4C9A3A;font-weight:bold;padding-bottom:10px;">
+                Fall workshop schedule
+              </div>
+              <p
+                style="margin:0 0 14px 0;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:24px;color:#3D5259;">
+                Sessions run every Saturday from 7:00–8:30 PM at the UCI Paul Merage School of Business:
+              </p>
+              {{SCHEDULE_TABLE}}
+            </td>
+          </tr>
+
+          <!-- MASTER DOCUMENT -->
+          <tr>
+            <td class="px" align="left" style="padding:28px 44px 0 44px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                style="background-color:#F5FAF2;border:2px solid #CBE6C5;border-radius:20px;">
+                <tr>
+                  <td style="padding:24px 26px;font-family:Arial,Helvetica,sans-serif;">
+                    <div
+                      style="font-size:11px;font-weight:bold;letter-spacing:1.5px;text-transform:uppercase;color:#2E7D46;padding-bottom:6px;">
+                      Essential Reference
+                    </div>
+                    <div
+                      style="font-family:Georgia,'Times New Roman',serif;font-size:20px;line-height:26px;font-weight:bold;color:#1F3A42;padding-bottom:8px;">
+                      TRSC Master Information &amp; Study Guide
+                    </div>
+                    <p style="margin:0 0 16px 0;font-size:14px;line-height:22px;color:#3D5259;">
+                      Our live <strong>Master Doc</strong> houses all essential club policies, event descriptions,
+                      tryout rules, and study guides for every Science Olympiad event.
+                    </p>
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td align="center" bgcolor="#6CC24A" style="border-radius:999px;">
+                          <a href="https://docs.google.com/document/d/1ev0rV0iSfNzGwVkLtUcggu7fINd0rD7nv4nyroO3u9c/edit?tab=t.0#heading=h.4zedv5yo7lxg"
+                            target="_blank"
+                            style="display:inline-block;padding:12px 28px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;color:#14351F;text-decoration:none;border-radius:999px;">
+                            Open TRSC Master Document &rarr;
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- CONDENSED CONTACT FOOTER -->
+          <tr>
+            <td class="px" align="left" style="padding:32px 44px 36px 44px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                style="background-color:#F5FAF2;border-radius:18px;border:1px solid #D5E8D4;">
+                <tr>
+                  <td
+                    style="padding:20px 24px;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:22px;color:#3D5259;">
+                    <div style="font-weight:bold;color:#1F3A42;font-size:15px;padding-bottom:6px;">Questions &amp;
+                      Community Contacts</div>
+                    <div>&bull; <strong>Email:</strong> <a href="mailto:contact@trscienceclub.org"
+                        style="color:#2E7D46;text-decoration:underline;">contact@trscienceclub.org</a> &middot;
+                      <strong>Website:</strong> <a href="https://trscienceclub.org" target="_blank"
+                        style="color:#2E7D46;text-decoration:underline;">trscienceclub.org</a>
+                    </div>
+                    <div>&bull; <strong>WhatsApp Groups:</strong> Turtle Rock, University Park, Bonita Canyon (links in
+                      Master Doc).</div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+
+</html>
