@@ -34,7 +34,6 @@ You only do this once. It takes about five minutes.
    | **Events** | Upcoming events shown on the site |
    | **Announcements** | Club announcements shown on the site |
    | **Lab Log** | Write-ups shown under "Latest From the Lab Log" |
-   | **Photos** | Direct photos shown at top of Photo Gallery |
    | **Resources** | Curated STEM websites, tools, videos, and articles shown on the site |
    | **Members** | Filled in **automatically** when someone joins the club |
    | **Signups** | Filled in **automatically** when someone signs up online |
@@ -121,16 +120,41 @@ the sheet stays private.
 | Author | no | e.g. `Dr. Elena Vance` |
 | Show on Site | **tick it** | |
 
-### Photos tab columns
+### Posting a past-event photo album
 
-| Column | Required | Notes |
-|---|---|---|
-| Title | yes | e.g. `Baking Soda Splash` |
-| Image URL | yes | Public image link to feature at the top of Photo Gallery. |
-| Caption | no | Brief photo description or story. |
-| Category | no | Dropdown: `experiments`, `field-trips`, `lab-meetings` |
-| Submitted By | no | e.g. `Mentor Marcus Chen` |
-| Show on Site | **tick it** | |
+Albums live on the **event's own row** in the Events tab — there is no separate
+albums tab. To publish the photos from an event that already happened:
+
+1. Find that event's existing row in **Events**.
+2. Tick **Done**. The event drops out of "Upcoming Events" but the album stays.
+3. Leave **Show on Site** ticked. Unticking it skips the whole row, album and
+   all.
+4. Fill in **Photos** (last column) with either:
+   - **A share link** — e.g. a Google Photos `https://photos.app.goo.gl/...`
+     link. The card gets a **View Event Photo Album** button that opens in a new
+     tab.
+   - **Embed HTML** — anything containing `<`. It renders as a carousel inside
+     the card, right on the page. The gallery specifically supports the
+     *publicalbum.org* "Embed Google Photos Album" widget; paste the snippet it
+     gives you, script tag included.
+5. Put a cover photo in **Image URL**. Blank means the album card renders with
+   no picture at the top, which looks unfinished.
+6. **Description** doubles as the album caption. Blank falls back to
+   "Photo album for *title*".
+7. **🐢 Website ▸ 🚀 Publish to Website**, then refresh the site. The card shows
+   up under Photo Gallery ▸ **Past Events**.
+
+Notes:
+
+- Google Photos is the expected source but nothing is hard-coded to it. Any
+  album link works — Drive, Flickr, a shared iCloud album.
+- Don't use a `lh3.googleusercontent.com` URL scraped out of an album as the
+  cover image. Those rotate and expire. Host the cover somewhere stable.
+- Embed HTML is verbose and the whole published snapshot is capped (see
+  Troubleshooting). Link-only albums cost almost nothing; prefer them unless you
+  really want the carousel on-page.
+- A Spots Taken > Spots Total typo hides the *event* but deliberately does not
+  hide its album.
 
 ---
 

@@ -38,7 +38,6 @@
 var EVENTS_SHEET = 'Events';
 var ANNOUNCEMENTS_SHEET = 'Announcements';
 var LABLOG_SHEET = 'Lab Log';
-var PHOTOS_SHEET = 'Photos';
 var RESOURCES_SHEET = 'Resources';
 var MEMBERS_SHEET = 'Members';
 var SIGNUPS_SHEET = 'Signups';
@@ -147,8 +146,6 @@ var MEM_COL_ACCOUNT_TOKEN_EXPIRES = MEM_IDX_ACCOUNT_TOKEN_EXPIRES + 1;
 var MEM_COL_SESSION_TOKEN = MEM_IDX_SESSION_TOKEN + 1;
 var MEM_COL_SESSION_TOKEN_EXPIRES = MEM_IDX_SESSION_TOKEN_EXPIRES + 1;
 
-var PHOTO_HEADERS = ['Title', 'Image URL', 'Caption', 'Category', 'Submitted By', 'Show on Site'];
-
 var NEWSLETTER_HEADERS = [
   'Timestamp',
   'Email',
@@ -175,7 +172,6 @@ var STATUS_PENDING = 'Pending — no API key';
 
 var ANNOUNCEMENT_CATEGORIES = ['general', 'expansion', 'toolkit', 'volunteer'];
 var LABLOG_CATEGORIES = ['chemistry', 'robotics', 'astronomy', 'general'];
-var PHOTO_CATEGORIES = ['experiments', 'field-trips', 'lab-meetings'];
 var RESOURCE_CATEGORIES = ['chemistry', 'physics', 'astronomy', 'biology', 'robotics', 'general'];
 
 var BRAND_DARK = '#064e3b';
@@ -405,7 +401,6 @@ function setupSheets() {
   var events = ensureSheet_(ss, EVENTS_SHEET, EVENT_HEADERS, BRAND_DARK);
   var announcements = ensureSheet_(ss, ANNOUNCEMENTS_SHEET, ANNOUNCEMENT_HEADERS, BRAND_DARK);
   var labLog = ensureSheet_(ss, LABLOG_SHEET, LABLOG_HEADERS, BRAND_DARK);
-  var photos = ensureSheet_(ss, PHOTOS_SHEET, PHOTO_HEADERS, BRAND_DARK);
   var resources = ensureSheet_(ss, RESOURCES_SHEET, RESOURCE_HEADERS, BRAND_DARK);
   var members = ensureSheet_(ss, MEMBERS_SHEET, MEMBER_HEADERS, BRAND_DARK);
   var signups = ensureSheet_(ss, SIGNUPS_SHEET, SIGNUP_HEADERS, SIGNUP_HEADER_COLOR);
@@ -414,7 +409,6 @@ function setupSheets() {
   styleEventsSheet_(events);
   styleAnnouncementsSheet_(announcements);
   styleLabLogSheet_(labLog);
-  stylePhotosSheet_(photos);
   styleResourcesSheet_(resources);
   styleMembersSheet_(members);
   styleSignupsSheet_(signups);
@@ -431,7 +425,7 @@ function setupSheets() {
   notify_(
     'Setup complete',
     'Your tabs are ready:\n\n' +
-      '  • Events\n  • Announcements\n  • Lab Log\n  • Photos\n  • Resources\n  • Members (filled in automatically)\n' +
+      '  • Events\n  • Announcements\n  • Lab Log\n  • Resources\n  • Members (filled in automatically)\n' +
       '  • Signups (filled in automatically)\n  • Newsletter (filled in automatically)\n\n' +
       'Type your content, then click  🐢 Website ▸ Publish to Website.'
   );
@@ -563,17 +557,6 @@ function styleMembersSheet_(sheet) {
   sheet.getRange(1, 1, body + 1, MEMBER_HEADERS.length).setVerticalAlignment('top');
 }
 
-function stylePhotosSheet_(sheet) {
-  setWidths_(sheet, [220, 320, 400, 140, 180, 100]);
-  var body = Math.min(100, Math.max(20, sheet.getLastRow() - 1));
-  if (body <= 0) return;
-
-  sheet.getRange(2, 4, body, 1).setDataValidation(categoryRule_(PHOTO_CATEGORIES, sheet, 4));
-  sheet.getRange(2, 6, body, 1).insertCheckboxes();
-  sheet.getRange(2, 3, body, 1).setWrap(true);
-  sheet.getRange(1, 1, body + 1, PHOTO_HEADERS.length).setVerticalAlignment('top');
-}
-
 function styleResourcesSheet_(sheet) {
   setWidths_(sheet, [240, 420, 140, 140, 300, 120, 100]);
   var body = Math.min(100, Math.max(20, sheet.getLastRow() - 1));
@@ -640,7 +623,6 @@ function publishToWebsite() {
   var eventsSheet = ss.getSheetByName(EVENTS_SHEET);
   var announcementsSheet = ss.getSheetByName(ANNOUNCEMENTS_SHEET);
   var labLogSheet = ss.getSheetByName(LABLOG_SHEET);
-  var photosSheet = ss.getSheetByName(PHOTOS_SHEET);
   var resourcesSheet = ss.getSheetByName(RESOURCES_SHEET);
 
   if (!eventsSheet || !announcementsSheet) {
@@ -659,7 +641,6 @@ function publishToWebsite() {
   var eventPhotos = eventsData.eventPhotos;
   var announcements = readAnnouncements_(announcementsSheet, problems);
   var labLogs = labLogSheet ? readLabLogs_(labLogSheet, problems) : [];
-  var photosList = photosSheet ? readPhotos_(photosSheet, problems) : [];
   var resourcesList = resourcesSheet ? readResources_(resourcesSheet, problems) : [];
 
   if (problems.length) {
@@ -678,7 +659,6 @@ function publishToWebsite() {
     announcements: announcements,
     labLogs: labLogs,
     eventPhotos: eventPhotos,
-    photos: photosList,
     resources: resourcesList,
     publishedAt: new Date().toISOString(),
     publishedBy: Session.getActiveUser().getEmail() || 'unknown'
@@ -721,7 +701,6 @@ function publishToWebsite() {
     '🚀 Published!',
     'The website now shows:\n\n' +
       '  • ' + events.length + ' active event(s)\n' +
-      '  • ' + photosList.length + ' direct photo(s)\n' +
       '  • ' + eventPhotos.length + ' photo album(s)\n' +
       '  • ' + announcements.length + ' announcement(s)\n' +
       '  • ' + labLogs.length + ' lab log entr(ies)\n' +
@@ -802,40 +781,6 @@ function readEvents_(sheet, problems) {
     events: events,
     eventPhotos: eventPhotos
   };
-}
-
-function readPhotos_(sheet, problems) {
-  var rows = bodyRows_(sheet, PHOTO_HEADERS.length);
-  var out = [];
-
-  for (var i = 0; i < rows.length; i++) {
-    var row = rows[i];
-    var rowNumber = i + 2;
-
-    if (isBlankRow_(row)) continue;
-    if (row[5] === false) continue;
-
-    var title = String(row[0]).trim();
-    var imageUrl = String(row[1] || '').trim();
-
-    if (!title && !imageUrl) {
-      problems.push('Photos row ' + rowNumber + ': missing Title or Image URL.');
-      continue;
-    }
-
-    out.push({
-      id: 'sheet-direct-photo-' + rowNumber,
-      title: title || 'Science Moment',
-      imageUrl: imageUrl,
-      caption: String(row[2] || '').trim(),
-      description: String(row[2] || '').trim(),
-      category: String(row[3] || '').trim().toLowerCase() || 'experiments',
-      submittedBy: String(row[4] || '').trim() || 'Turtle Rock Science Club',
-      date: formatDate_(new Date())
-    });
-  }
-
-  return out;
 }
 
 function readAnnouncements_(sheet, problems) {
@@ -1033,7 +978,6 @@ function doGet(e) {
       announcements: [],
       labLogs: [],
       eventPhotos: [],
-      photos: [],
       publishedAt: null,
       note: 'Nothing published yet. Open the spreadsheet and click 🐢 Website ▸ Publish to Website.'
     });

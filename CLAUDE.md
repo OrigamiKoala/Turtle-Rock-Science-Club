@@ -80,7 +80,7 @@ Google Sheet  ──[🐢 Website ▸ Publish]──▶  hidden _Published tab (
 | Web app URL | `src/config.ts` → `SHEET_API_URL` |
 | Operator instructions | `apps-script/SETUP.md` |
 
-Sheet tabs: **Events**, **Announcements**, **Lab Log**, **Photos**
+Sheet tabs: **Events**, **Announcements**, **Lab Log**, **Resources**
 (hand-edited) and **Members**, **Signups**, **Newsletter** (written by the
 script — do not type in them). `_Published` is hidden and holds the snapshot.
 
@@ -93,6 +93,42 @@ There is no bundled fallback content: if `SHEET_API_URL` is empty, the fetch
 fails, or nothing has been published yet, `useSiteContent.ts` returns empty
 missions/announcements/labLogs arrays and the site shows its normal empty
 state rather than demo data.
+
+## Past-event photo albums
+
+There is no albums tab. `readEvents_` walks the **Events** tab and emits a
+second array alongside `events`: any row whose **Photos** column (index 10) is
+non-blank becomes an `EventPhoto` in the payload, keyed `sheet-photo-<row>`.
+That array feeds `PhotoGallery` ("Past Event Photos"); the gallery page only
+displays past event photos. The separate **Photos** tab was removed from Google
+Sheet handling; photos are posted via the **Events** tab's **Photos** column.
+
+Two render paths, chosen by whether the Photos cell contains a `<`:
+
+- **No `<`** → treated as a URL, surfaced as an external "View Event Photo
+  Album" link button.
+- **Contains `<`** → treated as embed HTML and mounted by `HtmlEmbedCard`,
+  which strips `<script>` tags, rewrites publicalbum CDN URLs to the local
+  patched `/embed-ui.min.js` (which guards against Chromium's `tabIndex` on null
+  race condition where `setTimeout(0)` fires before iframe load, and exports
+  `window.PublicAlbum.init(container)`), and calls `init()` on re-renders so
+  several Google Photos carousels can cleanly coexist without crashing.
+  `albumEmbed` is set for both paths; `albumUrl` is blank for the HTML one.
+
+Independence rules baked into `readEvents_`, do not "simplify" them away:
+
+- `Show on Site` unticked skips the row entirely, album included.
+- `Done` ticked hides the event from Upcoming Missions but **keeps** the album —
+  that is the normal steady state for a past event.
+- `Spots Taken > Spots Total` hides the event but **not** the album; a
+  data-entry typo in an unrelated column must not take the photos down.
+
+The album's cover comes from `Image URL` (index 7); `image` is optional and the
+card just omits the header block when blank. The description falls back to
+`Photo album for <title>` and is rendered through `SafeHtml`.
+
+Embed blobs count against the ~45,000-character publish cap on the whole
+snapshot, so many inline carousels will crowd out other content.
 
 ## Sign-up flow
 
