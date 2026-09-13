@@ -62,7 +62,21 @@ export default function LabLogAnnouncements({ logs, announcements, contentStatus
             {logs.map((log) => (
               <div id={`log-card-${log.id}`} key={log.id} className="rounded-[28px] border-2 border-[#1F3A42]/8 bg-white overflow-hidden flex flex-col justify-between transition hover:border-[#1F3A42]/15 hover:shadow-lg cursor-pointer" onClick={() => setActiveLogId(log.id)}>
                 <div className="relative h-44 overflow-hidden border-b-2 border-[#1F3A42]/5">
-                  <img src={log.image} alt={log.title} className="w-full h-full object-cover transition-transform duration-500 hover:scale-105" referrerPolicy="no-referrer" />
+                  <img
+                    src={log.image}
+                    alt={log.title}
+                    className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      const img = e.currentTarget;
+                      if (img.src.includes('trscienceclub.org')) {
+                        img.src = img.src.replace(
+                          'https://trscienceclub.org',
+                          'https://raw.githubusercontent.com/OrigamiKoala/Turtle-Rock-Science-Club/main/public'
+                        );
+                      }
+                    }}
+                  />
                   <span className="absolute top-3 right-3 bg-[#1F3A42] text-white dark:bg-[#6CC24A] dark:text-[#14351F] text-[10px] font-display font-bold px-2.5 py-1 rounded-full shadow-md capitalize">{log.category}</span>
                 </div>
                 <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
@@ -136,7 +150,21 @@ export default function LabLogAnnouncements({ logs, announcements, contentStatus
             <div className="overflow-y-auto flex-1 overscroll-contain">
               {/* Hero Banner (scrolls away as you read!) */}
               <div className="relative h-60 sm:h-80 w-full bg-[#1F3A42]">
-                <img src={activeLog.image} alt={activeLog.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                <img
+                  src={activeLog.image}
+                  alt={activeLog.title}
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    const img = e.currentTarget;
+                    if (img.src.includes('trscienceclub.org')) {
+                      img.src = img.src.replace(
+                        'https://trscienceclub.org',
+                        'https://raw.githubusercontent.com/OrigamiKoala/Turtle-Rock-Science-Club/main/public'
+                      );
+                    }
+                  }}
+                />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent flex items-end p-6 sm:p-8">
                   <div className="text-white space-y-2 max-w-3xl">
                     <span className="bg-[#6CC24A] text-[#14351F] text-[11px] font-display font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-sm">{activeLog.category}</span>

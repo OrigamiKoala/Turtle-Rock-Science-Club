@@ -734,6 +734,7 @@ All mathematical expressions, chemical formulas, reaction equations, and physica
   - Hero image and title are at the top of the scroll flow and scroll away naturally as the user reads down, giving 100% of the modal height to the content.
   - Sticky close button (`#close-log-modal-btn`) floats in the top-right corner (`sticky top-0 z-30 pointer-events-none` container with `pointer-events-auto` button).
   - Centered "Close Newsletter" button at the bottom of the article.
+  - Card and modal images include an `onError` handler automatically falling back from `https://trscienceclub.org/...` to `raw.githubusercontent.com/...` if Cloudflare/Pages CDN cache is stale or deploying.
 - **SafeHtml HTML Snippet Handling** (`src/components/SafeHtml.tsx`):
   - Automatically detects block HTML tags (`div`, `table`, `section`, etc.) to prevent corrupting tables and flex/grid layouts with unwanted `<br />` tags on newlines.
 - **Newsletter Design System** (`src/index.css`):
