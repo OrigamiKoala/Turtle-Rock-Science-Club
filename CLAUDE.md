@@ -267,6 +267,15 @@ it rejected**, listing them under `non_existing_subscribers` —
 check. A partial failure still records the groups that took, so the retry only
 has the remainder to do.
 
+**Templates in `docs/newsletter/`:** `00-welcome-letter.html` is the Issue 0 welcome
+newsletter / Parent Info Night recap (contains top delivery/not-spam notice, club origin & 4 core goals,
+program structure & fall workshop schedule, Science Olympiad Div B details & tryouts, link to the TRSC
+Master Document study guide, parent volunteering & suggested donation, step-by-step instructions for
+event sign-up and account creation, site tour, and leadership team / school WhatsApp contacts).
+`01-info-recap.html` is the Issue 1 recap newsletter (contains all information from
+`00-welcome-letter.html` plus the dedicated Upcoming Events cards for the 9/19 Chemistry and Astronomy
+workshops). `confirm-subscription.html` is the double opt-in confirmation email. Note: `docs/` is gitignored.
+
 ## Apps Script gotchas (all of these bit us)
 
 - **`getLastRow()` lies on these sheets.** `insertCheckboxes()` writes `FALSE`
