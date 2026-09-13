@@ -110,7 +110,7 @@ Two render paths, chosen by whether the Photos cell contains a `<`:
 - **Contains `<`** → treated as embed HTML and mounted by `HtmlEmbedCard`,
   which strips `<script>` tags, rewrites publicalbum CDN URLs to the local
   patched `/embed-ui.min.js` (which guards against Chromium's `tabIndex` on null
-  race condition where `setTimeout(0)` fires before iframe load, and exports
+  race condition where `setTimeout(0)` fires before iframe load, fixes missing semicolon before listener call, and exports
   `window.PublicAlbum.init(container)`), and calls `init()` on re-renders so
   several Google Photos carousels can cleanly coexist without crashing.
   `albumEmbed` is set for both paths; `albumUrl` is blank for the HTML one.
