@@ -273,8 +273,8 @@ program structure & fall workshop schedule, Science Olympiad Div B details & try
 Master Document study guide, parent volunteering & suggested donation, step-by-step instructions for
 event sign-up and account creation, site tour, and leadership team / school WhatsApp contacts).
 `01-info-recap.html` is the Issue 1 recap newsletter (contains all information from
-`00-welcome-letter.html` plus the dedicated Upcoming Events cards for the 9/19 Chemistry and Astronomy
-workshops). `confirm-subscription.html` is the double opt-in confirmation email. Note: `docs/` is gitignored.
+`00-welcome-letter.html` plus featured cartoon digital ink artwork below the header logo, dedicated Upcoming Events cards for the 9/19 Chemistry and Astronomy
+workshops, a "Science Tidbits" section exploring cool facts on next week's workshop topics, and a weekly "In the News" science digest section). `confirm-subscription.html` is the double opt-in confirmation email. Note: `docs/` is gitignored.
 
 ## Apps Script gotchas (all of these bit us)
 
