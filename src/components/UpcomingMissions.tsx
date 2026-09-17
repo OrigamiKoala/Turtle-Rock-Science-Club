@@ -1,7 +1,7 @@
 import React from 'react';
 import { Mission } from '../types';
 import { ContentStatus } from '../useSiteContent';
-import { Calendar, Clock, MapPin, Ticket, CalendarOff } from 'lucide-react';
+import { Calendar, Clock, MapPin, Ticket, CalendarOff, CheckCircle } from 'lucide-react';
 import SafeHtml from './SafeHtml';
 
 interface UpcomingMissionsProps {
@@ -104,19 +104,15 @@ export default function UpcomingMissions({
 
                 <div className="pt-2">
                   {isReserved ? (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-center gap-1.5 py-1 text-[11px] font-display font-bold text-[#2E7D46]">
-                        <span>You're signed up ✔</span>
-                      </div>
-                      <button
-                        id={`mission-signup-again-btn-${mission.id}`}
-                        onClick={() => onSignUp(mission)}
-                        disabled={isSoldOut}
-                        className="w-full py-1 text-center text-[11px] font-sans font-bold text-[#4B6169] hover:text-[#1F3A42] cursor-pointer hover:underline disabled:opacity-30 disabled:cursor-not-allowed"
-                      >
-                        Sign up another student
-                      </button>
-                    </div>
+                    <button
+                      id={`mission-reserve-btn-${mission.id}`}
+                      disabled
+                      aria-disabled="true"
+                      className="w-full py-2.5 px-4 rounded-full text-[12px] font-display font-bold flex items-center justify-center gap-1.5 cursor-not-allowed bg-[#E4F5DA] text-[#2E7D46] border border-[#2E7D46]/30 shadow-none opacity-90"
+                    >
+                      <CheckCircle className="w-4 h-4 text-[#2E7D46]" />
+                      <span>You're Signed Up ✔</span>
+                    </button>
                   ) : (
                     <button
                       id={`mission-reserve-btn-${mission.id}`}

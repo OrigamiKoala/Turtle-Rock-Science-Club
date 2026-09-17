@@ -11,11 +11,14 @@ export interface SignupDetails {
   school: string;
   /** Not collected by the logged-in-member fast path (App.tsx's `handleSignUp`) — only the guest-facing SignupModal asks for it. */
   parentEmail?: string;
+  /** Optional session token for logged-in members to directly link reservation to member account */
+  sessionToken?: string;
 }
 
 export interface SignupResult {
   ok: boolean;
   error?: string;
+  alreadySignedUp?: boolean;
   spotsReserved?: number;
   spotsTotal?: number;
   spotsLeft?: number;

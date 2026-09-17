@@ -133,28 +133,35 @@ snapshot, so many inline carousels will crowd out other content.
 ## Sign-up flow
 
 Each event card opens `SignupModal` asking for Student Name + School + a
-Parent/Guardian Email (required client-side). On submit the script, under a
+Parent/Guardian Email (required client-side for guests). On submit the script, under a
 `LockService` lock:
 
-1. appends a row to **Signups** (`Timestamp`, `Event`, `Student Name`, `School`,
-   `Parent Email`)
-2. increments that event's **Spots Taken** by 1
-3. patches *only that event's* `spotsReserved` inside the `_Published` snapshot
-4. subscribes the parent email to Sender.net under `newsletter` (see
+1. checks **Signups** for duplicate signups (same event title + student name); if already registered, ensures the event ID is stored in the member account and returns `{ ok: false, alreadySignedUp: true }` without taking another spot
+2. appends a row to **Signups** (`Timestamp`, `Event`, `Student Name`, `School`, `Parent Email`)
+3. increments that event's **Spots Taken** by 1
+4. patches *only that event's* `spotsReserved` inside the `_Published` snapshot
+5. records the event ID in the member's row in **Members** (`Missions` column) if matched via `sessionToken` or student name
+6. subscribes the parent email to Sender.net under `newsletter` (see
    "Newsletter" below) — this is what the post-signup "check your email/spam
    folder" `ConfirmEmailModal` is confirming
 
-Step 3 is why the live "spots left" counter stays honest without republishing
+Step 4 is why the live "spots left" counter stays honest without republishing
 anything still being drafted. If you change how events are published, keep
 `bumpPublishedSpots_` in sync.
 
 The logged-in-member fast path (`App.tsx`'s `handleSignUp`, used when an
 already-logged-in visitor signs up for an event they haven't reserved yet)
-skips `SignupModal` entirely and calls `submitSignup` directly with no
-`parentEmail` — members have no email on file to send, so that path neither
-prompts for one nor triggers the confirm-email modal. `parentEmail` is
+skips `SignupModal` entirely and calls `submitSignup` directly with their session
+token and no `parentEmail` — members have no email on file to send, so that path
+neither prompts for one nor triggers the confirm-email modal. `parentEmail` is
 therefore optional in `SignupDetails`/`handleSignup_` even though the modal
 itself requires it.
+
+**Preventing duplicate signups:**
+- Once signed up for an event, `signedUpIds` and `userProfile.reservedMissionIds` store the event ID in `localStorage` (`tr_sc_signed_up_ids` and `tr_sc_user_profile`) and sync to the spreadsheet via `syncProfile` and `recordMemberMission_`.
+- In `UpcomingMissions.tsx`, an already-reserved mission renders a single disabled button (`You're Signed Up ✔`), and the old "Sign up another student" button is removed so duplicate signups cannot be re-triggered.
+- `handleSignUp` exits immediately if `signedUpIds.includes(mission.id)`.
+- If `handleSignup_` detects an existing registration in the sheet, it returns `{ ok: false, alreadySignedUp: true }`, prompting the client to record the mission as reserved and display an informational message rather than decrementing spots.
 
 ## Newsletter (Sender.net)
 

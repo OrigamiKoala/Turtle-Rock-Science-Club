@@ -171,8 +171,16 @@ export default function App() {
 
   const [signedUpIds, setSignedUpIds] = useState<string[]>(() => {
     try {
-      const saved = localStorage.getItem('tr_sc_signed_up_ids');
-      if (saved) return JSON.parse(saved);
+      const savedSignups = localStorage.getItem('tr_sc_signed_up_ids');
+      const fromSignups: string[] = savedSignups ? JSON.parse(savedSignups) : [];
+      const savedProfile = localStorage.getItem('tr_sc_user_profile');
+      const fromProfile: string[] = savedProfile ? JSON.parse(savedProfile)?.reservedMissionIds : [];
+      return Array.from(
+        new Set([
+          ...(Array.isArray(fromSignups) ? fromSignups : []),
+          ...(Array.isArray(fromProfile) ? fromProfile : [])
+        ])
+      );
     } catch (e) { console.error('Failed reading signups from storage', e); }
     return [];
   });
@@ -215,7 +223,11 @@ export default function App() {
   };
 
   const handleJoinSuccess = (newProfile: UserProfile, newSessionToken: string) => {
-    setUserProfile(newProfile);
+    const updatedProfile: UserProfile = {
+      ...newProfile,
+      reservedMissionIds: Array.from(new Set([...(newProfile.reservedMissionIds || []), ...signedUpIds]))
+    };
+    setUserProfile(updatedProfile);
     setSessionToken(newSessionToken);
     setCurrentTab('dashboard');
   };
@@ -224,7 +236,7 @@ export default function App() {
     setUserProfile(profile);
     setSessionToken(newSessionToken);
     if (Array.isArray(profile.reservedMissionIds)) {
-      setSignedUpIds(profile.reservedMissionIds);
+      setSignedUpIds((prev) => Array.from(new Set([...prev, ...profile.reservedMissionIds])));
     }
     setCurrentTab('dashboard');
   };
@@ -237,14 +249,12 @@ export default function App() {
   };
 
   const handleSignupSuccess = (missionId: string) => {
-    setSignedUpIds((prev) => {
-      const updated = prev.includes(missionId) ? prev : [...prev, missionId];
-      if (userProfile.level > 0) {
-        // The profile-sync effect below picks this up as soon as userProfile
-        // changes — no need for a second, redundant syncProfile call here.
-        setUserProfile((current) => ({ ...current, reservedMissionIds: updated }));
-      }
-      return updated;
+    setSignedUpIds((prev) => (prev.includes(missionId) ? prev : [...prev, missionId]));
+    setUserProfile((prev) => {
+      const updatedMissions = prev.reservedMissionIds.includes(missionId)
+        ? prev.reservedMissionIds
+        : [...prev.reservedMissionIds, missionId];
+      return { ...prev, reservedMissionIds: updatedMissions };
     });
     handleUpdateXp(15);
   };
@@ -276,13 +286,24 @@ export default function App() {
 
   const handleSignUp = async (mission: Mission) => {
     const alreadyReserved = signedUpIds.includes(mission.id);
-    if (!isLoggedIn || alreadyReserved) { setSignupMission(mission); return; }
+    if (alreadyReserved) return;
+
+    if (!isLoggedIn) {
+      setSignupMission(mission);
+      return;
+    }
 
     const result = await content.submitSignup({
-      eventId: mission.id, eventTitle: mission.title, studentName: userProfile.name, school: userProfile.school
+      eventId: mission.id,
+      eventTitle: mission.title,
+      studentName: userProfile.name,
+      school: userProfile.school,
+      sessionToken: sessionToken || undefined
     });
 
-    if (result.ok) handleSignupSuccess(mission.id);
+    if (result.ok || result.alreadySignedUp || (result.error && result.error.toLowerCase().includes('already signed up'))) {
+      handleSignupSuccess(mission.id);
+    }
     setSignupNotice({ mission, result });
   };
 
@@ -494,9 +515,15 @@ export default function App() {
       {signupMission && (
         <SignupModal
           mission={signupMission}
+          sessionToken={sessionToken}
+          defaultStudentName={userProfile.name}
+          defaultSchool={userProfile.school}
           onClose={() => setSignupMission(null)}
           onSubmit={async (details) => {
-            const result = await content.submitSignup(details);
+            const result = await content.submitSignup({
+              ...details,
+              sessionToken: sessionToken || details.sessionToken
+            });
             // Only signups that gave a parent email have anything to confirm.
             if (result.ok && details.parentEmail) setShowConfirmEmailModal(true);
             return result;

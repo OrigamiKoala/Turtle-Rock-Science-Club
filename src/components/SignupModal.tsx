@@ -6,6 +6,9 @@ import { X, Calendar, Clock, MapPin, CheckCircle, AlertCircle, Loader2 } from 'l
 
 interface SignupModalProps {
   mission: Mission;
+  sessionToken?: string;
+  defaultStudentName?: string;
+  defaultSchool?: string;
   onClose: () => void;
   onSubmit: (details: SignupDetails) => Promise<SignupResult>;
   onSuccess: (missionId: string) => void;
@@ -15,9 +18,18 @@ const LAST_SCHOOL_KEY = 'tr_sc_last_school';
 
 const isEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 
-export default function SignupModal({ mission, onClose, onSubmit, onSuccess }: SignupModalProps) {
-  const [studentName, setStudentName] = useState('');
+export default function SignupModal({
+  mission,
+  sessionToken,
+  defaultStudentName = '',
+  defaultSchool = '',
+  onClose,
+  onSubmit,
+  onSuccess
+}: SignupModalProps) {
+  const [studentName, setStudentName] = useState(defaultStudentName);
   const [school, setSchool] = useState(() => {
+    if (defaultSchool) return defaultSchool;
     try { return localStorage.getItem(LAST_SCHOOL_KEY) ?? ''; } catch { return ''; }
   });
   const [parentEmail, setParentEmail] = useState('');
@@ -52,10 +64,23 @@ export default function SignupModal({ mission, onClose, onSubmit, onSuccess }: S
     setSubmitting(true);
     setError(null);
 
-    const result = await onSubmit({ eventId: mission.id, eventTitle: mission.title, studentName: trimmedName, school: trimmedSchool, parentEmail: trimmedParentEmail });
+    const result = await onSubmit({
+      eventId: mission.id,
+      eventTitle: mission.title,
+      studentName: trimmedName,
+      school: trimmedSchool,
+      parentEmail: trimmedParentEmail,
+      sessionToken: sessionToken || undefined
+    });
     setSubmitting(false);
 
-    if (!result.ok) { setError(result.error ?? 'Something went wrong. Please try again.'); return; }
+    if (!result.ok) {
+      setError(result.error ?? 'Something went wrong. Please try again.');
+      if (result.alreadySignedUp || (result.error && result.error.toLowerCase().includes('already signed up'))) {
+        onSuccess(mission.id);
+      }
+      return;
+    }
 
     try { localStorage.setItem(LAST_SCHOOL_KEY, trimmedSchool); } catch {}
 

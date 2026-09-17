@@ -1474,6 +1474,7 @@ function handleSignup_(body) {
   var studentName = String(body.studentName || '').trim();
   var school = String(body.school || '').trim();
   var eventId = String(body.eventId || '').trim();
+  var sessionToken = String(body.sessionToken || '').trim();
   // Optional: the logged-in-member fast path (App.tsx's `handleSignUp`) has no
   // email on file to send, so it never sends this field. The guest-facing
   // SignupModal always sends one and requires it client-side.
@@ -1506,20 +1507,42 @@ function handleSignup_(body) {
     var total = toWholeNumber_(eventsSheet.getRange(rowNumber, EVENT_COL_SPOTS_TOTAL).getValue(), 0);
     var taken = toWholeNumber_(eventsSheet.getRange(rowNumber, EVENT_COL_SPOTS_TAKEN).getValue(), 0);
 
-    if (total > 0 && taken >= total) {
-      return { ok: false, error: 'Sorry — this event is now full.' };
-    }
-
     var signups = ss.getSheetByName(SIGNUPS_SHEET);
     if (!signups) {
       signups = ensureSheet_(ss, SIGNUPS_SHEET, SIGNUP_HEADERS, SIGNUP_HEADER_COLOR);
       styleSignupsSheet_(signups);
     }
+
+    // Check for duplicate signup (same student for the same event)
+    var sRows = bodyRows_(signups, SIGNUP_HEADERS.length);
+    var nameLower = studentName.toLowerCase();
+    var titleLower = title.toLowerCase();
+
+    for (var i = 0; i < sRows.length; i++) {
+      var existingEventTitle = String(sRows[i][1] || '').trim().toLowerCase();
+      var existingStudentName = String(sRows[i][2] || '').trim().toLowerCase();
+      if (existingEventTitle === titleLower && existingStudentName === nameLower) {
+        recordMemberMission_(ss, sessionToken, studentName, eventId);
+        return {
+          ok: false,
+          alreadySignedUp: true,
+          error: studentName + ' is already signed up for ' + title + '.'
+        };
+      }
+    }
+
+    if (total > 0 && taken >= total) {
+      return { ok: false, error: 'Sorry — this event is now full.' };
+    }
+
     signups.appendRow([new Date(), title, studentName, school, parentEmail]);
 
     var updatedTaken = taken + 1;
     eventsSheet.getRange(rowNumber, EVENT_COL_SPOTS_TAKEN).setValue(updatedTaken);
     bumpPublishedSpots_(ss, eventId, updatedTaken);
+
+    // Record reserved event with member profile in Members sheet
+    recordMemberMission_(ss, sessionToken, studentName, eventId);
 
     // Same "write first, subscribe second, swallow Sender failures" shape as
     // subscribeEmail_'s other callers — a Sender outage must not fail the
@@ -1539,6 +1562,49 @@ function handleSignup_(body) {
     };
   } finally {
     lock.releaseLock();
+  }
+}
+
+/**
+ * Persists an event reservation directly into the member's record in the Members tab.
+ * Looks up member by session token first, falling back to student name match.
+ */
+function recordMemberMission_(ss, sessionToken, studentName, eventId) {
+  if (!eventId) return;
+  var members = ss.getSheetByName(MEMBERS_SHEET);
+  if (!members) return;
+
+  var rows = bodyRows_(members, MEMBER_HEADERS.length);
+  var targetRow = -1;
+
+  if (sessionToken) {
+    for (var i = 0; i < rows.length; i++) {
+      if (String(rows[i][MEM_IDX_SESSION_TOKEN] || '') === sessionToken) {
+        if (!tokenExpired_(rows[i][MEM_IDX_SESSION_TOKEN_EXPIRES])) {
+          targetRow = i + 2;
+          break;
+        }
+      }
+    }
+  }
+
+  if (targetRow === -1 && studentName) {
+    var nameLower = studentName.toLowerCase();
+    for (var j = 0; j < rows.length; j++) {
+      if (String(rows[j][MEM_IDX_NAME] || '').trim().toLowerCase() === nameLower) {
+        targetRow = j + 2;
+        break;
+      }
+    }
+  }
+
+  if (targetRow !== -1) {
+    var existingRaw = String(members.getRange(targetRow, MEM_COL_MISSIONS).getValue() || '').trim();
+    var list = existingRaw ? existingRaw.split(',').map(function(s) { return s.trim(); }).filter(Boolean) : [];
+    if (list.indexOf(eventId) === -1) {
+      list.push(eventId);
+      members.getRange(targetRow, MEM_COL_MISSIONS).setValue(list.join(','));
+    }
   }
 }
 
