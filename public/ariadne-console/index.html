@@ -1,0 +1,633 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ariadne — Ship Systems Terminal</title>
+<style>
+  /* ---------------------------------------------------------------
+     ARIADNE SHIP SYSTEMS TERMINAL
+     Works completely offline. No internet, no fonts, no libraries.
+     Just open this file in any browser.
+
+     KEYS:   1 = status board    2 = red alert    3 = console
+             F = fullscreen      R = reset the console log
+     WEEK:   change WEEK below, or add ?week=2 to the address bar
+     RESTORED SYSTEMS: add #1,2,3 to the address bar to light them green
+     --------------------------------------------------------------- */
+
+  :root {
+    --bg:      #070B0E;
+    --panel:   #0E151A;
+    --raised:  #162027;
+    --line:    #223039;
+    --dim:     #63757F;
+    --text:    #DCE6EA;
+    --green:   #34D399;
+    --amber:   #F0A93B;
+    --red:     #FF4A3D;
+    --cyan:    #57D8E8;
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Menlo, Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .view { display: none; height: 100vh; width: 100%; }
+  .view.on { display: flex; }
+
+  /* ---------- shared chrome ---------- */
+
+  .chrome {
+    position: fixed; top: 0; left: 0; right: 0;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: .9rem 1.4rem;
+    font-size: .7rem; letter-spacing: .18em; text-transform: uppercase;
+    color: var(--dim);
+    border-bottom: 1px solid var(--line);
+    background: linear-gradient(var(--bg), rgba(7,11,14,.85));
+    z-index: 40;
+  }
+  .chrome b { color: var(--cyan); font-weight: 400; }
+  .keys { display: flex; gap: 1.1rem; }
+  .keys span { color: var(--dim); }
+  .keys kbd {
+    color: var(--text); background: var(--raised);
+    border: 1px solid var(--line); border-radius: 3px;
+    padding: .1rem .35rem; font: inherit; font-size: .65rem;
+  }
+
+  /* ---------- 1 · status board ---------- */
+
+  #status { flex-direction: column; justify-content: center; align-items: center; padding: 5rem 2rem 3rem; }
+  #status .hd { text-align: center; margin-bottom: clamp(1.5rem, 4vh, 3rem); }
+  #status .hd .ship {
+    font-size: clamp(1.8rem, 5vw, 3.4rem); letter-spacing: .28em;
+    margin: 0; font-weight: 400;
+  }
+  #status .hd .reg { font-size: .75rem; letter-spacing: .3em; color: var(--dim); margin-top: .7rem; }
+
+  .systems { width: min(64rem, 100%); display: flex; flex-direction: column; gap: .5rem; }
+  .sysrow {
+    display: grid; grid-template-columns: 3rem 1fr auto;
+    align-items: center; gap: 1.25rem;
+    background: var(--panel); border: 1px solid var(--line);
+    padding: clamp(.7rem, 2vh, 1.15rem) 1.35rem;
+  }
+  .sysrow .idx { color: var(--dim); font-size: .85rem; }
+  .sysrow .nm { font-size: clamp(.85rem, 2.2vw, 1.15rem); letter-spacing: .1em; }
+  .sysrow .st {
+    display: flex; align-items: center; gap: .7rem;
+    font-size: .7rem; letter-spacing: .18em;
+  }
+  .dot { width: .62rem; height: .62rem; border-radius: 50%; background: var(--line); flex: none; }
+
+  .sysrow[data-state="offline"] .nm { color: var(--dim); }
+  .sysrow[data-state="offline"] .st { color: var(--dim); }
+
+  .sysrow[data-state="active"] { border-color: var(--amber); }
+  .sysrow[data-state="active"] .st { color: var(--amber); }
+  .sysrow[data-state="active"] .dot { background: var(--amber); box-shadow: 0 0 12px var(--amber); animation: pulse 1.4s ease-in-out infinite; }
+
+  .sysrow[data-state="restored"] .st { color: var(--green); }
+  .sysrow[data-state="restored"] .dot { background: var(--green); box-shadow: 0 0 12px var(--green); }
+
+  @keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: .25 } }
+
+  /* ---------- 2 · red alert ---------- */
+
+  #alert {
+    flex-direction: column; justify-content: center; align-items: center;
+    background: #1A0503; text-align: center; padding: 2rem;
+    animation: klaxon 1.05s steps(1) infinite;
+  }
+  @keyframes klaxon {
+    0%, 49%   { background: #1A0503; }
+    50%, 100% { background: #48100A; }
+  }
+  #alert .big {
+    font-size: clamp(2.6rem, 12vw, 9rem); letter-spacing: .1em;
+    color: var(--red); margin: 0; line-height: 1;
+    text-shadow: 0 0 40px rgba(255,74,61,.55);
+  }
+  #alert .msg { font-size: clamp(.9rem, 2.6vw, 1.5rem); letter-spacing: .16em; margin-top: 2rem; color: #FFD9D5; }
+  #alert .sub { font-size: clamp(.7rem, 1.7vw, .95rem); letter-spacing: .22em; margin-top: 1.1rem; color: #E08A82; }
+  #alert .bars { display: flex; gap: .4rem; margin-top: 3rem; }
+  #alert .bars i { width: 2.4rem; height: .4rem; background: var(--red); opacity: .25; }
+  #alert .bars i:nth-child(odd) { opacity: .8; }
+
+  /* ---------- 3 · console ---------- */
+
+  #console { flex-direction: column; align-items: center; justify-content: flex-start; padding: 5.5rem 1.5rem 2rem; gap: 1.5rem; overflow-y: auto; }
+  .card {
+    width: min(46rem, 100%);
+    background: var(--panel); border: 1px solid var(--line);
+    padding: clamp(1.4rem, 4vw, 2.4rem);
+  }
+  .card .lockout {
+    color: var(--red); font-size: .72rem; letter-spacing: .22em; margin-bottom: 1.1rem;
+  }
+  .card h2 { font-size: clamp(1.05rem, 3vw, 1.5rem); font-weight: 400; letter-spacing: .06em; margin: 0 0 1rem; }
+  .card .prompt {
+    background: var(--raised); border-left: 3px solid var(--amber);
+    padding: 1rem 1.2rem; font-size: .95rem; line-height: 1.65; color: #F3E4CC;
+  }
+
+  form { display: grid; grid-template-columns: 1fr; gap: .8rem; margin-top: 1.5rem; }
+  @media (min-width: 44rem) { form { grid-template-columns: 12rem 1fr auto; align-items: stretch; } }
+
+  select, input, button {
+    font-family: var(--mono); font-size: 1rem;
+    background: var(--raised); color: var(--text);
+    border: 1px solid var(--line); border-radius: 0;
+    padding: .85rem 1rem;
+  }
+  input { letter-spacing: .3em; text-transform: uppercase; }
+  input::placeholder { color: var(--dim); letter-spacing: .2em; }
+  button {
+    background: var(--cyan); color: #04181C; border-color: var(--cyan);
+    letter-spacing: .16em; text-transform: uppercase; font-size: .8rem;
+    cursor: pointer; padding-inline: 1.6rem;
+  }
+  button:hover { background: #7DE6F2; }
+  select:focus-visible, input:focus-visible, button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+
+  .verdict { margin-top: 1.2rem; font-size: .95rem; letter-spacing: .08em; min-height: 1.5rem; }
+  .verdict.bad { color: var(--red); }
+  .verdict.good { color: var(--green); }
+
+  .win {
+    width: min(46rem, 100%);
+    border: 1px solid var(--green); background: rgba(52,211,153,.07);
+    padding: 2rem; text-align: center; display: none;
+  }
+  .win.on { display: block; }
+  .win .r { font-size: clamp(1.4rem, 5vw, 2.6rem); color: var(--green); letter-spacing: .16em; }
+  .win .p { color: var(--text); margin-top: 1rem; font-size: .9rem; letter-spacing: .1em; }
+
+  .log { width: min(46rem, 100%); }
+  .log h3 { font-size: .7rem; letter-spacing: .2em; color: var(--dim); font-weight: 400; text-transform: uppercase; margin: 0 0 .7rem; }
+  .log ol { list-style: none; margin: 0; padding: 0; }
+  .log li {
+    display: grid; grid-template-columns: 2rem 1fr 5.5rem 4.5rem;
+    gap: .8rem; align-items: center;
+    padding: .6rem .8rem; border: 1px solid var(--line); border-bottom: 0;
+    font-size: .8rem;
+  }
+  .log li:last-child { border-bottom: 1px solid var(--line); }
+  .log li .rank { color: var(--dim); }
+  .log li .code { color: var(--dim); letter-spacing: .2em; }
+  .log li .res { text-align: right; letter-spacing: .14em; }
+  .log li.ok .res { color: var(--green); }
+  .log li.no .res { color: var(--red); }
+  .log .empty { color: var(--dim); font-size: .8rem; padding: .8rem; border: 1px dashed var(--line); }
+
+
+  /* ---------- 4 · the message (session 5 finale) ---------- */
+
+  #message { flex-direction: column; justify-content: center; align-items: center; padding: 5rem 2rem 3rem; text-align: center; }
+  #message .lead { font-size: .72rem; letter-spacing: .28em; color: var(--dim); margin-bottom: 2.2rem; }
+  #message .chans { display: flex; flex-direction: column; gap: .55rem; width: min(34rem, 100%); }
+  #message .chan {
+    display: grid; grid-template-columns: 6rem 1fr 5rem; align-items: center; gap: 1rem;
+    background: var(--panel); border: 1px solid var(--line); padding: 1rem 1.4rem;
+    font-size: 1.05rem; letter-spacing: .1em;
+  }
+  #message .chan .c { color: var(--dim); font-size: .8rem; letter-spacing: .2em; }
+  #message .chan .e { color: var(--text); text-align: left; }
+  #message .chan .n { color: var(--cyan); font-size: 1.5rem; font-weight: 700; text-align: right; }
+  #message .freq { margin-top: 2rem; font-size: .72rem; letter-spacing: .26em; color: var(--amber); }
+  #message .sent { margin-top: 2.4rem; font-size: clamp(1.6rem, 7vw, 3.6rem); letter-spacing: .3em; color: var(--green); }
+  #message .sent.hide { display: none; }
+  #message .hintline { margin-top: 1.6rem; font-size: .68rem; letter-spacing: .2em; color: var(--dim); }
+
+  @media (prefers-reduced-motion: reduce) {
+    #alert, .dot { animation: none !important; }
+    #alert { background: #48100A; }
+  }
+</style>
+</head>
+<body>
+
+<div class="chrome">
+  <div>ARIADNE <b>· SHIP SYSTEMS TERMINAL</b> · SESSION <b id="wk">1</b></div>
+  <div class="keys">
+    <span><kbd>1</kbd> board</span>
+    <span><kbd>2</kbd> alert</span>
+    <span><kbd>3</kbd> console</span>
+    <span><kbd>4</kbd> message</span>
+    <span><kbd>F</kbd> full</span>
+    <span><kbd>R</kbd> reset</span>
+  </div>
+</div>
+
+<!-- ============ 1 · STATUS BOARD ============ -->
+<div class="view on" id="status">
+  <div class="hd">
+    <h1 class="ship">A R I A D N E</h1>
+    <div class="reg">SURVEY VESSEL · REG. TR-1104 · SHIP SYSTEMS STATUS</div>
+  </div>
+  <div class="systems" id="systems"></div>
+</div>
+
+<!-- ============ 2 · RED ALERT ============ -->
+<div class="view" id="alert">
+  <h1 class="big">RED ALERT</h1>
+  <div class="msg" id="alertMsg">REACTOR SHUTDOWN — ENGINES OFFLINE</div>
+  <div class="sub">ALL CREW TO ESCAPE PODS IMMEDIATELY</div>
+  <div class="bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+</div>
+
+<!-- ============ 3 · CONSOLE ============ -->
+<div class="view" id="console">
+  <div class="card">
+    <div class="lockout">◆ SYSTEM LOCKOUT — MANUAL OVERRIDE REQUIRED</div>
+    <h2 id="sysName">REACTOR &amp; ENGINES</h2>
+    <div class="prompt" id="promptText"></div>
+    <form id="entry" autocomplete="off">
+      <select id="pod" aria-label="Pod"></select>
+      <input id="code" placeholder="ENTER CODE" aria-label="Code" maxlength="12" required>
+      <button type="submit">Transmit</button>
+    </form>
+    <div class="verdict" id="verdict"></div>
+  </div>
+
+  <div class="win" id="win">
+    <div class="r" id="winText">REACTOR ONLINE</div>
+    <div class="p">MANUAL OVERRIDE ACCEPTED · PROCEED TO PRIORITY TRANSMISSION</div>
+  </div>
+
+  <div class="log">
+    <h3>Transmission log</h3>
+    <ol id="logList"></ol>
+    <div class="empty" id="logEmpty">No transmissions received.</div>
+  </div>
+</div>
+
+<!-- ============ 4 · THE MESSAGE (session 5 finale) ============ -->
+<div class="view" id="message">
+  <div class="lead">ARIADNE &middot; DEEP SPACE TRANSMITTER &middot; READY</div>
+  <div class="chans" id="chans"></div>
+  <div class="freq" id="freq">TRANSMIT ON FREQUENCY 11-REPEAT</div>
+  <div class="hintline" id="msgHint">PRESS <b style="color:var(--text)">T</b> TO TRANSMIT</div>
+  <div class="sent hide" id="sent">TRANSMITTING</div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* =====================================================================
+     EDIT THIS BLOCK EACH WEEK. Everything else can stay as it is.
+     ===================================================================== */
+
+  var WEEK = 1;   // <- or put ?week=2 in the address bar
+
+  var PODS = ["VELA", "LYRA", "ORION", "DRACO", "CYGNUS", "PHOENIX"];
+
+  var SYSTEMS = [
+    "REACTOR & ENGINES",
+    "LIFE SUPPORT",
+    "PRESSURE & THERMAL CONTROL",
+    "FUEL SYNTHESIS & THRUSTERS",
+    "HULL INTEGRITY & BEACON"
+  ];
+
+  var WEEKS = {
+    1: {
+      system: "REACTOR & ENGINES",
+      alert:  "REACTOR SHUTDOWN — ENGINES OFFLINE",
+      prompt: "REACTOR FUEL LOCKOUT.\n\nAdd your six station readings together. Enter the SYMBOL of the element whose atomic number equals that total.",
+      answers: ["FE"],                 // 4 + 2 + 1 + 2 + 5 + 12 = 26 = iron
+      hints: {
+        "26":   "THAT IS THE NUMBER. WE NEED THE SYMBOL.",
+        "IRON": "THE SYMBOL, NOT THE NAME. TWO LETTERS.",
+        "F":    "F IS FLUORINE. LOOK AT ELEMENT 26 AGAIN."
+      },
+      restored: "REACTOR ONLINE"
+    },
+
+    2: {
+      system: "LIFE SUPPORT",
+      alert:  "ATMOSPHERE SCRUBBERS FAILING — CO\u2082 RISING",
+      prompt: "SCRUBBER LOCKOUT.\n\nThe scrubber will not start until it is told which gas to pull out of the air.\n\n"
+            + "Readings 2-A and 2-B are ATOMIC NUMBERS. Look them up. They are the two elements in that gas, in that order.\n"
+            + "Readings 2-C and 2-D are HOW MANY of each, in the same order.\n"
+            + "A count of one is written as NOTHING AT ALL. That is how chemists write it.\n\n"
+            + "SEAL CHECK: readings 2-E and 2-F added together must equal the total number of atoms in one molecule.\n\n"
+            + "ENTER THE FORMULA.",
+      answers: ["CO2"],                // 6=C, 8=O, counts 1 and 2 · seal 2+1 = 3 atoms
+      hints: {
+        "C1O2": "SUBSCRIPT FORMAT ERROR — A COUNT OF ONE IS WRITTEN AS NOTHING.",
+        "O2C":  "ORDER ERROR — READING 2-A NAMES THE FIRST ELEMENT.",
+        "CO":   "INCOMPLETE. CARBON MONOXIDE IS THE GAS THAT KILLS THE CREW, NOT THE ONE WE ARE REMOVING.",
+        "26":   "THAT WAS LAST WEEK.",
+        "FE":   "THAT WAS LAST WEEK."
+      },
+      restored: "LIFE SUPPORT ONLINE"
+    },
+
+    3: {
+      system: "PRESSURE & THERMAL CONTROL",
+      alert:  "HULL PRESSURE DROPPING — COOLANT LOOP OVERHEATING",
+      prompt: "PRESSURE LOCKOUT — CABIN REGULATOR.\n\nThe reserve tank's label burned off. Rebuild it from your readings.\n\n"
+            + "TANK PRESSURE — write readings 3-A, 3-B and 3-C side by side, in that order. That is the pressure in kilopascals.\n"
+            + "TANK VOLUME — reading 3-D.\n"
+            + "CHAMBER VOLUME — reading 3-E.\n\n"
+            + "The regulator will move ALL of the gas out of the tank and into the chamber. Nothing leaks. Nothing is added. "
+            + "The coolant loop holds the temperature exactly where it is.\n\n"
+            + "SEAL CHECK: tank volume divided by chamber volume must equal reading 3-F.\n\n"
+            + "ENTER THE PRESSURE THE CHAMBER WILL READ.",
+      answers: ["1420", "1420KPA"],    // 710 kPa, volume 8 -> 4, so pressure doubles
+      hints: {
+        "355":  "YOU HALVED IT. THE CHAMBER IS SMALLER THAN THE TANK, NOT BIGGER.",
+        "710":  "THAT IS THE TANK. THE GAS IS NOT IN THE TANK ANY MORE.",
+        "2840": "YOU QUARTERED THE VOLUME. 8 TO 4 IS HALF.",
+        "714":  "THOSE ARE READINGS, NOT A PRESSURE. 3-A 3-B 3-C ONLY.",
+        "CO2":  "THAT WAS LAST WEEK.",
+        "FE":   "THAT WAS A PREVIOUS WEEK."
+      },
+      restored: "PRESSURE RESTORED"
+    },
+
+    4: {
+      system: "FUEL SYNTHESIS & THRUSTERS",
+      alert:  "FUEL FABRICATOR JAMMED — THRUSTERS DEAD",
+      prompt: "FABRICATOR LOCKOUT — THRUSTER FUEL LINE.\n\nThe fabricator's recipe line reads:\n\n"
+            + "     ___ CH4   +   ___ O2   \u2192   ___ CO2   +   ___ H2O\n\n"
+            + "Run it with a 1 in every box and the atoms do not match. Fill the four boxes so that NOTHING IS CREATED AND "
+            + "NOTHING IS DESTROYED — the same atoms come out as went in.\n\n"
+            + "You may NOT change any formula. Only the numbers in front.\n\n"
+            + "SEAL CHECK — before you enter:\n"
+            + "  reading 4-A must equal the HYDROGEN atoms on each side\n"
+            + "  reading 4-B must equal the OXYGEN atoms on each side\n"
+            + "  4-C + 4-D + 4-E + 4-F must equal your four box numbers added together\n\n"
+            + "ENTER THE FOUR NUMBERS IN ORDER, NO SPACES.",
+      answers: ["1212"],               // CH4 + 2 O2 -> CO2 + 2 H2O
+      hints: {
+        "1112": "OXYGEN DOES NOT BALANCE. COUNT THE OXYGEN TILES ON BOTH SIDES.",
+        "1211": "HYDROGEN DOES NOT BALANCE. FOUR GO IN.",
+        "1111": "THAT IS THE BROKEN LINE. THAT IS WHY WE ARE HERE.",
+        "2424": "THAT BALANCES — BUT EVERY NUMBER IS DOUBLE. USE THE SMALLEST SET THAT WORKS.",
+        "3636": "THAT BALANCES — BUT EVERY NUMBER IS TRIPLE. USE THE SMALLEST SET THAT WORKS.",
+        "121":  "THE LINE HAS FOUR BOXES.",
+        "6":    "THAT IS THE SEAL CHECK TOTAL, NOT THE CODE."
+      },
+      restored: "THRUSTERS ONLINE"
+    },
+
+    5: {
+      system: "HULL INTEGRITY & BEACON",
+      alert:  "HULL BREACH — CORROSION SPREADING",
+      prompt: "BEACON LOCKOUT — DEEP SPACE TRANSMITTER.\n\n"
+            + "The beacon will not transmit until all five systems confirm. Each confirmation is ONE NUMBER, and every one of "
+            + "them is in your Databook — one from each week.\n\n"
+            + "  01 REACTOR       the atomic number the reactor locks out at\n"
+            + "  02 LIFE SUPPORT  atoms in one molecule of the gas the scrubbers strip out\n"
+            + "  03 PRESSURE      halve a gas's volume, and its pressure is multiplied by this\n"
+            + "  04 THRUSTERS     the four numbers of the balanced fuel line, added together\n"
+            + "  05 HULL          the reading that is neither acid nor base\n\n"
+            + "SEAL CHECK: your six station readings must add to 14 — the full height of the ladder.\n\n"
+            + "ENTER THE FIVE NUMBERS IN ORDER, NO SPACES.",
+      answers: ["263267"],             // 26 · 3 · 2 · 6 · 7
+      hints: {
+        "2632614": "FIVE NUMBERS. THE SIXTH IS THE SEAL CHECK, NOT A CHANNEL.",
+        "2632127": "FEED 04 ASKS WHAT THE FOUR NUMBERS ADD UP TO.",
+        "26CO2267": "NUMBERS ONLY. FEED 02 ASKS HOW MANY ATOMS.",
+        "2632677": "TOO MANY DIGITS. COUNT YOUR FIVE CONFIRMATIONS.",
+        "732626":  "WRONG ORDER. ONE THROUGH FIVE, OLDEST SYSTEM FIRST.",
+        "14":      "THAT IS THE SEAL CHECK, NOT THE CODE.",
+        "IAMHERE": "NOT YET. THE BEACON HAS TO BE POWERED FIRST."
+      },
+      // shown on the MESSAGE screen (key 4) after every pod is in
+      message: [
+        { ch: "CH 1", el: "ELEMENT", n: 53 },
+        { ch: "CH 2", el: "ELEMENT", n: 95 },
+        { ch: "CH 3", el: "ELEMENT", n: 2  },
+        { ch: "CH 4", el: "ELEMENT", n: 75 }
+      ],
+      restored: "HULL SEALED — BEACON POWERING UP"
+    }
+  };
+
+  /* ===================================================================== */
+
+  var q = new URLSearchParams(location.search).get("week");
+  if (q && WEEKS[q]) { WEEK = parseInt(q, 10); }
+  var CFG = WEEKS[WEEK];
+
+  // Systems already restored come from the address bar: #1,2,3
+  var restored = {};
+  (location.hash || "").replace("#", "").split(",").forEach(function (n) {
+    n = parseInt(n, 10);
+    if (n >= 1 && n <= 5) { restored[n] = true; }
+  });
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* ---------- paint ---------- */
+
+  $("wk").textContent = WEEK;
+  $("alertMsg").textContent = CFG.alert;
+  $("sysName").textContent = CFG.system;
+  $("promptText").textContent = CFG.prompt;
+  $("winText").textContent = CFG.restored;
+
+  SYSTEMS.forEach(function (name, i) {
+    var n = i + 1;
+    var state = restored[n] ? "restored" : (n === WEEK ? "active" : "offline");
+    var label = state === "restored" ? "RESTORED" : state === "active" ? "REPAIR IN PROGRESS" : "OFFLINE";
+    var row = document.createElement("div");
+    row.className = "sysrow";
+    row.setAttribute("data-state", state);
+    row.setAttribute("data-sys", n);
+    row.innerHTML =
+      '<div class="idx">0' + n + '</div>' +
+      '<div class="nm"></div>' +
+      '<div class="st"><span class="dot"></span><span class="lbl"></span></div>';
+    row.querySelector(".nm").textContent = name;
+    row.querySelector(".lbl").textContent = label;
+    $("systems").appendChild(row);
+  });
+
+  (function paintMessage() {
+    var m = CFG.message;
+    if (!m) {
+      $("chans").innerHTML = '<div class="chan"><span class="c">—</span>'
+        + '<span class="e">NO TRANSMISSION CONFIGURED FOR THIS SESSION</span><span class="n"></span></div>';
+      $("freq").style.display = "none";
+      $("msgHint").style.display = "none";
+      return;
+    }
+    m.forEach(function (row) {
+      var d = document.createElement("div");
+      d.className = "chan";
+      d.innerHTML = '<span class="c"></span><span class="e"></span><span class="n"></span>';
+      d.querySelector(".c").textContent = row.ch;
+      d.querySelector(".e").textContent = row.el;
+      d.querySelector(".n").textContent = row.n;
+      $("chans").appendChild(d);
+    });
+  }());
+
+  PODS.forEach(function (p) {
+    var o = document.createElement("option");
+    o.value = p; o.textContent = "POD " + p;
+    $("pod").appendChild(o);
+  });
+
+  /* ---------- views ---------- */
+
+  function show(id) {
+    ["status", "alert", "console", "message"].forEach(function (v) {
+      $(v).classList.toggle("on", v === id);
+    });
+  }
+
+  document.addEventListener("keydown", function (e) {
+    if (/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) { return; }
+    var k = e.key.toLowerCase();
+    if (k === "1") { show("status"); }
+    if (k === "2") { show("alert"); beep(); }
+    if (k === "3") { show("console"); $("code").focus(); }
+    if (k === "4") { show("message"); }
+    if (k === "t" && $("message").classList.contains("on")) {
+      $("sent").classList.remove("hide");
+      $("msgHint").style.display = "none";
+      beep();
+    }
+    if (k === "f") {
+      if (document.fullscreenElement) { document.exitFullscreen(); }
+      else if (document.documentElement.requestFullscreen) { document.documentElement.requestFullscreen(); }
+    }
+    if (k === "r") { resetLog(); }
+  });
+
+  /* ---------- klaxon (only on a real keypress, so autoplay rules are happy) ---------- */
+
+  function beep() {
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) { return; }
+      var ctx = new AC();
+      [0, 0.45, 0.9].forEach(function (t) {
+        var o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = "square";
+        o.frequency.setValueAtTime(620, ctx.currentTime + t);
+        o.frequency.linearRampToValueAtTime(380, ctx.currentTime + t + 0.34);
+        g.gain.setValueAtTime(0.06, ctx.currentTime + t);
+        g.gain.linearRampToValueAtTime(0, ctx.currentTime + t + 0.36);
+        o.connect(g); g.connect(ctx.destination);
+        o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + 0.38);
+      });
+    } catch (err) { /* silence is fine */ }
+  }
+
+  /* ---------- the log ---------- */
+
+  var entries = [];
+  var solved = 0;
+  var t0 = null;
+
+  function clock() {
+    if (t0 === null) { t0 = Date.now(); return "00:00"; }
+    var s = Math.floor((Date.now() - t0) / 1000);
+    return String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0");
+  }
+
+  function normalise(v) {
+    // subscript digits (CO₂) become ordinary digits before anything else is stripped,
+    // otherwise "CO₂" collapses to "CO" and gets told it is carbon monoxide.
+    return v
+      .replace(/[\u2080-\u2089]/g, function (d) { return String(d.charCodeAt(0) - 0x2080); })
+      .replace(/[\u2070\u00B9\u00B2\u00B3\u2074-\u2079]/g, function (d) {
+        return ({ "\u2070": "0", "\u00B9": "1", "\u00B2": "2", "\u00B3": "3" })[d]
+            || String(d.charCodeAt(0) - 0x2070);
+      })
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "");
+  }
+
+  function resetLog() {
+    entries = []; solved = 0; t0 = null;
+    $("win").classList.remove("on");
+    $("verdict").textContent = "";
+    $("verdict").className = "verdict";
+    render();
+  }
+
+  function render() {
+    var list = $("logList");
+    list.innerHTML = "";
+    $("logEmpty").style.display = entries.length ? "none" : "block";
+    entries.forEach(function (e, i) {
+      var li = document.createElement("li");
+      li.className = e.ok ? "ok" : "no";
+      li.innerHTML =
+        '<span class="rank"></span><span class="who"></span>' +
+        '<span class="code"></span><span class="res"></span>';
+      li.querySelector(".rank").textContent = e.ok ? "#" + e.place : "—";
+      li.querySelector(".who").textContent = "POD " + e.pod;
+      li.querySelector(".code").textContent = e.code;
+      li.querySelector(".res").textContent = e.ok ? e.at : "REJECTED";
+      list.appendChild(li);
+    });
+  }
+
+  $("entry").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var pod = $("pod").value;
+    var raw = $("code").value.trim();
+    if (!raw) { return; }
+    var at = clock();
+    var ok = CFG.answers.some(function (a) { return normalise(a) === normalise(raw); });
+    var v = $("verdict");
+
+    if (ok) {
+      // one success per pod
+      var already = entries.some(function (e) { return e.ok && e.pod === pod; });
+      if (already) {
+        v.textContent = "◆ POD " + pod + " ALREADY LOGGED. Stand by.";
+        v.className = "verdict good";
+        $("code").value = "";
+        return;
+      }
+      solved += 1;
+      entries.unshift({ pod: pod, code: raw.toUpperCase(), ok: true, place: solved, at: at });
+      v.textContent = "◆ OVERRIDE ACCEPTED — " + CFG.restored;
+      v.className = "verdict good";
+      $("win").classList.add("on");
+      var row = document.querySelector('.sysrow[data-sys="' + WEEK + '"]');
+      if (row) {
+        row.setAttribute("data-state", "restored");
+        row.querySelector(".lbl").textContent = "RESTORED";
+      }
+    } else {
+      entries.unshift({ pod: pod, code: raw.toUpperCase(), ok: false });
+      var hint = null, table = CFG.hints || {};
+      Object.keys(table).forEach(function (k) {
+        if (normalise(k) === normalise(raw)) { hint = table[k]; }
+      });
+      v.textContent = hint
+        ? "◆ " + hint
+        : "◆ CODE REJECTED — check your readings and try again.";
+      v.className = "verdict bad";
+    }
+    $("code").value = "";
+    $("code").focus();
+    render();
+  });
+
+  render();
+}());
+</script>
+</body>
+</html>

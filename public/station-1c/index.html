@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ariadne — Station 1-C · Beam Deflector</title>
+<link rel="icon" href="/favicon.ico">
+<style>
+  /* ---------------------------------------------------------------
+     STATION 1-C · THE BEAM DEFLECTOR  (digital version)
+     Ariadne · TR-1104 · Session 01
+     Self-contained: no fonts, no libraries, works offline.
+     Source card: chem-lessons/session-01-reactor.md § 1-C
+
+     KEYS:  F = fullscreen    R = reset for the next pod
+     The page never tells the pod the answer — they log the beam
+     number in their paper logbook, same as the printed card.
+     --------------------------------------------------------------- */
+
+  :root {
+    --bg:      #070B0E;
+    --panel:   #0E151A;
+    --raised:  #162027;
+    --line:    #223039;
+    --dim:     #63757F;
+    --text:    #DCE6EA;
+    --green:   #34D399;
+    --amber:   #F0A93B;
+    --red:     #FF4A3D;
+    --cyan:    #57D8E8;
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Menlo, Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.55;
+  }
+
+  .chrome {
+    position: sticky; top: 0;
+    display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+    padding: .9rem 1.4rem;
+    font-size: .7rem; letter-spacing: .18em; text-transform: uppercase;
+    color: var(--dim);
+    border-bottom: 1px solid var(--line);
+    background: linear-gradient(var(--bg), rgba(7,11,14,.92));
+    z-index: 10;
+  }
+  .chrome b { color: var(--cyan); font-weight: 400; }
+  .keys { display: flex; gap: 1.1rem; flex-wrap: wrap; justify-content: flex-end; }
+  .keys kbd {
+    color: var(--text); background: var(--raised);
+    border: 1px solid var(--line); border-radius: 3px;
+    padding: .1rem .35rem; font: inherit; font-size: .65rem;
+  }
+
+  main { width: min(52rem, 100%); margin: 0 auto; padding: 2rem 16px 4rem; display: flex; flex-direction: column; gap: 1.5rem; }
+
+  .title .sid { color: var(--amber); font-size: .75rem; letter-spacing: .3em; }
+  .title h1 { font-size: clamp(1.6rem, 5vw, 2.6rem); font-weight: 400; letter-spacing: .08em; margin: .3rem 0 0; }
+
+  .beat { background: var(--panel); border: 1px solid var(--line); padding: clamp(1.1rem, 3.5vw, 1.8rem); }
+  .beat .label { font-size: .7rem; letter-spacing: .22em; text-transform: uppercase; color: var(--cyan); margin-bottom: .8rem; }
+  .beat p { margin: 0 0 .8rem; }
+  .beat p:last-child { margin-bottom: 0; }
+  b { color: #fff; font-weight: 600; }
+
+  .stage { position: relative; margin: 1rem 0; border: 1px solid var(--line); background: #0A1014; }
+  .stage canvas { display: block; width: 100%; height: auto; touch-action: manipulation; }
+
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: .8rem 1.2rem; margin-bottom: .9rem; }
+  .controls label { font-size: .75rem; letter-spacing: .12em; color: var(--dim); display: flex; align-items: center; gap: .6rem; flex: 1 1 16rem; }
+  input[type=range] { flex: 1; accent-color: var(--cyan); min-width: 8rem; }
+
+  button {
+    font: inherit; font-size: .78rem; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--bg); background: var(--cyan);
+    border: 0; padding: .65rem 1.1rem; cursor: pointer;
+  }
+  button.ghost { color: var(--text); background: var(--raised); border: 1px solid var(--line); }
+  button:disabled { opacity: .45; cursor: default; }
+  button:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+
+  .spec { width: 100%; border-collapse: collapse; margin: .4rem 0 1rem; }
+  .spec td { border: 1px solid var(--line); padding: .6rem .9rem; }
+  .spec td.k { color: var(--amber); letter-spacing: .12em; white-space: nowrap; width: 1%; }
+
+  .rule { border-left: 3px solid var(--amber); background: var(--raised); padding: .7rem 1rem; margin: 0 0 .8rem; }
+
+  .ask {
+    border: 1px solid var(--amber); color: var(--amber);
+    text-align: center; padding: 1.1rem;
+    font-size: clamp(1.1rem, 3.5vw, 1.5rem); letter-spacing: .06em;
+  }
+
+  .logbox { border: 2px dashed var(--line); padding: 1.2rem; text-align: center; }
+  .logbox .t { font-size: .8rem; letter-spacing: .24em; text-transform: uppercase; }
+  .logbox .s { font-size: .72rem; color: var(--dim); margin-top: .4rem; letter-spacing: .08em; }
+
+  .readout { font-size: .7rem; letter-spacing: .16em; color: var(--dim); text-transform: uppercase; min-height: 1.2em; }
+
+  @media (max-width: 560px) {
+    .chrome .keys { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="chrome">
+  <div>Ariadne · TR-1104 · <b>Session 01</b></div>
+  <div class="keys"><span><kbd>F</kbd> fullscreen</span><span><kbd>R</kbd> reset for next pod</span></div>
+</div>
+
+<main>
+  <div class="title">
+    <div class="sid">STATION 1-C</div>
+    <h1>The Beam Deflector</h1>
+  </div>
+
+  <!-- ---------------- beat 1 ---------------- -->
+  <section class="beat">
+    <div class="label">First — see it happen</div>
+    <p>Roll a steel ball down the ramp so it passes the magnet. Watch its path.<br>
+       Then slide the ramp further away and roll it again.</p>
+
+    <div class="stage"><canvas id="ballCanvas" width="800" height="360" aria-label="Top-down view of a ramp, a rolling steel ball, and a magnet"></canvas></div>
+
+    <div class="controls">
+      <label for="dist">RAMP DISTANCE FROM MAGNET
+        <input id="dist" type="range" min="0" max="100" value="15">
+      </label>
+      <button id="rollBtn">Roll the ball</button>
+      <button id="clearBtn" class="ghost">Clear paths</button>
+    </div>
+    <div class="readout" id="ballReadout">&nbsp;</div>
+
+    <p style="margin-top:1rem"><b>What does the magnet do to something moving past it?</b></p>
+  </section>
+
+  <!-- ---------------- beat 2 ---------------- -->
+  <section class="beat">
+    <div class="label">Now the ship's sensor log</div>
+    <p>When the reactor blew, it fired three beams of particles past a plate the ship had charged <b>POSITIVE (+)</b>. The sensors traced all three.</p>
+
+    <div class="stage"><canvas id="beamCanvas" width="800" height="380" aria-label="Sensor trace of three particle beams passing a positively charged plate"></canvas></div>
+
+    <div class="controls">
+      <button id="replayBtn">Replay sensor trace</button>
+    </div>
+
+    <table class="spec">
+      <tr><td class="k">BEAM 1</td><td>curved <b>TOWARD</b> the + plate</td></tr>
+      <tr><td class="k">BEAM 2</td><td>went <b>STRAIGHT THROUGH</b></td></tr>
+      <tr><td class="k">BEAM 3</td><td>curved <b>AWAY</b> from the + plate</td></tr>
+    </table>
+
+    <p class="rule">Opposite charges pull together. Same charges push apart.</p>
+    <p>One beam is <b>electrons</b> (negative). One is <b>protons</b> (positive). One is <b>neutrons</b> (no charge).</p>
+  </section>
+
+  <div class="ask">Which beam is the electrons?</div>
+
+  <!-- ---------------- beat 3 ---------------- -->
+  <section class="beat">
+    <div class="label">One more, for the crew's sake</div>
+    <p>Beam 1 passed straight through an engineer and knocked <i>light</i> pieces out of his atoms — but never the heavy ones. If the heavy pieces are that hard to knock loose, <b>where in the atom must they be sitting?</b></p>
+  </section>
+
+  <div class="logbox">
+    <div class="t">Log the beam number</div>
+    <div class="s">Write it in box 1-C of your pod's logbook.</div>
+  </div>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function css(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+  var C = {
+    bg: "#0A1014", line: css("--line"), dim: css("--dim"), text: css("--text"),
+    cyan: css("--cyan"), amber: css("--amber"), red: css("--red"), steel: "#B8C4CA"
+  };
+
+  // Canvases draw in fixed logical units and are scaled for crisp HiDPI output.
+  function setupCanvas(cv, w, h) {
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    cv.width = w * dpr; cv.height = h * dpr;
+    var ctx = cv.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return ctx;
+  }
+
+  function grid(ctx, w, h) {
+    ctx.fillStyle = C.bg; ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = "rgba(34,48,57,.55)"; ctx.lineWidth = 1;
+    for (var x = 40; x < w; x += 40) { ctx.beginPath(); ctx.moveTo(x + .5, 0); ctx.lineTo(x + .5, h); ctx.stroke(); }
+    for (var y = 40; y < h; y += 40) { ctx.beginPath(); ctx.moveTo(0, y + .5); ctx.lineTo(w, y + .5); ctx.stroke(); }
+  }
+
+  /* =====================================================================
+     BEAT 1 · steel ball rolling past a magnet (top-down view)
+     ===================================================================== */
+
+  var BW = 800, BH = 360;
+  var ballCv = document.getElementById("ballCanvas");
+  var bctx = setupCanvas(ballCv, BW, BH);
+  var distInput = document.getElementById("dist");
+  var rollBtn = document.getElementById("rollBtn");
+  var clearBtn = document.getElementById("clearBtn");
+  var ballReadout = document.getElementById("ballReadout");
+
+  var MAG = { x: 400, y: 300, w: 90, h: 44 };   // magnet block, centre + size
+  var RAMP_END = 150, R = 9, V0 = 250, K = 3e5, DRAG = 0.25;
+  var ball = null, trails = [], ballRaf = 0;
+
+  function laneY() { return 238 - (distInput.value / 100) * 190; }  // 238 (close) … 48 (far)
+
+  function drawBallScene() {
+    grid(bctx, BW, BH);
+    var ly = laneY();
+
+    // ramp: a wedge pointing right, ending where the ball leaves it
+    bctx.fillStyle = "#1B2830"; bctx.strokeStyle = C.dim; bctx.lineWidth = 1.5;
+    bctx.beginPath();
+    bctx.moveTo(20, ly - 22); bctx.lineTo(RAMP_END, ly - 14);
+    bctx.lineTo(RAMP_END, ly + 14); bctx.lineTo(20, ly + 22); bctx.closePath();
+    bctx.fill(); bctx.stroke();
+    for (var i = 1; i < 6; i++) {
+      var x = 20 + i * (RAMP_END - 20) / 6;
+      bctx.beginPath(); bctx.moveTo(x, ly - 20 + i * 1.2); bctx.lineTo(x, ly + 20 - i * 1.2);
+      bctx.strokeStyle = "rgba(99,117,127,.35)"; bctx.stroke();
+    }
+    bctx.fillStyle = C.dim; bctx.font = "11px ui-monospace, Menlo, monospace";
+    bctx.fillText("RAMP ▸", 30, ly - 28);
+
+    // magnet: split N/S block with a faint field glow
+    var g = bctx.createRadialGradient(MAG.x, MAG.y, 10, MAG.x, MAG.y, 170);
+    g.addColorStop(0, "rgba(255,74,61,.16)"); g.addColorStop(1, "rgba(255,74,61,0)");
+    bctx.fillStyle = g; bctx.fillRect(MAG.x - 180, MAG.y - 180, 360, 360);
+    var mx = MAG.x - MAG.w / 2, my = MAG.y - MAG.h / 2;
+    bctx.fillStyle = C.red; bctx.fillRect(mx, my, MAG.w / 2, MAG.h);
+    bctx.fillStyle = "#3B7BD8"; bctx.fillRect(MAG.x, my, MAG.w / 2, MAG.h);
+    bctx.fillStyle = "#fff"; bctx.font = "bold 16px ui-monospace, Menlo, monospace";
+    bctx.textAlign = "center"; bctx.textBaseline = "middle";
+    bctx.fillText("N", MAG.x - MAG.w / 4, MAG.y); bctx.fillText("S", MAG.x + MAG.w / 4, MAG.y);
+    bctx.fillStyle = C.dim; bctx.font = "11px ui-monospace, Menlo, monospace";
+    bctx.fillText("MAGNET", MAG.x, my + MAG.h + 14);
+    bctx.textAlign = "left"; bctx.textBaseline = "alphabetic";
+
+    // dashed "straight line" guide, so the curve is obvious
+    bctx.setLineDash([4, 6]); bctx.strokeStyle = "rgba(99,117,127,.5)"; bctx.lineWidth = 1;
+    bctx.beginPath(); bctx.moveTo(RAMP_END, ly); bctx.lineTo(BW, ly); bctx.stroke();
+    bctx.setLineDash([]);
+
+    // old paths faded, newest bright
+    trails.forEach(function (t, idx) {
+      var fresh = idx === trails.length - 1;
+      bctx.strokeStyle = fresh ? C.cyan : "rgba(87,216,232,.3)";
+      bctx.lineWidth = fresh ? 2.5 : 1.5;
+      bctx.beginPath();
+      t.forEach(function (p, j) { j ? bctx.lineTo(p[0], p[1]) : bctx.moveTo(p[0], p[1]); });
+      bctx.stroke();
+    });
+
+    // ball (sits at the ramp's end while waiting)
+    var bx = ball ? ball.x : RAMP_END - R, by = ball ? ball.y : ly;
+    var bg = bctx.createRadialGradient(bx - 3, by - 3, 1, bx, by, R);
+    bg.addColorStop(0, "#fff"); bg.addColorStop(1, C.steel);
+    bctx.fillStyle = bg; bctx.beginPath(); bctx.arc(bx, by, R, 0, Math.PI * 2); bctx.fill();
+  }
+
+  // Nearest point on the magnet's rectangle — the pull is aimed there.
+  function nearestOnMagnet(x, y) {
+    return [
+      Math.max(MAG.x - MAG.w / 2, Math.min(x, MAG.x + MAG.w / 2)),
+      Math.max(MAG.y - MAG.h / 2, Math.min(y, MAG.y + MAG.h / 2))
+    ];
+  }
+
+  function stepBall(dt) {
+    var n = nearestOnMagnet(ball.x, ball.y);
+    var dx = n[0] - ball.x, dy = n[1] - ball.y;
+    var d = Math.sqrt(dx * dx + dy * dy);
+    if (d <= R) { ball.stuck = true; ball.vx = ball.vy = 0; return; }
+    var eff = Math.max(d, 14);
+    var a = K / (eff * eff);
+    ball.vx += (dx / d) * a * dt - ball.vx * DRAG * dt;
+    ball.vy += (dy / d) * a * dt - ball.vy * DRAG * dt;
+    ball.x += ball.vx * dt; ball.y += ball.vy * dt;
+  }
+
+  function roll() {
+    cancelAnimationFrame(ballRaf);
+    var ly = laneY();
+    ball = { x: RAMP_END - R, y: ly, vx: V0, vy: 0, stuck: false, y0: ly };
+    trails.push([[ball.x, ball.y]]);
+    if (trails.length > 6) trails.shift();
+    ballReadout.textContent = " ";
+    rollBtn.disabled = true; distInput.disabled = true;
+    var last = performance.now();
+
+    function frame(now) {
+      var elapsed = Math.min((now - last) / 1000, 0.05); last = now;
+      var steps = 8, h = elapsed / steps;
+      for (var i = 0; i < steps && !ball.stuck; i++) stepBall(h);
+      trails[trails.length - 1].push([ball.x, ball.y]);
+      drawBallScene();
+      var gone = ball.x > BW + R || ball.y < -R || ball.y > BH + R;
+      var stopped = Math.hypot(ball.vx, ball.vy) < 5;
+      if (ball.stuck || gone || stopped) return finish();
+      ballRaf = requestAnimationFrame(frame);
+    }
+
+    if (reduceMotion) {
+      // Run the whole roll instantly and just show the finished path.
+      for (var t = 0; t < 2000 && !ball.stuck && ball.x < BW + R && ball.y > -R && ball.y < BH + R; t++) {
+        for (var s = 0; s < 8 && !ball.stuck; s++) stepBall(1 / 480);
+        trails[trails.length - 1].push([ball.x, ball.y]);
+      }
+      drawBallScene(); return finish();
+    }
+    ballRaf = requestAnimationFrame(frame);
+  }
+
+  function finish() {
+    rollBtn.disabled = false; distInput.disabled = false;
+    if (ball.stuck) {
+      ballReadout.textContent = "Clack — the ball ended up on the magnet.";
+    } else {
+      var bend = Math.round(Math.abs(ball.y - ball.y0));
+      ballReadout.textContent = "Ball rolled off the table — " + bend + " units off the straight line.";
+    }
+  }
+
+  function clearBall() {
+    cancelAnimationFrame(ballRaf);
+    ball = null; trails = [];
+    ballReadout.textContent = " ";
+    rollBtn.disabled = false; distInput.disabled = false;
+    drawBallScene();
+  }
+
+  rollBtn.addEventListener("click", roll);
+  clearBtn.addEventListener("click", clearBall);
+  distInput.addEventListener("input", function () { ball = null; drawBallScene(); });
+
+  /* =====================================================================
+     BEAT 2 · three beams past a + plate (sensor trace)
+     All three beams are drawn identically — the colour must not give
+     away which is which. The electron beam bends harder than the proton
+     beam because electrons are far lighter; that's real, and harmless.
+     ===================================================================== */
+
+  var EW = 800, EH = 380;
+  var beamCv = document.getElementById("beamCanvas");
+  var ectx = setupCanvas(beamCv, EW, EH);
+  var replayBtn = document.getElementById("replayBtn");
+
+  var SRC = { x: 80, y: 180 };
+  var PLATE = { x0: 250, x1: 610, y: 344 };
+  var DET_X = 740;
+  // acc > 0 bends down, toward the plate
+  var BEAMS = [
+    { n: 1, y0: 196, acc: 120 },   // electrons: toward +, bends most
+    { n: 2, y0: 180, acc: 0 },     // neutrons: straight
+    { n: 3, y0: 164, acc: -70 }   // protons: away from +
+  ];
+
+  // Precompute each beam's path: straight to the plate, bent over it, straight after.
+  BEAMS.forEach(function (b) {
+    var pts = [], y = b.y0, vy = 0, u = 360;          // u = forward speed
+    var dx = 2, dt = dx / u;
+    // fan the three beams apart slightly as they leave the source
+    for (var x = SRC.x; x <= DET_X; x += dx) {
+      if (x < PLATE.x0) y = SRC.y + (b.y0 - SRC.y) * ((x - SRC.x) / (PLATE.x0 - SRC.x));
+      else {
+        if (x <= PLATE.x1) vy += b.acc * dt;
+        y += vy * dt;
+      }
+      pts.push([x, y]);
+    }
+    b.pts = pts;
+  });
+
+  var beamStart = 0, beamRaf = 0, DURATION = 3200;
+
+  function drawBeamScene(progress, now) {
+    grid(ectx, EW, EH);
+    ectx.font = "11px ui-monospace, Menlo, monospace";
+
+    // reactor source
+    ectx.fillStyle = "#2A1A0C"; ectx.strokeStyle = C.amber; ectx.lineWidth = 1.5;
+    ectx.beginPath(); ectx.arc(SRC.x - 20, SRC.y, 24, 0, Math.PI * 2); ectx.fill(); ectx.stroke();
+    ectx.fillStyle = C.amber; ectx.textAlign = "center";
+    ectx.fillText("REACTOR", SRC.x - 20, SRC.y + 42);
+
+    // charged plate
+    ectx.fillStyle = "#3A1411"; ectx.strokeStyle = C.red;
+    ectx.fillRect(PLATE.x0, PLATE.y, PLATE.x1 - PLATE.x0, 16);
+    ectx.strokeRect(PLATE.x0 + .5, PLATE.y + .5, PLATE.x1 - PLATE.x0 - 1, 15);
+    ectx.fillStyle = C.red; ectx.font = "bold 14px ui-monospace, Menlo, monospace";
+    for (var px = PLATE.x0 + 20; px < PLATE.x1; px += 40) ectx.fillText("+", px, PLATE.y + 13);
+    ectx.font = "11px ui-monospace, Menlo, monospace";
+    ectx.fillText("PLATE  CHARGED  POSITIVE (+)", (PLATE.x0 + PLATE.x1) / 2, PLATE.y - 8);
+
+    // detectors
+    BEAMS.forEach(function (b) {
+      var end = b.pts[b.pts.length - 1];
+      ectx.fillStyle = C.bg; ectx.strokeStyle = C.dim; ectx.lineWidth = 1;
+      ectx.fillRect(DET_X + 6, end[1] - 14, 40, 28);
+      ectx.strokeRect(DET_X + 6.5, end[1] - 13.5, 39, 27);
+      ectx.fillStyle = C.text; ectx.font = "bold 13px ui-monospace, Menlo, monospace";
+      ectx.fillText(progress >= 1 ? "BEAM " + b.n : "···", DET_X + 26, end[1] + 4);
+    });
+    ectx.textAlign = "left";
+
+    // traces
+    BEAMS.forEach(function (b) {
+      var upto = Math.floor(b.pts.length * Math.min(progress, 1));
+      if (upto < 2) return;
+      ectx.strokeStyle = C.cyan; ectx.lineWidth = 2;
+      ectx.shadowColor = C.cyan; ectx.shadowBlur = 8;
+      ectx.beginPath();
+      for (var i = 0; i < upto; i++) i ? ectx.lineTo(b.pts[i][0], b.pts[i][1]) : ectx.moveTo(b.pts[i][0], b.pts[i][1]);
+      ectx.stroke();
+      ectx.shadowBlur = 0;
+
+      // particles streaming along the finished trace
+      ectx.fillStyle = "#E8FBFF";
+      var phase = (now || 0) / 1400;
+      for (var k = 0; k < 6; k++) {
+        var f = ((phase + k / 6) % 1);
+        var idx = Math.floor(f * (upto - 1));
+        var p = b.pts[idx];
+        ectx.beginPath(); ectx.arc(p[0], p[1], 2.4, 0, Math.PI * 2); ectx.fill();
+      }
+    });
+
+    ectx.fillStyle = C.dim; ectx.font = "11px ui-monospace, Menlo, monospace";
+    ectx.fillText(progress >= 1 ? "SENSOR TRACE · COMPLETE" : "SENSOR TRACE · PLAYING BACK…", 14, 22);
+  }
+
+  function beamFrame(now) {
+    var progress = reduceMotion ? 1 : (now - beamStart) / DURATION;
+    drawBeamScene(progress, reduceMotion ? 0 : now);
+    if (reduceMotion && progress >= 1) return;
+    beamRaf = requestAnimationFrame(beamFrame);
+  }
+
+  function replay() {
+    cancelAnimationFrame(beamRaf);
+    beamStart = performance.now();
+    beamRaf = requestAnimationFrame(beamFrame);
+  }
+  replayBtn.addEventListener("click", replay);
+
+  // Start the trace the first time the beam panel scrolls into view.
+  if ("IntersectionObserver" in window) {
+    drawBeamScene(0, 0);
+    var io = new IntersectionObserver(function (entries) {
+      if (entries.some(function (e) { return e.isIntersecting; })) { io.disconnect(); replay(); }
+    }, { threshold: 0.4 });
+    io.observe(beamCv);
+  } else {
+    replay();
+  }
+
+  /* =====================================================================
+     keys
+     ===================================================================== */
+
+  function resetAll() {
+    clearBall();
+    distInput.value = 15;
+    drawBallScene();
+    replay();
+    window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" });
+  }
+
+  document.addEventListener("keydown", function (e) {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    var k = e.key.toLowerCase();
+    if (k === "f") {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
+    } else if (k === "r") {
+      resetAll();
+    }
+  });
+
+  drawBallScene();
+})();
+</script>
+</body>
+</html>
