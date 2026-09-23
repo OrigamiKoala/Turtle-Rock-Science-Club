@@ -26,12 +26,8 @@ export const CONTENT_CACHE_KEY = 'tr_sc_sheet_content_v2';
 /**
  * Verification/password-reset emails need a one-time Sender.net setup (a
  * custom `account_link` field plus two groups + automations — see
- * apps-script/SETUP.md, "Join wizard") that hasn't been done yet, so those
- * emails currently never arrive. Join and login both work fully without it —
- * only "Forgot password" and the "check your email to verify" message depend
- * on it — but promising an email that never comes is worse than not
- * mentioning it, so this flag hides those two UI surfaces until the Sender.net
- * side is actually configured. Flip back to true once it is; nothing else
- * needs to change.
+ * apps-script/SETUP.md, "Join wizard"). That setup is done and verification
+ * emails are confirmed working, so this now gates in the "Forgot password?"
+ * link and "check your email to verify" message alongside it.
  */
-export const ACCOUNT_EMAILS_ENABLED = false;
+export const ACCOUNT_EMAILS_ENABLED = true;
