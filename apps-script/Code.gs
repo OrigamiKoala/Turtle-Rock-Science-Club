@@ -305,6 +305,228 @@ function clearLoginAttempts_(identifier) {
 }
 
 // ---------------------------------------------------------------------------
+// Admin Hub
+// ---------------------------------------------------------------------------
+//
+// One shared password (never a per-person account — see STATE.md/CLAUDE.md
+// for why), set via 🐢 Website ▸ 🔐 Set Admin Hub Password, hashed the same
+// way as a member's password. A successful login mints a single opaque
+// session token stored in Script Properties — logging in again anywhere
+// invalidates whoever was logged in before, since there is only ever one
+// active session. That is an accepted limitation of the "one shared
+// password" model, not a bug: two admins editing at once would already be
+// racing on the same sheet either way.
+
+var ADMIN_PASSWORD_PROPERTY = 'ADMIN_PASSWORD_HASH';
+var ADMIN_SESSION_PROPERTY = 'ADMIN_SESSION';
+var ADMIN_SESSION_DURATION_MS = 12 * 60 * 60 * 1000; // 12 hours
+
+function setAdminPassword() {
+  var ui = SpreadsheetApp.getUi();
+  var props = PropertiesService.getScriptProperties();
+  var hasOne = !!props.getProperty(ADMIN_PASSWORD_PROPERTY);
+
+  var response = ui.prompt(
+    'Admin Hub password',
+    (hasOne ? 'A password is already set.\n\n' : '') +
+      'Type the password admins will use at trscienceclub.org/admin, then click OK.\n' +
+      'Leave the box empty and click OK to remove the password and lock everyone out ' +
+      'until a new one is set.',
+    ui.ButtonSet.OK_CANCEL
+  );
+
+  if (response.getSelectedButton() !== ui.Button.OK) return;
+
+  var password = String(response.getResponseText() || '');
+  if (!password) {
+    props.deleteProperty(ADMIN_PASSWORD_PROPERTY);
+    props.deleteProperty(ADMIN_SESSION_PROPERTY);
+    ui.alert('Password removed', 'Nobody can log into the Admin Hub until a new password is set.', ui.ButtonSet.OK);
+    return;
+  }
+
+  props.setProperty(ADMIN_PASSWORD_PROPERTY, makePasswordHash_(password));
+  props.deleteProperty(ADMIN_SESSION_PROPERTY);
+  ui.alert('Password saved', 'Admins can now log in at trscienceclub.org/admin.', ui.ButtonSet.OK);
+}
+
+function handleAdminLogin_(body) {
+  var props = PropertiesService.getScriptProperties();
+  var stored = props.getProperty(ADMIN_PASSWORD_PROPERTY);
+  if (!stored) {
+    return { ok: false, error: 'No admin password has been set yet. Ask an operator to run 🐢 Website ▸ 🔐 Set Admin Hub Password.' };
+  }
+
+  if (isLoginLocked_('admin')) {
+    return { ok: false, error: 'Too many failed attempts. Try again in 15 minutes.' };
+  }
+
+  var password = String(body.password || '');
+  if (!verifyPassword_(password, stored)) {
+    recordFailedLogin_('admin');
+    return { ok: false, error: 'Incorrect password.' };
+  }
+  clearLoginAttempts_('admin');
+
+  var token = generateToken_();
+  props.setProperty(
+    ADMIN_SESSION_PROPERTY,
+    JSON.stringify({ token: token, expires: Date.now() + ADMIN_SESSION_DURATION_MS })
+  );
+  return { ok: true, token: token };
+}
+
+function handleAdminLogout_() {
+  PropertiesService.getScriptProperties().deleteProperty(ADMIN_SESSION_PROPERTY);
+  return { ok: true };
+}
+
+/** Throws (caught by doPost's try/catch) if the request's adminToken isn't the live session. */
+function requireAdmin_(body) {
+  var raw = PropertiesService.getScriptProperties().getProperty(ADMIN_SESSION_PROPERTY);
+  var session = raw ? JSON.parse(raw) : null;
+  var token = String((body && body.adminToken) || '');
+  if (!session || !token || session.token !== token || Date.now() > session.expires) {
+    throw new Error('Admin session expired. Please log in again.');
+  }
+}
+
+/**
+ * Reads every non-blank row of a sheet generically, keyed by header name —
+ * shared by every "adminList*" action so the Admin Hub can render/edit
+ * Events and Announcements without a bespoke reader per tab. `row` is the
+ * 1-based sheet row, so a save can address the exact cell range back.
+ */
+function adminListRows_(sheetName, headers) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
+  if (!sheet) return [];
+
+  var rows = bodyRows_(sheet, headers.length);
+  var out = [];
+  for (var i = 0; i < rows.length; i++) {
+    if (isBlankRow_(rows[i])) continue;
+    var fields = {};
+    for (var c = 0; c < headers.length; c++) {
+      var value = rows[i][c];
+      fields[headers[c]] = value instanceof Date ? formatDate_(value) : value;
+    }
+    out.push({ row: i + 2, fields: fields });
+  }
+  return out;
+}
+
+/**
+ * First truly-blank row in a sheet's body, by content rather than
+ * `getLastRow()` — that lies here, since 🐢 Website ▸ Set Up / Repair Sheets
+ * pre-formats a checkbox column down a block of rows, which reports as
+ * non-empty even where nothing has been typed. See the "Apps Script
+ * gotchas" note in CLAUDE.md.
+ */
+function nextBlankRow_(sheet, width) {
+  var rows = bodyRows_(sheet, width);
+  for (var i = 0; i < rows.length; i++) {
+    if (isBlankRow_(rows[i])) return i + 2;
+  }
+  return rows.length + 2;
+}
+
+/** Upserts one row (by `body.row`, or appended if absent/zero) and returns its row number. */
+function adminSaveRow_(sheetName, headers, body) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
+  if (!sheet) throw new Error('Missing the "' + sheetName + '" tab. Run 🐢 Website ▸ Set Up / Repair Sheets first.');
+
+  var fields = body.fields || {};
+  var values = headers.map(function (h) {
+    var v = fields[h];
+    return v === undefined || v === null ? '' : v;
+  });
+
+  var rowNumber = toWholeNumber_(body.row, 0);
+  if (!rowNumber) rowNumber = nextBlankRow_(sheet, headers.length);
+
+  sheet.getRange(rowNumber, 1, 1, headers.length).setValues([values]);
+  return rowNumber;
+}
+
+/**
+ * The read/build/size-check/lock/write core of publishing, with no UI calls
+ * — `publishToWebsite()` (the sheet menu) and the `adminPublish` web action
+ * both call this and translate the result into their own kind of prompt.
+ * Keeping this the single source of truth is what keeps the Admin Hub's
+ * "Publish" button doing exactly what the sheet menu's does.
+ */
+function publishToWebsite_core_(ss, skipProblems) {
+  var eventsSheet = ss.getSheetByName(EVENTS_SHEET);
+  var announcementsSheet = ss.getSheetByName(ANNOUNCEMENTS_SHEET);
+  var labLogSheet = ss.getSheetByName(LABLOG_SHEET);
+  var resourcesSheet = ss.getSheetByName(RESOURCES_SHEET);
+
+  if (!eventsSheet || !announcementsSheet) {
+    return { ok: false, missingTabs: true, error: 'Could not find the "Events" and "Announcements" tabs. Run 🐢 Website ▸ Set Up / Repair Sheets first.' };
+  }
+
+  var problems = [];
+  var eventsData = readEvents_(eventsSheet, problems);
+  var events = eventsData.events;
+  var eventPhotos = eventsData.eventPhotos;
+  var announcements = readAnnouncements_(announcementsSheet, problems);
+  var labLogs = labLogSheet ? readLabLogs_(labLogSheet, problems) : [];
+  var resourcesList = resourcesSheet ? readResources_(resourcesSheet, problems) : [];
+
+  if (problems.length && !skipProblems) {
+    return { ok: false, needsConfirmation: true, problems: problems };
+  }
+
+  var payload = {
+    events: events,
+    announcements: announcements,
+    labLogs: labLogs,
+    eventPhotos: eventPhotos,
+    resources: resourcesList,
+    publishedAt: new Date().toISOString(),
+    publishedBy: Session.getActiveUser().getEmail() || 'unknown'
+  };
+
+  var json = JSON.stringify(payload);
+
+  if (json.length > 45000) {
+    return {
+      ok: false,
+      tooLarge: true,
+      error: 'The published data is ' + json.length + ' characters, close to the 50,000 character limit ' +
+        'of a single cell.\n\nUntick "Show on Site" on some older rows and publish again.'
+    };
+  }
+
+  // Same lock handleSignup_/bumpPublishedSpots_ take before touching
+  // _Published!A1 — see publishToWebsite_core_'s callers for why.
+  var publishLock = LockService.getScriptLock();
+  try {
+    publishLock.waitLock(15000);
+  } catch (err) {
+    return { ok: false, error: 'Could not get a lock to publish. Please try again in a moment.' };
+  }
+
+  try {
+    ensurePublishedSheet_(ss).getRange('A1').setValue(json);
+  } finally {
+    publishLock.releaseLock();
+  }
+
+  return {
+    ok: true,
+    problems: problems,
+    counts: {
+      events: events.length,
+      eventPhotos: eventPhotos.length,
+      announcements: announcements.length,
+      labLogs: labLogs.length,
+      resources: resourcesList.length
+    }
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Sender.net (newsletter)
 // ---------------------------------------------------------------------------
 //
@@ -370,10 +592,15 @@ function onOpen() {
   var newsletter = ui
     .createMenu('✉️ Newsletter')
     .addItem('🔑 Set Sender.net API Token', 'setSenderApiToken')
+    .addItem('📧 Set From Name / Reply-To', 'setSenderFromAddress')
     .addItem('👥 Show / Repair Sender Groups', 'showSenderGroups')
     .addSeparator()
     .addItem('🧪 Test Sender Connection', 'testSenderConnection')
     .addItem('🔁 Sync Pending Subscribers', 'syncNewsletterToSender');
+
+  var zohoMail = ui
+    .createMenu('🔌 Zoho Mail')
+    .addItem('🔗 Connect Zoho Mail', 'connectZohoMail');
 
   ui.createMenu('🐢 Website')
     .addItem('🚀 Publish to Website', 'publishToWebsite')
@@ -382,6 +609,9 @@ function onOpen() {
     .addItem('👀 Preview Published JSON', 'previewPublishedJson')
     .addSeparator()
     .addSubMenu(newsletter)
+    .addSubMenu(zohoMail)
+    .addSeparator()
+    .addItem('🔐 Set Admin Hub Password', 'setAdminPassword')
     .addSeparator()
     .addItem('⚙️ Set Up / Repair Sheets', 'setupSheets')
     .addToUi();
@@ -616,34 +846,15 @@ function ensurePublishedSheet_(ss) {
 // Publish
 // ---------------------------------------------------------------------------
 
+/** Menu-triggered wrapper around publishToWebsite_core_ — see that function for the actual logic. */
 function publishToWebsite() {
   var ui = SpreadsheetApp.getUi();
   var ss = SpreadsheetApp.getActiveSpreadsheet();
 
-  var eventsSheet = ss.getSheetByName(EVENTS_SHEET);
-  var announcementsSheet = ss.getSheetByName(ANNOUNCEMENTS_SHEET);
-  var labLogSheet = ss.getSheetByName(LABLOG_SHEET);
-  var resourcesSheet = ss.getSheetByName(RESOURCES_SHEET);
+  var result = publishToWebsite_core_(ss, false);
 
-  if (!eventsSheet || !announcementsSheet) {
-    ui.alert(
-      'Missing tabs',
-      'I could not find the "Events" and "Announcements" tabs.\n\n' +
-        'Run  🐢 Website ▸ Set Up / Repair Sheets  first.',
-      ui.ButtonSet.OK
-    );
-    return;
-  }
-
-  var problems = [];
-  var eventsData = readEvents_(eventsSheet, problems);
-  var events = eventsData.events;
-  var eventPhotos = eventsData.eventPhotos;
-  var announcements = readAnnouncements_(announcementsSheet, problems);
-  var labLogs = labLogSheet ? readLabLogs_(labLogSheet, problems) : [];
-  var resourcesList = resourcesSheet ? readResources_(resourcesSheet, problems) : [];
-
-  if (problems.length) {
+  if (!result.ok && result.needsConfirmation) {
+    var problems = result.problems;
     var response = ui.alert(
       'Found ' + problems.length + ' problem(s)',
       problems.slice(0, 10).join('\n') +
@@ -652,60 +863,24 @@ function publishToWebsite() {
       ui.ButtonSet.YES_NO
     );
     if (response !== ui.Button.YES) return;
+    result = publishToWebsite_core_(ss, true);
   }
 
-  var payload = {
-    events: events,
-    announcements: announcements,
-    labLogs: labLogs,
-    eventPhotos: eventPhotos,
-    resources: resourcesList,
-    publishedAt: new Date().toISOString(),
-    publishedBy: Session.getActiveUser().getEmail() || 'unknown'
-  };
-
-  var json = JSON.stringify(payload);
-
-  if (json.length > 45000) {
-    ui.alert(
-      'Too much content',
-      'The published data is ' + json.length + ' characters, close to the 50,000 ' +
-        'character limit of a single cell.\n\nUntick "Show on Site" on some older ' +
-        'rows and publish again.',
-      ui.ButtonSet.OK
-    );
+  if (!result.ok) {
+    ui.alert(result.missingTabs ? 'Missing tabs' : result.tooLarge ? 'Too much content' : 'Could not publish', result.error || 'Unknown error.', ui.ButtonSet.OK);
     return;
   }
 
-  // Same lock handleSignup_/bumpPublishedSpots_ take before touching
-  // _Published!A1 — without it, a signup landing mid-publish could have its
-  // spot-count bump silently clobbered by this (older) snapshot, or this
-  // publish could get clobbered right back by a signup's bump. Scoped to just
-  // the write itself (not the dialogs above), so an admin sitting on the
-  // confirmation prompt doesn't block a student trying to sign up.
-  var publishLock = LockService.getScriptLock();
-  try {
-    publishLock.waitLock(15000);
-  } catch (err) {
-    ui.alert('Server busy', 'Could not get a lock to publish. Please try again in a moment.', ui.ButtonSet.OK);
-    return;
-  }
-
-  try {
-    ensurePublishedSheet_(ss).getRange('A1').setValue(json);
-  } finally {
-    publishLock.releaseLock();
-  }
-
+  var c = result.counts;
   ui.alert(
     '🚀 Published!',
     'The website now shows:\n\n' +
-      '  • ' + events.length + ' active event(s)\n' +
-      '  • ' + eventPhotos.length + ' photo album(s)\n' +
-      '  • ' + announcements.length + ' announcement(s)\n' +
-      '  • ' + labLogs.length + ' lab log entr(ies)\n' +
-      '  • ' + resourcesList.length + ' resource(s)\n\n' +
-      (problems.length ? '  • ' + problems.length + ' row(s) skipped\n\n' : '') +
+      '  • ' + c.events + ' active event(s)\n' +
+      '  • ' + c.eventPhotos + ' photo album(s)\n' +
+      '  • ' + c.announcements + ' announcement(s)\n' +
+      '  • ' + c.labLogs + ' lab log entr(ies)\n' +
+      '  • ' + c.resources + ' resource(s)\n\n' +
+      (result.problems.length ? '  • ' + result.problems.length + ' row(s) skipped\n\n' : '') +
       'Refresh the website to see the change.',
     ui.ButtonSet.OK
   );
@@ -1018,6 +1193,43 @@ function doPost(e) {
       result = handleSubscribe_(body);
     } else if (body.action === 'subscribeMember') {
       result = handleSubscribeMember_(body);
+    } else if (body.action === 'adminLogin') {
+      result = handleAdminLogin_(body);
+    } else if (body.action === 'adminLogout') {
+      result = handleAdminLogout_();
+    } else if (body.action === 'adminListEvents') {
+      requireAdmin_(body);
+      result = { ok: true, rows: adminListRows_(EVENTS_SHEET, EVENT_HEADERS) };
+    } else if (body.action === 'adminSaveEvent') {
+      requireAdmin_(body);
+      result = { ok: true, row: adminSaveRow_(EVENTS_SHEET, EVENT_HEADERS, body) };
+    } else if (body.action === 'adminListAnnouncements') {
+      requireAdmin_(body);
+      result = { ok: true, rows: adminListRows_(ANNOUNCEMENTS_SHEET, ANNOUNCEMENT_HEADERS) };
+    } else if (body.action === 'adminSaveAnnouncement') {
+      requireAdmin_(body);
+      result = { ok: true, row: adminSaveRow_(ANNOUNCEMENTS_SHEET, ANNOUNCEMENT_HEADERS, body) };
+    } else if (body.action === 'adminPublish') {
+      requireAdmin_(body);
+      result = publishToWebsite_core_(SpreadsheetApp.getActiveSpreadsheet(), !!body.skipProblems);
+    } else if (body.action === 'adminSenderInfo') {
+      requireAdmin_(body);
+      result = adminSenderInfo_();
+    } else if (body.action === 'adminCreateCampaign') {
+      requireAdmin_(body);
+      result = adminCreateCampaign_(body);
+    } else if (body.action === 'adminSendCampaign') {
+      requireAdmin_(body);
+      result = adminSendCampaign_(body);
+    } else if (body.action === 'adminListCampaigns') {
+      requireAdmin_(body);
+      result = adminListCampaigns_();
+    } else if (body.action === 'adminZohoStatus') {
+      requireAdmin_(body);
+      result = adminZohoStatus_();
+    } else if (body.action === 'adminSendEmail') {
+      requireAdmin_(body);
+      result = adminSendEmail_(body);
     } else {
       throw new Error('Unknown action.');
     }
@@ -2170,6 +2382,374 @@ function setSenderApiToken() {
       ui.ButtonSet.OK
     );
   }
+}
+
+var SENDER_FROM_NAME_PROPERTY = 'SENDER_FROM_NAME';
+var SENDER_REPLY_EMAIL_PROPERTY = 'SENDER_REPLY_EMAIL';
+
+/** "From name" and "reply-to" the Admin Hub's campaign composer sends with — the reply-to must be on a domain verified in Sender.net (Settings ▸ Domains). */
+function setSenderFromAddress() {
+  var ui = SpreadsheetApp.getUi();
+  var props = PropertiesService.getScriptProperties();
+
+  var nameResponse = ui.prompt(
+    'Newsletter "from" name',
+    'What name should show as the sender, e.g. "Turtle Rock Science Club"?\n\n' +
+      'Current: ' + (props.getProperty(SENDER_FROM_NAME_PROPERTY) || '(not set)'),
+    ui.ButtonSet.OK_CANCEL
+  );
+  if (nameResponse.getSelectedButton() !== ui.Button.OK) return;
+  var fromName = String(nameResponse.getResponseText() || '').trim();
+  if (fromName) props.setProperty(SENDER_FROM_NAME_PROPERTY, fromName);
+
+  var emailResponse = ui.prompt(
+    'Newsletter reply-to email',
+    'What email should replies go to? This must be on a domain verified in Sender.net ' +
+      '(Settings ▸ Domains) or campaigns will fail to send.\n\n' +
+      'Current: ' + (props.getProperty(SENDER_REPLY_EMAIL_PROPERTY) || '(not set)'),
+    ui.ButtonSet.OK_CANCEL
+  );
+  if (emailResponse.getSelectedButton() !== ui.Button.OK) return;
+  var replyTo = String(emailResponse.getResponseText() || '').trim();
+  if (replyTo && !isEmail_(replyTo)) {
+    ui.alert('Not a valid email', 'Nothing was saved for reply-to.', ui.ButtonSet.OK);
+    return;
+  }
+  if (replyTo) props.setProperty(SENDER_REPLY_EMAIL_PROPERTY, replyTo);
+
+  ui.alert(
+    'Saved',
+    'From: ' + (props.getProperty(SENDER_FROM_NAME_PROPERTY) || '(not set)') +
+      '\nReply-to: ' + (props.getProperty(SENDER_REPLY_EMAIL_PROPERTY) || '(not set)'),
+    ui.ButtonSet.OK
+  );
+}
+
+function adminSenderConfig_() {
+  var props = PropertiesService.getScriptProperties();
+  return {
+    fromName: props.getProperty(SENDER_FROM_NAME_PROPERTY) || 'Turtle Rock Science Club',
+    replyTo: props.getProperty(SENDER_REPLY_EMAIL_PROPERTY) || ''
+  };
+}
+
+/** Groups + segments + from/reply-to config, for the Admin Hub's newsletter composer to render its audience picker. */
+function adminSenderInfo_() {
+  var token = senderToken_();
+  if (!token) {
+    return { ok: false, error: 'No Sender.net API token is set. Ask an operator to run 🐢 Website ▸ ✉️ Newsletter ▸ 🔑 Set Sender.net API Token.' };
+  }
+
+  var groups = [];
+  for (var i = 0; i < SENDER_GROUP_TITLES.length; i++) {
+    var title = SENDER_GROUP_TITLES[i];
+    var found = senderGroupByTitle_(title, token);
+    if (found.error) return { ok: false, error: found.error };
+    groups.push({ id: found.id, title: title });
+  }
+
+  var segments = [];
+  var segResponse = senderFetch_('get', '/segments?limit=100', null, token);
+  if (segResponse.ok) {
+    var list = (segResponse.json && segResponse.json.data) || [];
+    for (var s = 0; s < list.length; s++) {
+      segments.push({ id: String(list[s].id || ''), name: String(list[s].name || list[s].title || 'Untitled segment') });
+    }
+  }
+
+  var config = adminSenderConfig_();
+  return { ok: true, groups: groups, segments: segments, fromName: config.fromName, replyTo: config.replyTo };
+}
+
+/**
+ * Creates a DRAFT campaign in Sender.net — does not send it. The Admin Hub
+ * shows the draft back to the admin (subject, recipient estimate) before a
+ * separate, explicit adminSendCampaign call actually sends it. Splitting
+ * these into two calls is deliberate: sending to real families is not
+ * undoable, so the UI gets one more chance to catch a mistake before that
+ * second call ever fires.
+ */
+function adminCreateCampaign_(body) {
+  var token = senderToken_();
+  if (!token) return { ok: false, error: 'No Sender.net API token is set.' };
+
+  var config = adminSenderConfig_();
+  if (!config.replyTo) {
+    return { ok: false, error: 'Set a reply-to email first: 🐢 Website ▸ ✉️ Newsletter ▸ 📧 Set From Name / Reply-To.' };
+  }
+
+  var subject = String(body.subject || '').trim();
+  var content = String(body.content || '').trim();
+  if (!subject) return { ok: false, error: 'Missing a subject line.' };
+  if (!content) return { ok: false, error: 'Missing email content.' };
+
+  var groupIds = Array.isArray(body.groupIds) ? body.groupIds : [];
+  var segmentIds = Array.isArray(body.segmentIds) ? body.segmentIds : [];
+  if (!groupIds.length && !segmentIds.length) {
+    return { ok: false, error: 'Pick at least one group or segment to send to.' };
+  }
+
+  var payload = {
+    title: subject + ' (' + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm') + ')',
+    subject: subject,
+    from: config.fromName,
+    reply_to: config.replyTo,
+    content_type: 'html',
+    content: content,
+    groups: groupIds,
+    segments: segmentIds
+  };
+
+  var response = senderFetch_('post', '/campaigns', payload, token);
+  if (!response.ok) return { ok: false, error: senderError_(response) };
+
+  var data = response.json && response.json.data;
+  if (!data || !data.id) return { ok: false, error: 'Sender did not return a campaign id.' };
+
+  return { ok: true, campaignId: String(data.id), status: data.status || 'DRAFT', recipientCount: data.recipient_count || null };
+}
+
+/** Sends a campaign a prior adminCreateCampaign_ call already created as a draft. */
+function adminSendCampaign_(body) {
+  var token = senderToken_();
+  if (!token) return { ok: false, error: 'No Sender.net API token is set.' };
+
+  var campaignId = String(body.campaignId || '').trim();
+  if (!campaignId) return { ok: false, error: 'Missing campaign id.' };
+
+  var response = senderFetch_('post', '/campaigns/' + encodeURIComponent(campaignId) + '/send', null, token);
+  if (!response.ok) return { ok: false, error: senderError_(response) };
+
+  return { ok: true };
+}
+
+/**
+ * Recent SENT campaigns with their stats, for the Admin Hub's newsletter tab.
+ * The list endpoint already returns opens/clicks/bounces_count per campaign —
+ * no need for a per-campaign detail call.
+ */
+function adminListCampaigns_() {
+  var token = senderToken_();
+  if (!token) return { ok: false, error: 'No Sender.net API token is set.' };
+
+  var response = senderFetch_('get', '/campaigns?limit=20', null, token);
+  if (!response.ok) return { ok: false, error: senderError_(response) };
+
+  var list = (response.json && response.json.data) || [];
+  var campaigns = list
+    .filter(function (c) {
+      return c.status === 'SENT';
+    })
+    .map(function (c) {
+      return {
+        id: String(c.id || ''),
+        subject: String(c.subject || c.title || ''),
+        sentTime: String(c.sent_time || ''),
+        recipientCount: c.recipient_count || 0,
+        sentCount: c.sent_count || 0,
+        opens: c.opens || 0,
+        clicks: c.clicks || 0,
+        bounces: c.bounces_count || 0
+      };
+    });
+
+  return { ok: true, campaigns: campaigns };
+}
+
+// ---------------------------------------------------------------------------
+// Zoho Mail (Admin Hub "Compose" tab)
+// ---------------------------------------------------------------------------
+//
+// Sender.net can't send one-off private email (see CLAUDE.md's Admin Hub
+// section) — mass campaigns only. For a single email to a single person, the
+// club already uses Zoho Mail (contact@trscienceclub.org) exactly like
+// Gmail; this wraps Zoho's own Mail API so composing one doesn't require
+// leaving the Admin Hub. Connected once via 🐢 Website ▸ 🔌 Zoho Mail ▸
+// 🔗 Connect Zoho Mail — see SETUP.md for the click-by-click version,
+// including how to create the "Self Client" this needs in Zoho's API console.
+
+var ZOHO_ACCOUNTS_BASE = 'https://accounts.zoho.com/oauth/v2';
+var ZOHO_MAIL_BASE = 'https://mail.zoho.com/api';
+var ZOHO_CLIENT_ID_PROPERTY = 'ZOHO_CLIENT_ID';
+var ZOHO_CLIENT_SECRET_PROPERTY = 'ZOHO_CLIENT_SECRET';
+var ZOHO_REFRESH_TOKEN_PROPERTY = 'ZOHO_REFRESH_TOKEN';
+var ZOHO_ACCOUNT_ID_PROPERTY = 'ZOHO_ACCOUNT_ID';
+var ZOHO_FROM_ADDRESS_PROPERTY = 'ZOHO_FROM_ADDRESS';
+// Cached under the access token's own ~1h lifetime, with margin — see zohoAccessToken_.
+var ZOHO_ACCESS_TOKEN_CACHE_KEY = 'zoho_access_token';
+var ZOHO_ACCESS_TOKEN_CACHE_SECONDS = 3000;
+
+/**
+ * One-time connection: exchanges a fresh Self Client authorization code for a
+ * refresh token (which does not expire) and discovers which mailbox it
+ * belongs to. Re-running this replaces the stored connection — use it again
+ * if the refresh token is ever revoked in Zoho.
+ */
+function connectZohoMail() {
+  var ui = SpreadsheetApp.getUi();
+  var props = PropertiesService.getScriptProperties();
+
+  var idResponse = ui.prompt(
+    'Zoho Mail — Client ID',
+    'From the Self Client you created at api-console.zoho.com (see SETUP.md), paste the Client ID.\n\n' +
+      'Current: ' + (props.getProperty(ZOHO_CLIENT_ID_PROPERTY) || '(not set)'),
+    ui.ButtonSet.OK_CANCEL
+  );
+  if (idResponse.getSelectedButton() !== ui.Button.OK) return;
+  var clientId = String(idResponse.getResponseText() || '').trim();
+  if (!clientId) return;
+
+  var secretResponse = ui.prompt(
+    'Zoho Mail — Client Secret',
+    'Paste the Client Secret from that same Self Client.',
+    ui.ButtonSet.OK_CANCEL
+  );
+  if (secretResponse.getSelectedButton() !== ui.Button.OK) return;
+  var clientSecret = String(secretResponse.getResponseText() || '').trim();
+  if (!clientSecret) return;
+
+  var codeResponse = ui.prompt(
+    'Zoho Mail — Authorization code',
+    'In that Self Client\'s "Generate Code" tab: scope = ZohoMail.messages.CREATE,ZohoMail.accounts.READ, ' +
+      'longest available expiry, then Create. Paste the code here IMMEDIATELY — it expires in minutes.',
+    ui.ButtonSet.OK_CANCEL
+  );
+  if (codeResponse.getSelectedButton() !== ui.Button.OK) return;
+  var code = String(codeResponse.getResponseText() || '').trim();
+  if (!code) return;
+
+  var tokenResponse = UrlFetchApp.fetch(ZOHO_ACCOUNTS_BASE + '/token', {
+    method: 'post',
+    payload: { grant_type: 'authorization_code', client_id: clientId, client_secret: clientSecret, code: code },
+    muteHttpExceptions: true
+  });
+  var tokenJson = {};
+  try {
+    tokenJson = JSON.parse(tokenResponse.getContentText() || '{}');
+  } catch (err) {
+    tokenJson = {};
+  }
+
+  if (!tokenJson.refresh_token || !tokenJson.access_token) {
+    ui.alert(
+      'Could not connect',
+      'Zoho answered: ' + (tokenJson.error || tokenResponse.getContentText()) +
+        '\n\nThe code may have already expired — generate a fresh one in the Self Client and try again.',
+      ui.ButtonSet.OK
+    );
+    return;
+  }
+
+  var accountsResponse = UrlFetchApp.fetch(ZOHO_MAIL_BASE + '/accounts', {
+    headers: { Authorization: 'Zoho-oauthtoken ' + tokenJson.access_token },
+    muteHttpExceptions: true
+  });
+  var accountsJson = {};
+  try {
+    accountsJson = JSON.parse(accountsResponse.getContentText() || '{}');
+  } catch (err) {
+    accountsJson = {};
+  }
+  var accounts = accountsJson.data || [];
+  if (!accounts.length) {
+    ui.alert(
+      'Connected, but no mailbox found',
+      'The token worked but Zoho returned no mail accounts for it. Compose will not work until this is resolved.',
+      ui.ButtonSet.OK
+    );
+    return;
+  }
+
+  var account = accounts[0];
+  var fromAddress = String(account.mailboxAddress || account.incomingUserName || '');
+
+  props.setProperty(ZOHO_CLIENT_ID_PROPERTY, clientId);
+  props.setProperty(ZOHO_CLIENT_SECRET_PROPERTY, clientSecret);
+  props.setProperty(ZOHO_REFRESH_TOKEN_PROPERTY, tokenJson.refresh_token);
+  props.setProperty(ZOHO_ACCOUNT_ID_PROPERTY, String(account.accountId));
+  props.setProperty(ZOHO_FROM_ADDRESS_PROPERTY, fromAddress);
+  CacheService.getScriptCache().put(ZOHO_ACCESS_TOKEN_CACHE_KEY, tokenJson.access_token, ZOHO_ACCESS_TOKEN_CACHE_SECONDS);
+
+  ui.alert('Connected', 'The Admin Hub can now send email as ' + fromAddress + '.', ui.ButtonSet.OK);
+}
+
+/** A live access token, refreshing (and caching) one if the cached copy is missing/expired. Returns '' if not connected. */
+function zohoAccessToken_() {
+  var cached = CacheService.getScriptCache().get(ZOHO_ACCESS_TOKEN_CACHE_KEY);
+  if (cached) return cached;
+
+  var props = PropertiesService.getScriptProperties();
+  var clientId = props.getProperty(ZOHO_CLIENT_ID_PROPERTY);
+  var clientSecret = props.getProperty(ZOHO_CLIENT_SECRET_PROPERTY);
+  var refreshToken = props.getProperty(ZOHO_REFRESH_TOKEN_PROPERTY);
+  if (!clientId || !clientSecret || !refreshToken) return '';
+
+  var response = UrlFetchApp.fetch(ZOHO_ACCOUNTS_BASE + '/token', {
+    method: 'post',
+    payload: { grant_type: 'refresh_token', client_id: clientId, client_secret: clientSecret, refresh_token: refreshToken },
+    muteHttpExceptions: true
+  });
+  var json = {};
+  try {
+    json = JSON.parse(response.getContentText() || '{}');
+  } catch (err) {
+    json = {};
+  }
+  if (!json.access_token) return '';
+
+  CacheService.getScriptCache().put(ZOHO_ACCESS_TOKEN_CACHE_KEY, json.access_token, ZOHO_ACCESS_TOKEN_CACHE_SECONDS);
+  return json.access_token;
+}
+
+/** Whether Zoho Mail is connected, and which address it'll send as — lets the Compose tab show a clear "not connected" state instead of failing on first send. */
+function adminZohoStatus_() {
+  var props = PropertiesService.getScriptProperties();
+  var fromAddress = props.getProperty(ZOHO_FROM_ADDRESS_PROPERTY) || '';
+  return { ok: true, connected: Boolean(props.getProperty(ZOHO_ACCOUNT_ID_PROPERTY) && fromAddress), fromAddress: fromAddress };
+}
+
+/** Sends one email via Zoho Mail — the Admin Hub's Compose tab, for private/individual email (mass campaigns still go through Sender.net). */
+function adminSendEmail_(body) {
+  var props = PropertiesService.getScriptProperties();
+  var accountId = props.getProperty(ZOHO_ACCOUNT_ID_PROPERTY);
+  var fromAddress = props.getProperty(ZOHO_FROM_ADDRESS_PROPERTY);
+  if (!accountId || !fromAddress) {
+    return { ok: false, error: 'Zoho Mail is not connected yet. Ask an operator to run 🐢 Website ▸ 🔌 Zoho Mail ▸ 🔗 Connect Zoho Mail.' };
+  }
+
+  var to = String(body.to || '').trim();
+  var subject = String(body.subject || '').trim();
+  var content = String(body.content || '').trim();
+  if (!isEmail_(to)) return { ok: false, error: 'Enter a valid recipient email address.' };
+  if (!subject) return { ok: false, error: 'Missing a subject line.' };
+  if (!content) return { ok: false, error: 'Missing a message.' };
+
+  var accessToken = zohoAccessToken_();
+  if (!accessToken) return { ok: false, error: 'Could not get a Zoho access token — the connection may need to be redone.' };
+
+  var payload = {
+    fromAddress: fromAddress,
+    toAddress: to,
+    subject: subject,
+    content: content,
+    mailFormat: body.mailFormat === 'html' ? 'html' : 'plaintext'
+  };
+  var cc = String(body.cc || '').trim();
+  if (cc) payload.ccAddress = cc;
+
+  var response = UrlFetchApp.fetch(ZOHO_MAIL_BASE + '/accounts/' + encodeURIComponent(accountId) + '/messages', {
+    method: 'post',
+    contentType: 'application/json',
+    headers: { Authorization: 'Zoho-oauthtoken ' + accessToken, Accept: 'application/json' },
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true
+  });
+  var code = response.getResponseCode();
+  if (code < 200 || code >= 300) {
+    return { ok: false, error: 'Zoho answered: ' + String(response.getContentText() || '').slice(0, 300) };
+  }
+
+  return { ok: true };
 }
 
 /**

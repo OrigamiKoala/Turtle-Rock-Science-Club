@@ -347,6 +347,122 @@ workshops, a "Science Tidbits" section exploring cool facts on next week's works
 
 **Newsletter Generation Skill:** `.agents/skills/trsc-newsletter-generator/` automates creating weekly newsletters from `docs/schedule.md`. It generates combined cartoon digital ink artwork using Nano Banana (`generate_image`), writes Science Tidbits for each topic, pulls recent discoveries via web search for In the News, and formats the newsletter without the onboarding program logistics while preserving the schedule, upcoming event cards, master doc link, and condensed contacts.
 
+## Admin Hub
+
+`src/components/AdminHub.tsx`, reachable at `/admin` — a staff-only screen, not
+linked from anywhere in the app (same "reachable but never navigated to"
+treatment as `/titration` and `/join`; see `App.tsx`'s `isAdminPage`). Built
+so admins don't have to leave the site to edit Events/Announcements or send
+the newsletter, while the Sheet stays the actual source of truth underneath.
+
+**Why it exists:** editing content meant opening the raw Sheet grid, and
+sending a newsletter meant a second login to Sender.net's own dashboard to
+paste in HTML from `docs/newsletter/`. The Admin Hub wraps both behind one
+password so neither requires knowing the Sheet's tab layout or having a
+Sender.net account.
+
+**Auth is one shared password, not per-person accounts.** Set via 🐢 Website
+▸ 🔐 Set Admin Hub Password (hashed with the same `makePasswordHash_`/
+`verifyPassword_` machinery as a member's password). A successful login mints
+a single opaque session token stored in Apps Script's Script Properties
+(`ADMIN_SESSION`, 12h) — logging in again anywhere invalidates whoever was
+logged in before, since there's only ever one active session. `handleAdminLogin_`
+reuses the existing `isLoginLocked_`/`recordFailedLogin_` throttle (keyed
+`'admin'`) so this isn't brute-forceable. The frontend stores its copy of the
+token in `sessionStorage` (`tr_sc_admin_token`) rather than `localStorage` —
+deliberately not one of the site's other `tr_sc_*` visitor keys, since an
+admin session shouldn't silently outlive the browser tab.
+
+**Every admin-scoped `doPost` action calls `requireAdmin_(body)` first**,
+which throws (caught by `doPost`'s existing try/catch) if `body.adminToken`
+doesn't match the live session. New admin actions must call it too, or they're
+unauthenticated.
+
+**Events and Announcements share one generic reader/writer pair**
+(`adminListRows_` / `adminSaveRow_` in Code.gs, `ContentPanel` in
+AdminHub.tsx) keyed by each tab's own `*_HEADERS` array, rather than a
+bespoke handler per tab — the two only differ in which `FieldConfig[]` they
+render. Appending a new row uses `nextBlankRow_` (scans with `bodyRows_` +
+`isBlankRow_`), not `getLastRow() + 1` — see "Apps Script gotchas" below for
+why trusting `getLastRow()` on these specific tabs is wrong.
+
+**Publishing reuses the exact same code the sheet menu uses.**
+`publishToWebsite_core_` is the actual read/build/size-check/lock/write
+logic; both `publishToWebsite()` (the 🐢 Website menu item) and the
+`adminPublish` web action call it and translate the result into their own
+kind of prompt (a `ui.alert` dialog vs. a card in the hub). Keeping this one
+function the single source of truth is what keeps the hub's Publish button
+doing exactly what the sheet's already did — including the same "found N
+problems, publish anyway?" confirmation step.
+
+**Sending a newsletter is a deliberate two-step call**, since it reaches real
+families and can't be undone: `adminCreateCampaign` only ever creates a
+Sender.net DRAFT and returns its id; a separate `adminSendCampaign` call
+actually sends it, and the hub's UI only unlocks that second call once the
+admin types SEND. The composer also warns inline if a raw Group is selected
+without a Segment, since (per the Newsletter section above) a bare group
+includes people who never confirmed — the tool now surfaces that discipline
+instead of relying on whoever's sending to remember it. "From name" and
+reply-to are configured once via 🐢 Website ▸ ✉️ Newsletter ▸ 📧 Set From
+Name / Reply-To (`SENDER_FROM_NAME`/`SENDER_REPLY_EMAIL` Script Properties),
+not typed per-campaign — the reply-to must be on a domain verified in
+Sender.net or sending fails.
+
+**The "Backup Sheet" tab is a link-out, not an embed.** Google blocks its
+Sheets editor (and its own sign-in page) from being framed by another
+origin — a clickjacking protection with no opt-out — so an `<iframe>`
+pointing at the `/edit` URL just renders blank; confirmed live, not assumed.
+`BackupSheetPanel` is a plain "Open the Google Sheet" link to the exact
+spreadsheet instead. Don't reintroduce an iframe here without a different
+approach (e.g. a published-to-web read-only view, which has its own privacy
+tradeoffs and wouldn't be editable anyway).
+
+**Scope of what's actually in the hub today:** Events, Announcements, the
+newsletter composer/sender, and one-off email via the Compose tab. Lab Log,
+Resources, Signups, and Members are still Sheet-only — the Backup Sheet tab's
+link is how an admin reaches those for now. Extending `ContentPanel` to Lab
+Log would follow the same pattern as Events/Announcements.
+
+### Compose tab (Zoho Mail) — why two email systems, not one
+
+Sender.net can't send a one-off private email (mass campaigns only), and
+Zoho Mail doesn't give campaign stats — so the club genuinely needs both, not
+one simplified down to the other (confirmed with Carl, who originally set
+both up). `contact@trscienceclub.org` is a real Zoho Mail mailbox — replies
+to Sender.net campaigns already land there, which is also why
+`SENDER_REPLY_EMAIL` should be set to that address, not something invented.
+The Compose tab wraps Zoho Mail's own REST API (`POST
+/api/accounts/{accountId}/messages`) so a one-off email doesn't require
+leaving the Hub for mail.zoho.com, while mass sends stay on Sender.net for
+the stats.
+
+**Connected once, like the Sender.net token,** via 🐢 Website ▸ 🔌 Zoho Mail
+▸ 🔗 Connect Zoho Mail (see SETUP.md for the click-by-click version,
+including creating the "Self Client" in Zoho's API console this needs).
+`connectZohoMail()` exchanges a short-lived authorization code for a
+refresh token that does not expire, discovers which mailbox it belongs to
+(`GET /api/accounts`), and stores `ZOHO_CLIENT_ID`/`ZOHO_CLIENT_SECRET`/
+`ZOHO_REFRESH_TOKEN`/`ZOHO_ACCOUNT_ID`/`ZOHO_FROM_ADDRESS` in Script
+Properties — same never-in-the-repo storage as every other credential here.
+`zohoAccessToken_()` mints (and caches, ~50 min) short-lived access tokens
+from that refresh token per call; nothing about Zoho ever touches the
+public bundle.
+
+The Compose tab checks `adminZohoStatus` before showing a form, so an admin
+who hasn't run the connect step yet sees a clear message instead of a
+send failure. No two-step SEND confirmation like the newsletter — one
+targeted email to one person is an ordinary, low-blast-radius action, not a
+mass send.
+
+### Campaign stats in the Newsletter tab
+
+`adminListCampaigns_` calls Sender.net's own `GET /campaigns` (which already
+returns `opens`/`clicks`/`bounces_count` per campaign — no separate
+per-campaign detail call needed), filters to `status === 'SENT'`, and the
+Newsletter tab renders it as a small table above the composer. This is
+read-only visibility into stats that already existed in Sender.net; it
+doesn't change anything about how campaigns are sent.
+
 ## Apps Script gotchas (all of these bit us)
 
 - **`getLastRow()` lies on these sheets.** `insertCheckboxes()` writes `FALSE`

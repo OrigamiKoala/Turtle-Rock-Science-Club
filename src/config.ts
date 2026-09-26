@@ -31,3 +31,11 @@ export const CONTENT_CACHE_KEY = 'tr_sc_sheet_content_v2';
  * link and "check your email to verify" message alongside it.
  */
 export const ACCOUNT_EMAILS_ENABLED = true;
+
+/**
+ * The Google Sheet the Admin Hub's "Backup Sheet" tab embeds as a raw,
+ * always-available fallback view (see CLAUDE.md, "Content pipeline"). This
+ * is the spreadsheet id, not a secret — viewing/editing it still requires a
+ * Google account the sheet is actually shared with.
+ */
+export const GOOGLE_SHEET_ID = '1F-4w57Cehlh-55I8fmAzeYY0DUFYS2I6FpOfjjqUhV0';

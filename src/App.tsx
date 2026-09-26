@@ -17,6 +17,7 @@ import Dashboard from './components/Dashboard';
 import CuratedResources from './components/CuratedResources';
 import TitrationLab from './components/TitrationLab';
 import JoinPage from './components/JoinPage';
+import AdminHub from './components/AdminHub';
 import ConfirmEmailModal from './components/ConfirmEmailModal';
 import LoginModal from './components/LoginModal';
 import ResetPasswordModal from './components/ResetPasswordModal';
@@ -24,9 +25,28 @@ import SignupModal from './components/SignupModal';
 
 import { Trophy, Star, MailCheck, Mail, X, Loader2 } from 'lucide-react';
 
+// Every main-nav tab gets a real URL, so reloading or sharing a link doesn't
+// dump the visitor back on the homepage. /titration, /join and /admin are
+// NOT here — those are separate full-screen pages gated by their own
+// isXPage flags below, not by currentTab.
+const TAB_PATHS: Record<string, string> = {
+  home: '/',
+  missions: '/events',
+  logs: '/announcements',
+  resources: '/resources',
+  gallery: '/gallery',
+  lab: '/games',
+  about: '/about',
+  dashboard: '/dashboard'
+};
+
+const PATH_TABS: Record<string, string> = Object.fromEntries(
+  Object.entries(TAB_PATHS).map(([tab, path]) => [path, tab])
+);
+
 export default function App() {
   const [pathname, setPathname] = useState<string>(() => window.location.pathname);
-  const [currentTab, setCurrentTab] = useState<string>('home');
+  const [currentTab, setCurrentTab] = useState<string>(() => PATH_TABS[window.location.pathname] || 'home');
   const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
   const [showLevelUpAlert, setShowLevelUpAlert] = useState<boolean>(false);
   const [signupMission, setSignupMission] = useState<Mission | null>(null);
@@ -58,7 +78,11 @@ export default function App() {
 
   useEffect(() => {
     const handlePopState = () => {
-      setPathname(window.location.pathname);
+      const path = window.location.pathname;
+      setPathname(path);
+      if (PATH_TABS[path]) {
+        setCurrentTab(PATH_TABS[path]);
+      }
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
@@ -77,7 +101,11 @@ export default function App() {
 
   const isTitrationPage = pathname === '/titration' || pathname === '/titration/' || pathname.startsWith('/titration');
   const isJoinPage = pathname === '/join' || pathname.startsWith('/join');
-  const isHomeHero = currentTab === 'home' && !isTitrationPage && !isJoinPage;
+  // Deliberately not linked from anywhere in the app (same as /titration and
+  // /join being reachable but un-navigated-to) — an admin gets this URL
+  // directly, not through the nav. See CLAUDE.md's Admin Hub section.
+  const isAdminPage = pathname === '/admin' || pathname.startsWith('/admin');
+  const isHomeHero = currentTab === 'home' && !isTitrationPage && !isJoinPage && !isAdminPage;
   // Drives the Hero scroll sequence across moments. Only active
   // (listens for wheel/touch/key input, locks document scroll) while
   // isHomeHero is true.
@@ -86,13 +114,9 @@ export default function App() {
   const handleTabChange = (tab: string) => {
     if (tab === 'titration') {
       navigateTo('/titration');
-    } else {
-      if (isTitrationPage) {
-        navigateTo('/', tab);
-      } else {
-        setCurrentTab(tab);
-      }
+      return;
     }
+    navigateTo(TAB_PATHS[tab] ?? '/', tab);
   };
 
   useEffect(() => {
@@ -229,7 +253,7 @@ export default function App() {
     };
     setUserProfile(updatedProfile);
     setSessionToken(newSessionToken);
-    setCurrentTab('dashboard');
+    navigateTo(TAB_PATHS.dashboard, 'dashboard');
   };
 
   const handleLoginSuccess = (profile: UserProfile, newSessionToken: string) => {
@@ -238,14 +262,14 @@ export default function App() {
     if (Array.isArray(profile.reservedMissionIds)) {
       setSignedUpIds((prev) => Array.from(new Set([...prev, ...profile.reservedMissionIds])));
     }
-    setCurrentTab('dashboard');
+    navigateTo(TAB_PATHS.dashboard, 'dashboard');
   };
 
   const handleLogout = () => {
     if (sessionToken) void content.logout(sessionToken);
     setSessionToken('');
     setUserProfile({ name: '', school: '', role: '', joinedDate: '', level: 0, xp: 0, unlockedBadges: [], reservedMissionIds: [], newsletterSubscribed: false });
-    setCurrentTab('home');
+    navigateTo(TAB_PATHS.home, 'home');
   };
 
   const handleSignupSuccess = (missionId: string) => {
@@ -316,6 +340,13 @@ export default function App() {
   const handleUpdateProfileName = (newName: string) => {
     setUserProfile((prev) => ({ ...prev, name: newName }));
   };
+
+  // Same standalone-screen treatment as /titration and /join below — no
+  // Header/Hero/Footer chrome, since it's a completely separate audience
+  // (staff, not visitors) and gates itself behind its own password screen.
+  if (isAdminPage) {
+    return <AdminHub onExit={() => navigateTo('/')} />;
+  }
 
   // A genuine separate screen, not a modal over the rest of the site — no
   // Header/Footer/other overlay chrome renders alongside it, same as how
@@ -502,7 +533,7 @@ export default function App() {
                 {currentTab === 'about' && <AboutUs />}
 
                 {currentTab === 'dashboard' && (
-                  <Dashboard userProfile={userProfile} missions={content.missions} signedUpIds={signedUpIds} onUpdateProfileName={handleUpdateProfileName} setCurrentTab={setCurrentTab} />
+                  <Dashboard userProfile={userProfile} missions={content.missions} signedUpIds={signedUpIds} onUpdateProfileName={handleUpdateProfileName} setCurrentTab={handleTabChange} />
                 )}
               </div>
             )}
