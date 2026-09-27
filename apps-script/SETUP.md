@@ -285,6 +285,58 @@ Subscribers once it clears.
 
 ---
 
+## Admin Hub
+
+A staff-only page at `trscienceclub.org/admin` (not linked from the site) for
+editing Events/Announcements, sending the newsletter, and sending one-off
+email — see CLAUDE.md's "Admin Hub" section for how it's built. One-time
+setup, all from the spreadsheet's 🐢 Website menu:
+
+1. **🔐 Set Admin Hub Password** — sets the one shared password admins use to
+   log into `/admin`. Leave the prompt empty and click OK to lock everyone
+   out until a new one is set.
+2. **✉️ Newsletter ▸ 📧 Set From Name / Reply-To** — the display name and
+   reply-to address the Hub's newsletter composer sends with. Use
+   `contact@trscienceclub.org` for the reply-to (that's the real mailbox,
+   hosted in Zoho Mail — replies already land there today). The reply-to
+   must be on a domain verified in Sender.net (Settings ▸ Domains) or
+   creating a campaign draft will fail.
+3. **🔌 Zoho Mail ▸ 🔗 Connect Zoho Mail** — needed only for the Compose tab
+   (a one-off private email; the newsletter itself doesn't need this). See
+   below.
+
+### Connecting Zoho Mail
+
+Sender.net can only send mass campaigns, not a one-off email — the Compose
+tab sends those through Zoho Mail's own API instead, as whichever mailbox
+you connect (use `contact@trscienceclub.org`). This needs a one-time OAuth
+setup in Zoho's API console:
+
+1. Go to **[api-console.zoho.com](https://api-console.zoho.com/)**, signed in
+   as the Zoho account that owns `contact@trscienceclub.org`.
+2. **Add Client ▸ Self Client ▸ Create Now**. No redirect URL or other
+   details are needed for a Self Client.
+3. Open the new client and go to its **Generate Code** tab. Enter:
+   - **Scope:** `ZohoMail.messages.CREATE,ZohoMail.accounts.READ`
+   - **Time duration:** the longest option offered (you have to paste the
+     code into the next step before it expires)
+   - **Description:** anything, e.g. "TRSC Admin Hub"
+   Click **Create**, then copy the authorization code shown.
+4. In the spreadsheet: **🐢 Website ▸ 🔌 Zoho Mail ▸ 🔗 Connect Zoho Mail**.
+   It asks for three things in order — the Client ID and Client Secret (both
+   shown on the Self Client's own page), then the authorization code from
+   step 3. Paste the code in **immediately**; if it's expired, go back to
+   step 3 and generate a fresh one.
+5. On success it tells you which address it can now send as. That's stored
+   as a refresh token (which does not expire on its own) in the script's
+   properties — not in this repo — the same way the Sender.net token is.
+
+If sending ever starts failing with an authorization error, the refresh
+token was likely revoked in Zoho (e.g. the Self Client was deleted, or the
+account's Zoho password changed) — just repeat steps 3–4 to reconnect.
+
+---
+
 ## Join wizard (replaces the standalone registration Google Form)
 
 The "Join the Club" button now opens a multi-step wizard that replicates the
