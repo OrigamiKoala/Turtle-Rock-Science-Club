@@ -43,6 +43,7 @@ var MEMBERS_SHEET = 'Members';
 var SIGNUPS_SHEET = 'Signups';
 var NEWSLETTER_SHEET = 'Newsletter';
 var PUBLISHED_SHEET = '_Published';
+var PUBLISHED_CHUNK_SIZE = 40000;
 
 var RESOURCE_HEADERS = ['Title', 'Description', 'Category', 'Level', 'URL', 'Type', 'Show on Site'];
 var RESOURCE_LEVELS = ['Elementary', 'Middle School', 'High School', 'All Levels'];
@@ -489,15 +490,6 @@ function publishToWebsite_core_(ss, skipProblems) {
 
   var json = JSON.stringify(payload);
 
-  if (json.length > 45000) {
-    return {
-      ok: false,
-      tooLarge: true,
-      error: 'The published data is ' + json.length + ' characters, close to the 50,000 character limit ' +
-        'of a single cell.\n\nUntick "Show on Site" on some older rows and publish again.'
-    };
-  }
-
   // Same lock handleSignup_/bumpPublishedSpots_ take before touching
   // _Published!A1 — see publishToWebsite_core_'s callers for why.
   var publishLock = LockService.getScriptLock();
@@ -508,7 +500,7 @@ function publishToWebsite_core_(ss, skipProblems) {
   }
 
   try {
-    ensurePublishedSheet_(ss).getRange('A1').setValue(json);
+    writePublishedJson_(ensurePublishedSheet_(ss), json);
   } finally {
     publishLock.releaseLock();
   }
@@ -1852,7 +1844,7 @@ function bumpPublishedSpots_(ss, eventId, spotsReserved) {
   var sheet = ss.getSheetByName(PUBLISHED_SHEET);
   if (!sheet) return;
 
-  var raw = String(sheet.getRange('A1').getValue() || '');
+  var raw = readPublishedJson_(sheet);
   if (!raw) return;
 
   var payload;
@@ -1866,7 +1858,7 @@ function bumpPublishedSpots_(ss, eventId, spotsReserved) {
   for (var i = 0; i < events.length; i++) {
     if (events[i].id === eventId) {
       events[i].spotsReserved = spotsReserved;
-      sheet.getRange('A1').setValue(JSON.stringify(payload));
+      writePublishedJson_(sheet, JSON.stringify(payload));
       return;
     }
   }
@@ -2922,11 +2914,38 @@ function maskToken_(token) {
   return token.substring(0, 4) + '…' + token.substring(token.length - 4);
 }
 
-function readPublishedJson_() {
+function writePublishedJson_(sheet, json) {
+  var lastRow = sheet.getLastRow();
+  if (lastRow > 0) {
+    sheet.getRange(1, 1, lastRow, 1).clearContent();
+  }
+  var chunks = [];
+  for (var i = 0; i < json.length; i += PUBLISHED_CHUNK_SIZE) {
+    chunks.push([json.substring(i, i + PUBLISHED_CHUNK_SIZE)]);
+  }
+  if (!chunks.length) chunks.push(['']);
+  sheet.getRange(1, 1, chunks.length, 1).setValues(chunks);
+  sheet.getRange('C1').setValue('Written automatically when you click Publish. Do not edit by hand.');
+}
+
+function readPublishedJson_(sheet) {
   try {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var sheet = ss ? ss.getSheetByName(PUBLISHED_SHEET) : null;
-    return sheet ? String(sheet.getRange('A1').getValue() || '') : '';
+    if (!sheet) {
+      var ss = SpreadsheetApp.getActiveSpreadsheet();
+      sheet = ss ? ss.getSheetByName(PUBLISHED_SHEET) : null;
+    }
+    if (!sheet) return '';
+    var lastRow = sheet.getLastRow();
+    if (lastRow < 1) return '';
+    var values = sheet.getRange(1, 1, lastRow, 1).getValues();
+    var parts = [];
+    for (var i = 0; i < values.length; i++) {
+      var val = values[i][0];
+      if (val !== undefined && val !== null && val !== '') {
+        parts.push(String(val));
+      }
+    }
+    return parts.join('');
   } catch (err) {
     return '';
   }
