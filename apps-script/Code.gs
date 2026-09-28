@@ -1222,6 +1222,12 @@ function doPost(e) {
     } else if (body.action === 'adminSendEmail') {
       requireAdmin_(body);
       result = adminSendEmail_(body);
+    } else if (body.action === 'adminListInbox') {
+      requireAdmin_(body);
+      result = adminListInbox_(body);
+    } else if (body.action === 'adminGetMessage') {
+      requireAdmin_(body);
+      result = adminGetMessage_(body);
     } else {
       throw new Error('Unknown action.');
     }
@@ -2567,6 +2573,7 @@ var ZOHO_CLIENT_SECRET_PROPERTY = 'ZOHO_CLIENT_SECRET';
 var ZOHO_REFRESH_TOKEN_PROPERTY = 'ZOHO_REFRESH_TOKEN';
 var ZOHO_ACCOUNT_ID_PROPERTY = 'ZOHO_ACCOUNT_ID';
 var ZOHO_FROM_ADDRESS_PROPERTY = 'ZOHO_FROM_ADDRESS';
+var ZOHO_INBOX_FOLDER_ID_PROPERTY = 'ZOHO_INBOX_FOLDER_ID';
 // Cached under the access token's own ~1h lifetime, with margin — see zohoAccessToken_.
 var ZOHO_ACCESS_TOKEN_CACHE_KEY = 'zoho_access_token';
 var ZOHO_ACCESS_TOKEN_CACHE_SECONDS = 3000;
@@ -2602,7 +2609,8 @@ function connectZohoMail() {
 
   var codeResponse = ui.prompt(
     'Zoho Mail — Authorization code',
-    'In that Self Client\'s "Generate Code" tab: scope = ZohoMail.messages.CREATE,ZohoMail.accounts.READ, ' +
+    'In that Self Client\'s "Generate Code" tab: scope = ' +
+      'ZohoMail.messages.CREATE,ZohoMail.messages.READ,ZohoMail.folders.READ,ZohoMail.accounts.READ, ' +
       'longest available expiry, then Create. Paste the code here IMMEDIATELY — it expires in minutes.',
     ui.ButtonSet.OK_CANCEL
   );
@@ -2662,7 +2670,37 @@ function connectZohoMail() {
   props.setProperty(ZOHO_FROM_ADDRESS_PROPERTY, fromAddress);
   CacheService.getScriptCache().put(ZOHO_ACCESS_TOKEN_CACHE_KEY, tokenJson.access_token, ZOHO_ACCESS_TOKEN_CACHE_SECONDS);
 
-  ui.alert('Connected', 'The Admin Hub can now send email as ' + fromAddress + '.', ui.ButtonSet.OK);
+  // Best-effort: an older connection made before the folders.READ scope was
+  // added will 401 here, which just means the Inbox tab won't work until
+  // this is re-run with the scope above — sending still works either way.
+  var inboxNote = '';
+  var foldersResponse = UrlFetchApp.fetch(
+    ZOHO_MAIL_BASE + '/accounts/' + encodeURIComponent(account.accountId) + '/folders',
+    { headers: { Authorization: 'Zoho-oauthtoken ' + tokenJson.access_token }, muteHttpExceptions: true }
+  );
+  var foldersJson = {};
+  try {
+    foldersJson = JSON.parse(foldersResponse.getContentText() || '{}');
+  } catch (err) {
+    foldersJson = {};
+  }
+  var folders = foldersJson.data || [];
+  var inbox = null;
+  for (var i = 0; i < folders.length; i++) {
+    if (folders[i].folderType === 'Inbox') {
+      inbox = folders[i];
+      break;
+    }
+  }
+  if (inbox && inbox.folderId) {
+    props.setProperty(ZOHO_INBOX_FOLDER_ID_PROPERTY, String(inbox.folderId));
+  } else {
+    props.deleteProperty(ZOHO_INBOX_FOLDER_ID_PROPERTY);
+    inboxNote = '\n\n(Could not find the Inbox folder, so the Admin Hub\'s Inbox tab won\'t work — ' +
+      'make sure the authorization code was generated with the folders.READ scope.)';
+  }
+
+  ui.alert('Connected', 'The Admin Hub can now send email as ' + fromAddress + '.' + inboxNote, ui.ButtonSet.OK);
 }
 
 /** A live access token, refreshing (and caching) one if the cached copy is missing/expired. Returns '' if not connected. */
@@ -2742,6 +2780,95 @@ function adminSendEmail_(body) {
   }
 
   return { ok: true };
+}
+
+/**
+ * Recent Inbox messages for the Admin Hub's Inbox tab — summaries only
+ * (subject/from/date/snippet/read-state), not full bodies; see
+ * adminGetMessage_ for that. Requires the connection to have been made with
+ * the messages.READ + folders.READ scopes (see connectZohoMail's prompt) —
+ * an older connection without them will fail here even though sending mail
+ * still works fine.
+ */
+function adminListInbox_(body) {
+  var props = PropertiesService.getScriptProperties();
+  var accountId = props.getProperty(ZOHO_ACCOUNT_ID_PROPERTY);
+  var folderId = props.getProperty(ZOHO_INBOX_FOLDER_ID_PROPERTY);
+  if (!accountId || !folderId) {
+    return {
+      ok: false,
+      error: 'Inbox access is not set up. Run 🐢 Website ▸ 🔌 Zoho Mail ▸ 🔗 Connect Zoho Mail again — ' +
+        'the authorization code needs the messages.READ and folders.READ scopes.'
+    };
+  }
+
+  var accessToken = zohoAccessToken_();
+  if (!accessToken) return { ok: false, error: 'Could not get a Zoho access token — the connection may need to be redone.' };
+
+  var limit = toWholeNumber_(body && body.limit, 20) || 20;
+  var response = UrlFetchApp.fetch(
+    ZOHO_MAIL_BASE + '/accounts/' + encodeURIComponent(accountId) + '/messages/view?folderId=' +
+      encodeURIComponent(folderId) + '&limit=' + limit + '&sortBy=date&sortorder=false',
+    { headers: { Authorization: 'Zoho-oauthtoken ' + accessToken }, muteHttpExceptions: true }
+  );
+  var code = response.getResponseCode();
+  if (code < 200 || code >= 300) {
+    return { ok: false, error: 'Zoho answered: ' + String(response.getContentText() || '').slice(0, 300) };
+  }
+
+  var json = {};
+  try {
+    json = JSON.parse(response.getContentText() || '{}');
+  } catch (err) {
+    json = {};
+  }
+  var list = json.data || [];
+
+  var messages = list.map(function (m) {
+    return {
+      id: String(m.messageId || ''),
+      subject: String(m.subject || '(no subject)'),
+      from: String(m.fromAddress || m.sender || ''),
+      receivedAt: m.receivedTime ? new Date(Number(m.receivedTime)).toISOString() : '',
+      summary: String(m.summary || ''),
+      unread: String(m.status) === '0',
+      hasAttachment: String(m.hasAttachment) === '1'
+    };
+  });
+
+  return { ok: true, messages: messages };
+}
+
+/** Full HTML body of one Inbox message, for the Admin Hub's message detail view. */
+function adminGetMessage_(body) {
+  var props = PropertiesService.getScriptProperties();
+  var accountId = props.getProperty(ZOHO_ACCOUNT_ID_PROPERTY);
+  var folderId = props.getProperty(ZOHO_INBOX_FOLDER_ID_PROPERTY);
+  var messageId = String((body && body.messageId) || '').trim();
+  if (!accountId || !folderId) return { ok: false, error: 'Inbox access is not set up yet.' };
+  if (!messageId) return { ok: false, error: 'Missing message id.' };
+
+  var accessToken = zohoAccessToken_();
+  if (!accessToken) return { ok: false, error: 'Could not get a Zoho access token — the connection may need to be redone.' };
+
+  var response = UrlFetchApp.fetch(
+    ZOHO_MAIL_BASE + '/accounts/' + encodeURIComponent(accountId) + '/folders/' + encodeURIComponent(folderId) +
+      '/messages/' + encodeURIComponent(messageId) + '/content',
+    { headers: { Authorization: 'Zoho-oauthtoken ' + accessToken }, muteHttpExceptions: true }
+  );
+  var code = response.getResponseCode();
+  if (code < 200 || code >= 300) {
+    return { ok: false, error: 'Zoho answered: ' + String(response.getContentText() || '').slice(0, 300) };
+  }
+
+  var json = {};
+  try {
+    json = JSON.parse(response.getContentText() || '{}');
+  } catch (err) {
+    json = {};
+  }
+
+  return { ok: true, content: String((json.data && json.data.content) || '') };
 }
 
 /**

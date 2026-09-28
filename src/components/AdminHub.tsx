@@ -15,7 +15,11 @@ import {
   List,
   Heading2,
   ExternalLink,
-  Send
+  Send,
+  Inbox as InboxIcon,
+  Paperclip,
+  ArrowLeft,
+  Reply
 } from 'lucide-react';
 
 // sessionStorage, not one of the site's tr_sc_* localStorage keys — an admin
@@ -23,7 +27,7 @@ import {
 // signed-up-ids or theme preference.
 const ADMIN_TOKEN_KEY = 'tr_sc_admin_token';
 
-type AdminTab = 'overview' | 'events' | 'announcements' | 'newsletter' | 'compose' | 'sheet';
+type AdminTab = 'overview' | 'events' | 'announcements' | 'newsletter' | 'compose' | 'inbox' | 'sheet';
 
 interface AdminBaseResult {
   ok: boolean;
@@ -98,6 +102,24 @@ interface ListCampaignsResult extends AdminBaseResult {
 interface ZohoStatusResult extends AdminBaseResult {
   connected?: boolean;
   fromAddress?: string;
+}
+
+interface InboxMessage {
+  id: string;
+  subject: string;
+  from: string;
+  receivedAt: string;
+  summary: string;
+  unread: boolean;
+  hasAttachment: boolean;
+}
+
+interface ListInboxResult extends AdminBaseResult {
+  messages?: InboxMessage[];
+}
+
+interface GetMessageResult extends AdminBaseResult {
+  content?: string;
 }
 
 async function callAdmin<T extends AdminBaseResult>(
@@ -444,16 +466,131 @@ function ContentPanel({
   );
 }
 
-function ToolbarButton({ onClick, icon: Icon, label }: { onClick: () => void; icon: React.ElementType; label: string }) {
+function ToolbarButton({
+  onClick,
+  icon: Icon,
+  label,
+  active
+}: {
+  onClick: () => void;
+  icon: React.ElementType;
+  label: string;
+  active?: boolean;
+}) {
   return (
     <button
       type="button"
+      // mousedown, not click: a click first fires mousedown, which would blur the
+      // editor and collapse the text selection before the toolbar's own click
+      // handler ever runs — preventing default here keeps focus (and the
+      // selection) in the editor so bold/italic/etc. apply to the right text.
+      onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
       title={label}
-      className="px-3 py-1.5 rounded-full text-xs font-bold border-2 border-[#1F3A42]/12 bg-white hover:bg-[#1F3A42]/5 text-[#1F3A42] flex items-center gap-1.5 cursor-pointer"
+      className={`px-3 py-1.5 rounded-full text-xs font-bold border-2 flex items-center gap-1.5 cursor-pointer transition-colors ${
+        active
+          ? 'bg-[#E4F5DA] border-transparent text-[#2E7D46]'
+          : 'border-[#1F3A42]/12 bg-white hover:bg-[#1F3A42]/5 text-[#1F3A42]'
+      }`}
     >
       <Icon className="w-3.5 h-3.5" /> {label}
     </button>
+  );
+}
+
+/**
+ * A minimal WYSIWYG editor — bold/italic/heading/link/list via a toolbar and
+ * the usual Ctrl/Cmd+B / Ctrl/Cmd+I shortcuts (which contentEditable already
+ * supports natively; nothing has to be wired up for those to work) — so
+ * composing a newsletter or a one-off email means writing normally instead
+ * of hand-typing HTML tags. `document.execCommand` is deprecated but still
+ * the only way to do this without pulling in a whole editor library for what
+ * is, in the end, five formatting actions.
+ *
+ * Deliberately uncontrolled: the contentEditable div's DOM is the source of
+ * truth while it's focused, and `onChange` just mirrors its innerHTML out to
+ * React state. Syncing `value` back into the DOM on every keystroke (a fully
+ * "controlled" component) resets the cursor to the start of the field —
+ * classic contentEditable-in-React footgun. The one-way sync back into the
+ * DOM below only fires when the field is NOT focused, which is exactly the
+ * case that needs it: programmatically clearing/resetting content (e.g. a
+ * "Write another" button) after the field has lost focus.
+ */
+function RichTextEditor({
+  value,
+  onChange,
+  placeholder
+}: {
+  value: string;
+  onChange: (html: string) => void;
+  placeholder?: string;
+}) {
+  const editorRef = useRef<HTMLDivElement>(null);
+  const [isEmpty, setIsEmpty] = useState(!value);
+  const [activeFormats, setActiveFormats] = useState<{ bold: boolean; italic: boolean }>({
+    bold: false,
+    italic: false
+  });
+
+  useEffect(() => {
+    // Plain <p> paragraphs on Enter, not Chrome's default bare <div> soup —
+    // matches what the newsletter's own HTML template/DOMPurify expect.
+    document.execCommand('defaultParagraphSeparator', false, 'p');
+  }, []);
+
+  useEffect(() => {
+    const el = editorRef.current;
+    if (el && document.activeElement !== el && el.innerHTML !== value) {
+      el.innerHTML = value;
+      setIsEmpty(!value);
+    }
+  }, [value]);
+
+  const syncFromDom = () => {
+    const el = editorRef.current;
+    if (!el) return;
+    onChange(el.innerHTML);
+    setIsEmpty(!el.textContent?.trim());
+    setActiveFormats({ bold: document.queryCommandState('bold'), italic: document.queryCommandState('italic') });
+  };
+
+  const exec = (command: string, arg?: string) => {
+    editorRef.current?.focus();
+    document.execCommand(command, false, arg);
+    syncFromDom();
+  };
+
+  const insertLink = () => {
+    const url = window.prompt('Link URL:', 'https://');
+    if (url) exec('createLink', url);
+  };
+
+  return (
+    <div>
+      <div className="flex flex-wrap gap-2 mb-2">
+        <ToolbarButton onClick={() => exec('bold')} icon={Bold} label="Bold" active={activeFormats.bold} />
+        <ToolbarButton onClick={() => exec('italic')} icon={Italic} label="Italic" active={activeFormats.italic} />
+        <ToolbarButton onClick={() => exec('formatBlock', 'H3')} icon={Heading2} label="Heading" />
+        <ToolbarButton onClick={insertLink} icon={Link2} label="Link" />
+        <ToolbarButton onClick={() => exec('insertUnorderedList')} icon={List} label="List" />
+      </div>
+      <div className="relative">
+        {isEmpty && placeholder && (
+          <p className="absolute top-2.5 left-2.5 text-sm text-[#4B6169] pointer-events-none select-none">
+            {placeholder}
+          </p>
+        )}
+        <div
+          ref={editorRef}
+          contentEditable
+          suppressContentEditableWarning
+          onInput={syncFromDom}
+          onKeyUp={syncFromDom}
+          onMouseUp={syncFromDom}
+          className={`${inputBase} min-h-[220px] [&_p]:my-2 [&_h3]:font-display [&_h3]:font-bold [&_h3]:text-lg [&_ul]:list-disc [&_ul]:pl-5 [&_a]:underline [&_a]:text-[#2E7D46] focus:outline-none`}
+        />
+      </div>
+    </div>
   );
 }
 
@@ -484,7 +621,6 @@ function NewsletterPanel({
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState('');
   const [confirmText, setConfirmText] = useState('');
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     void (async () => {
@@ -501,21 +637,6 @@ function NewsletterPanel({
       else setCampaignsError(result.error || 'Could not load past campaigns.');
     })();
   }, [call]);
-
-  const wrapSelection = (before: string, after: string) => {
-    const el = textareaRef.current;
-    if (!el) return;
-    const start = el.selectionStart;
-    const end = el.selectionEnd;
-    const selected = content.slice(start, end) || 'text';
-    const next = content.slice(0, start) + before + selected + after + content.slice(end);
-    setContent(next);
-    requestAnimationFrame(() => {
-      el.focus();
-      el.selectionStart = start + before.length;
-      el.selectionEnd = start + before.length + selected.length;
-    });
-  };
 
   const toggleGroup = (id: string) => {
     setSelectedGroupIds((prev) => (prev.includes(id) ? prev.filter((g) => g !== id) : [...prev, id]));
@@ -616,28 +737,7 @@ function NewsletterPanel({
 
           <div>
             <label className="block text-xs font-bold uppercase tracking-wide text-[#4B6169] mb-2">Content</label>
-            <div className="flex flex-wrap gap-2 mb-2">
-              <ToolbarButton onClick={() => wrapSelection('<strong>', '</strong>')} icon={Bold} label="Bold" />
-              <ToolbarButton onClick={() => wrapSelection('<em>', '</em>')} icon={Italic} label="Italic" />
-              <ToolbarButton onClick={() => wrapSelection('<h3>', '</h3>')} icon={Heading2} label="Heading" />
-              <ToolbarButton
-                onClick={() => wrapSelection('<a href="https://">', '</a>')}
-                icon={Link2}
-                label="Link"
-              />
-              <ToolbarButton
-                onClick={() => wrapSelection('<ul>\n  <li>', '</li>\n</ul>')}
-                icon={List}
-                label="List"
-              />
-            </div>
-            <textarea
-              ref={textareaRef}
-              className={`${inputBase} min-h-[220px] font-mono text-xs`}
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="Write the email as HTML — select text and use a toolbar button to format it."
-            />
+            <RichTextEditor value={content} onChange={setContent} placeholder="Write your newsletter…" />
           </div>
 
           {content.trim() && (
@@ -814,7 +914,7 @@ function ComposePanel({
       cc: cc.trim(),
       subject: subject.trim(),
       content,
-      mailFormat: 'plaintext'
+      mailFormat: 'html'
     });
     setSending(false);
     if (result.ok) {
@@ -888,11 +988,7 @@ function ComposePanel({
                 <label className="block text-xs font-bold uppercase tracking-wide text-[#4B6169] mb-1">
                   Message
                 </label>
-                <textarea
-                  className={`${inputBase} min-h-[200px]`}
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                />
+                <RichTextEditor value={content} onChange={setContent} placeholder="Write your message…" />
               </div>
               {sendError && <p className="text-sm text-[#E4574B] font-medium">{sendError}</p>}
               <button
@@ -906,6 +1002,208 @@ function ComposePanel({
           )}
         </>
       )}
+    </div>
+  );
+}
+
+function formatReceivedAt(iso: string): string {
+  if (!iso) return '';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit'
+  });
+}
+
+/**
+ * Reads contact@trscienceclub.org's Inbox via Zoho Mail's API — summaries
+ * list here, full body fetched lazily per message (adminGetMessage) since
+ * Zoho's list endpoint doesn't include it. Requires the messages.READ +
+ * folders.READ scopes on top of what Compose needs; an older Zoho connection
+ * made before those existed will show the "Inbox access is not set up"
+ * error from adminListInbox_ until reconnected.
+ */
+function InboxPanel({
+  adminCall: call
+}: {
+  adminCall: <T extends AdminBaseResult>(action: string, payload?: Record<string, unknown>) => Promise<T>;
+}) {
+  const [messages, setMessages] = useState<InboxMessage[] | null>(null);
+  const [listError, setListError] = useState('');
+  const [selected, setSelected] = useState<InboxMessage | null>(null);
+  const [messageContent, setMessageContent] = useState<string | null>(null);
+  const [contentError, setContentError] = useState('');
+  const [replying, setReplying] = useState(false);
+  const [replyTo, setReplyTo] = useState('');
+  const [replySubject, setReplySubject] = useState('');
+  const [replyContent, setReplyContent] = useState('');
+  const [replySending, setReplySending] = useState(false);
+  const [replyError, setReplyError] = useState('');
+  const [replySent, setReplySent] = useState(false);
+
+  const load = useCallback(async () => {
+    const result = await call<ListInboxResult>('adminListInbox');
+    if (result.ok) {
+      setMessages(result.messages || []);
+      setListError('');
+    } else {
+      setListError(result.error || 'Could not load the inbox.');
+    }
+  }, [call]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const openMessage = async (m: InboxMessage) => {
+    setSelected(m);
+    setMessageContent(null);
+    setContentError('');
+    setReplying(false);
+    setReplySent(false);
+    const result = await call<GetMessageResult>('adminGetMessage', { messageId: m.id });
+    if (result.ok) setMessageContent(result.content || '');
+    else setContentError(result.error || 'Could not load this message.');
+  };
+
+  const startReply = () => {
+    if (!selected) return;
+    setReplyTo(selected.from);
+    setReplySubject(/^re:/i.test(selected.subject) ? selected.subject : `Re: ${selected.subject}`);
+    setReplyContent('');
+    setReplyError('');
+    setReplying(true);
+  };
+
+  const sendReply = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setReplyError('');
+    if (!replyContent.trim()) {
+      setReplyError('Write something first.');
+      return;
+    }
+    setReplySending(true);
+    const result = await call<AdminBaseResult>('adminSendEmail', {
+      to: replyTo,
+      subject: replySubject,
+      content: replyContent,
+      mailFormat: 'html'
+    });
+    setReplySending(false);
+    if (result.ok) {
+      setReplying(false);
+      setReplySent(true);
+    } else {
+      setReplyError(result.error || 'Could not send.');
+    }
+  };
+
+  if (selected) {
+    return (
+      <div>
+        <button
+          type="button"
+          onClick={() => setSelected(null)}
+          className="mb-4 px-4 py-2 rounded-full font-display font-bold text-xs bg-white hover:bg-[#1F3A42]/5 text-[#1F3A42] border-2 border-[#1F3A42]/12 flex items-center gap-1.5 cursor-pointer"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" /> Back to Inbox
+        </button>
+
+        <h2 className="font-display font-bold text-xl text-[#1F3A42] mb-1">{selected.subject}</h2>
+        <p className="text-sm text-[#4B6169] mb-6">
+          From {selected.from}
+          {selected.receivedAt ? ` · ${formatReceivedAt(selected.receivedAt)}` : ''}
+        </p>
+
+        {contentError && <p className="text-sm text-[#E4574B] font-medium mb-4">{contentError}</p>}
+        {messageContent === null && !contentError && <p className="text-sm text-[#4B6169] mb-4">Loading…</p>}
+        {messageContent !== null && (
+          <div className="rounded-[24px] border-2 border-[#1F3A42]/8 bg-white p-6 mb-6 trsc-newsletter-wrapper">
+            <SafeHtml content={messageContent} />
+          </div>
+        )}
+
+        {replySent && (
+          <div className="rounded-[24px] border-2 border-[#6CC24A] bg-[#E4F5DA] p-4 mb-4 text-sm font-medium text-[#2E7D46]">
+            Reply sent!
+          </div>
+        )}
+
+        {!replying && (
+          <button
+            type="button"
+            onClick={startReply}
+            className="px-5 py-2.5 rounded-full font-display font-bold text-sm bg-[#1F3A42] text-white flex items-center gap-1.5 cursor-pointer"
+          >
+            <Reply className="w-4 h-4" /> Reply
+          </button>
+        )}
+
+        {replying && (
+          <form onSubmit={sendReply} className="rounded-[28px] border-2 border-[#1F3A42]/8 bg-white p-6 space-y-4">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wide text-[#4B6169] mb-1">To</label>
+              <input className={inputBase} value={replyTo} onChange={(e) => setReplyTo(e.target.value)} />
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wide text-[#4B6169] mb-1">Subject</label>
+              <input className={inputBase} value={replySubject} onChange={(e) => setReplySubject(e.target.value)} />
+            </div>
+            <RichTextEditor value={replyContent} onChange={setReplyContent} placeholder="Write your reply…" />
+            {replyError && <p className="text-sm text-[#E4574B] font-medium">{replyError}</p>}
+            <div className="flex items-center gap-3">
+              <button
+                type="submit"
+                disabled={replySending}
+                className="px-6 py-3 rounded-full font-display font-bold text-sm bg-[#1F3A42] text-white disabled:opacity-60 cursor-pointer"
+              >
+                {replySending ? 'Sending…' : 'Send Reply'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setReplying(false)}
+                className="px-6 py-3 rounded-full font-display font-bold text-sm bg-white border-2 border-[#1F3A42]/12 cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <h2 className="font-display font-bold text-2xl text-[#1F3A42] mb-6">Inbox</h2>
+      {messages === null && !listError && <p className="text-sm text-[#4B6169]">Loading…</p>}
+      {listError && <p className="text-sm text-[#E4574B] font-medium max-w-xl">{listError}</p>}
+      {messages && messages.length === 0 && <p className="text-sm text-[#4B6169]">Nothing here yet.</p>}
+      <div className="space-y-2">
+        {messages?.map((m) => (
+          <button
+            key={m.id}
+            type="button"
+            onClick={() => openMessage(m)}
+            className="w-full text-left rounded-[24px] border-2 border-[#1F3A42]/8 bg-white p-4 hover:border-[#6CC24A] transition-colors cursor-pointer"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <p className={`text-sm truncate ${m.unread ? 'font-display font-bold text-[#1F3A42]' : 'text-[#1F3A42]'}`}>
+                {m.subject}
+              </p>
+              <span className="shrink-0 flex items-center gap-2 text-xs text-[#4B6169]">
+                {m.hasAttachment && <Paperclip className="w-3.5 h-3.5" />}
+                {formatReceivedAt(m.receivedAt)}
+              </span>
+            </div>
+            <p className="text-xs text-[#4B6169] truncate">{m.from}</p>
+            {m.summary && <p className="text-xs text-[#4B6169] truncate mt-1">{m.summary}</p>}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -1059,6 +1357,7 @@ const TABS: { id: AdminTab; label: string; icon: React.ElementType }[] = [
   { id: 'announcements', label: 'Announcements', icon: Megaphone },
   { id: 'newsletter', label: 'Newsletter', icon: Mail },
   { id: 'compose', label: 'Compose', icon: Send },
+  { id: 'inbox', label: 'Inbox', icon: InboxIcon },
   { id: 'sheet', label: 'Backup Sheet', icon: Table2 }
 ];
 
@@ -1191,6 +1490,7 @@ export default function AdminHub({ onExit }: { onExit: () => void }) {
         )}
         {tab === 'newsletter' && <NewsletterPanel adminCall={adminCall} />}
         {tab === 'compose' && <ComposePanel adminCall={adminCall} />}
+        {tab === 'inbox' && <InboxPanel adminCall={adminCall} />}
         {tab === 'sheet' && <BackupSheetPanel />}
       </div>
     </div>
