@@ -184,9 +184,47 @@ itself requires it.
 
 **Preventing duplicate signups:**
 - Once signed up for an event, `signedUpIds` and `userProfile.reservedMissionIds` store the event ID in `localStorage` (`tr_sc_signed_up_ids` and `tr_sc_user_profile`) and sync to the spreadsheet via `syncProfile` and `recordMemberMission_`.
-- In `UpcomingMissions.tsx`, an already-reserved mission renders a single disabled button (`You're Signed Up ✔`), and the old "Sign up another student" button is removed so duplicate signups cannot be re-triggered.
+- In `UpcomingMissions.tsx`, an already-reserved mission renders a non-interactive `You're Signed Up ✔` pill (plus a real "Cancel my spot" action underneath it — see below); the old "Sign up another student" button stays removed so a duplicate signup can't be re-triggered from the card.
 - `handleSignUp` exits immediately if `signedUpIds.includes(mission.id)`.
 - If `handleSignup_` detects an existing registration in the sheet, it returns `{ ok: false, alreadySignedUp: true }`, prompting the client to record the mission as reserved and display an informational message rather than decrementing spots.
+
+**Cancelling a signup** is the exact inverse of the flow above, via a `cancelSignup` action / `handleCancelSignup_` in `Code.gs`, triggered by `UpcomingMissions.tsx`'s "Cancel my spot" link:
+1. matches the **Signups** row by (event title, student name) — the same pair `handleSignup_` dedupes on — and deletes it
+2. decrements that event's **Spots Taken** (floored at 0) and patches `_Published`'s `spotsReserved` via the same `bumpPublishedSpots_`
+3. drops the event id from the member's **Members** row `Missions` column via `removeMemberMission_`, the mirror of `recordMemberMission_` (session token first, student-name fallback)
+4. is idempotent: if the event or the Signups row is already gone, it still returns `{ ok: true }` rather than erroring — the visitor's actual goal ("not signed up") is already true, and there is nothing to charge them for getting there
+
+A guest has no session token, so cancelling has to resubmit the *exact* student name the signup was made under — which the client has no other record of once `SignupModal` closes. `App.tsx` keeps a small `signupNames` map (`Record<missionId, studentName>`, persisted to `localStorage` as `tr_sc_signup_names`) purely for this: populated in `handleSignupSuccess` alongside `signedUpIds`, read by `handleCancelSignUp` for a guest (a logged-in member's is always just `userProfile.name`), and pruned on a successful cancel. This is a separate concern from XP: cancelling does not claw back the +15 XP a signup already granted — reversing gamification state on an unwind like this was judged not worth the complexity.
+
+## Email verification is real but easy to miss, and now resendable
+
+Joining sets `Email Verified` to `false` and emails a verify link (see
+`apps-script/SETUP.md`'s "Member accounts" section for the Sender.net side of
+that), but **login never checks it** — `handleLogin_` only checks the
+password hash, so an unverified member gets full site access, XP, and event
+sign-ups immediately. The one thing verification actually gates is
+`handleRequestPasswordReset_`, which silently sends nothing (`{ ok: true }`
+either way, by design, to avoid confirming which accounts exist) unless the
+member is both verified and has a password. Because nothing else nudges
+anyone to verify, a live check of the Members sheet on 2026-09-27 found only
+1 of 300 members had ever done it — so "forgot password" silently does
+nothing for almost the entire membership, which looks exactly like a broken
+reset flow but isn't one.
+
+There was no way to fix this short of digging up the original join email,
+since a verify link is otherwise only ever sent once, at signup. `App.tsx`
+now shows a dismissible banner (same pattern as the newsletter opt-in banner
+below — `verifyBannerDismissed`/`tr_sc_verify_banner_dismissed`) to any
+logged-in member with `!userProfile.emailVerified`, with a "Resend
+verification email" button wired to a new `resendVerification` action /
+`handleResendVerification_` in `Code.gs`. That handler is keyed by session
+token (the caller is always already logged in, so there's no
+anti-enumeration reason to accept a typed identifier the way
+`handleRequestPasswordReset_` does) and just re-runs `issueAccountToken_` +
+`sendAccountEmail_` with a fresh `verify` token — the same mechanism
+`handleJoin_` uses the first time. `handleLogin_`'s and `handleJoin_`'s
+`profile` responses both now include `emailVerified` so the client knows
+whether to show the banner at all.
 
 ## Newsletter (Sender.net)
 
@@ -419,41 +457,73 @@ approach (e.g. a published-to-web read-only view, which has its own privacy
 tradeoffs and wouldn't be editable anyway).
 
 **Scope of what's actually in the hub today:** Events, Announcements, the
-newsletter composer/sender, and one-off email via the Compose tab. Lab Log,
-Resources, Signups, and Members are still Sheet-only — the Backup Sheet tab's
-link is how an admin reaches those for now. Extending `ContentPanel` to Lab
-Log would follow the same pattern as Events/Announcements.
+newsletter composer/sender, one-off email via Compose, and reading/replying
+to the Inbox. Lab Log, Resources, Signups, and Members are still Sheet-only —
+the Backup Sheet tab's link is how an admin reaches those for now. Extending
+`ContentPanel` to Lab Log would follow the same pattern as Events/Announcements.
 
-### Compose tab (Zoho Mail) — why two email systems, not one
+**Newsletter and Compose/Inbox-Reply are all a real WYSIWYG editor, not raw
+HTML.** `RichTextEditor` in `AdminHub.tsx` is a small `contentEditable`-based
+component (bold/italic/heading/link/list toolbar, plus the browser's native
+Ctrl/Cmd+B and Ctrl/Cmd+I) shared by all three composers — nobody typing a
+newsletter or an email needs to know HTML exists. It's deliberately
+uncontrolled: the DOM is the source of truth while focused, and `onChange`
+just mirrors `innerHTML` out to React state; syncing `value` back into the
+DOM on every keystroke (a fully controlled component) resets the cursor to
+the start of the field, a classic contentEditable-in-React bug. Built on
+`document.execCommand` — officially deprecated, but still the only way to do
+this without a whole editor library for what is, in the end, five formatting
+actions.
 
-Sender.net can't send a one-off private email (mass campaigns only), and
-Zoho Mail doesn't give campaign stats — so the club genuinely needs both, not
-one simplified down to the other (confirmed with Carl, who originally set
-both up). `contact@trscienceclub.org` is a real Zoho Mail mailbox — replies
-to Sender.net campaigns already land there, which is also why
-`SENDER_REPLY_EMAIL` should be set to that address, not something invented.
-The Compose tab wraps Zoho Mail's own REST API (`POST
-/api/accounts/{accountId}/messages`) so a one-off email doesn't require
-leaving the Hub for mail.zoho.com, while mass sends stay on Sender.net for
-the stats.
+### Compose and Inbox tabs (Zoho Mail) — why two email systems, not one
+
+Sender.net can't send a one-off private email (mass campaigns only) or read a
+mailbox, and Zoho Mail doesn't give campaign stats — so the club genuinely
+needs both, not one simplified down to the other (confirmed with Carl, who
+originally set both up). `contact@trscienceclub.org` is a real Zoho Mail
+mailbox — replies to Sender.net campaigns already land there, which is also
+why `SENDER_REPLY_EMAIL` should be set to that address, not something
+invented. The Compose tab wraps Zoho Mail's own REST API (`POST
+/api/accounts/{accountId}/messages`) and the Inbox tab wraps its message-list
+and message-content endpoints, so neither a one-off email nor checking that
+inbox requires leaving the Hub for mail.zoho.com, while mass sends stay on
+Sender.net for the stats.
 
 **Connected once, like the Sender.net token,** via 🐢 Website ▸ 🔌 Zoho Mail
 ▸ 🔗 Connect Zoho Mail (see SETUP.md for the click-by-click version,
 including creating the "Self Client" in Zoho's API console this needs).
 `connectZohoMail()` exchanges a short-lived authorization code for a
 refresh token that does not expire, discovers which mailbox it belongs to
-(`GET /api/accounts`), and stores `ZOHO_CLIENT_ID`/`ZOHO_CLIENT_SECRET`/
-`ZOHO_REFRESH_TOKEN`/`ZOHO_ACCOUNT_ID`/`ZOHO_FROM_ADDRESS` in Script
+(`GET /api/accounts`) and that mailbox's Inbox folder id (`GET
+/api/accounts/{accountId}/folders`, matched on `folderType === 'Inbox'`),
+and stores `ZOHO_CLIENT_ID`/`ZOHO_CLIENT_SECRET`/`ZOHO_REFRESH_TOKEN`/
+`ZOHO_ACCOUNT_ID`/`ZOHO_FROM_ADDRESS`/`ZOHO_INBOX_FOLDER_ID` in Script
 Properties — same never-in-the-repo storage as every other credential here.
 `zohoAccessToken_()` mints (and caches, ~50 min) short-lived access tokens
 from that refresh token per call; nothing about Zoho ever touches the
 public bundle.
 
+**Reading the Inbox needs a wider OAuth scope than sending does** —
+`ZohoMail.messages.READ` and `ZohoMail.folders.READ` on top of the
+`messages.CREATE`/`accounts.READ` Compose alone needs. A connection made
+before the Inbox tab existed will send fine but show "Inbox access is not
+set up" until reconnected with a fresh authorization code carrying the wider
+scope (re-running Connect Zoho Mail with the *same* old code changes
+nothing — the scope is fixed at code-generation time in Zoho's console, not
+at the token-exchange step this script controls).
+
 The Compose tab checks `adminZohoStatus` before showing a form, so an admin
 who hasn't run the connect step yet sees a clear message instead of a
 send failure. No two-step SEND confirmation like the newsletter — one
 targeted email to one person is an ordinary, low-blast-radius action, not a
-mass send.
+mass send. The Inbox tab's "Reply" (pre-filled To/"Re: " subject) reuses the
+exact same `adminSendEmail` action Compose uses, not a separate code path.
+
+`adminListInbox_` calls Zoho's `GET .../messages/view` for summaries only
+(subject/from/date/snippet/read-state) — the full body is a separate,
+per-message call (`adminGetMessage_` → `GET
+.../folders/{folderId}/messages/{messageId}/content`), fetched lazily only
+when a message is actually opened, not for the whole list up front.
 
 ### Campaign stats in the Newsletter tab
 
