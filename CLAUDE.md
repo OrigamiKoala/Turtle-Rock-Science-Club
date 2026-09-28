@@ -152,8 +152,11 @@ The album's cover comes from `Image URL` (index 7); `image` is optional and the
 card just omits the header block when blank. The description falls back to
 `Photo album for <title>` and is rendered through `SafeHtml`.
 
-Embed blobs count against the ~45,000-character publish cap on the whole
-snapshot, so many inline carousels will crowd out other content.
+Embed blobs used to count against a ~45,000-character publish cap on the
+whole snapshot — removed once `_Published` started chunking across cells
+(`writePublishedJson_`/`readPublishedJson_`, `PUBLISHED_CHUNK_SIZE`; see
+"Content pipeline" above), so many inline carousels no longer crowd out
+other content the way they once did.
 
 ## Sign-up flow
 
