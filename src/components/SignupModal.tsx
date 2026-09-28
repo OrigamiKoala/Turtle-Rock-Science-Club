@@ -11,7 +11,7 @@ interface SignupModalProps {
   defaultSchool?: string;
   onClose: () => void;
   onSubmit: (details: SignupDetails) => Promise<SignupResult>;
-  onSuccess: (missionId: string) => void;
+  onSuccess: (missionId: string, studentName: string) => void;
 }
 
 const LAST_SCHOOL_KEY = 'tr_sc_last_school';
@@ -77,7 +77,7 @@ export default function SignupModal({
     if (!result.ok) {
       setError(result.error ?? 'Something went wrong. Please try again.');
       if (result.alreadySignedUp || (result.error && result.error.toLowerCase().includes('already signed up'))) {
-        onSuccess(mission.id);
+        onSuccess(mission.id, trimmedName);
       }
       return;
     }
@@ -85,7 +85,7 @@ export default function SignupModal({
     try { localStorage.setItem(LAST_SCHOOL_KEY, trimmedSchool); } catch {}
 
     setConfirmed(result);
-    onSuccess(mission.id);
+    onSuccess(mission.id, trimmedName);
   };
 
   return createPortal(

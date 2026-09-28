@@ -24,6 +24,14 @@ export interface SignupResult {
   spotsLeft?: number;
 }
 
+export interface CancelSignupDetails {
+  eventId: string;
+  eventTitle: string;
+  /** Must match the name the signup was originally made under. */
+  studentName: string;
+  sessionToken?: string;
+}
+
 export interface MemberJoinDetails {
   name: string;
   school: string;
@@ -78,6 +86,11 @@ export interface SimpleResult {
   error?: string;
 }
 
+export interface ResendVerificationResult extends SimpleResult {
+  /** Nothing was sent — the account was already verified. */
+  alreadyVerified?: boolean;
+}
+
 export interface NewsletterResult {
   ok: boolean;
   error?: string;
@@ -98,12 +111,14 @@ export interface SiteContent {
   /** Re-fetches from the Sheet, skipping the cache. */
   refresh: () => Promise<void>;
   submitSignup: (details: SignupDetails) => Promise<SignupResult>;
+  cancelSignup: (details: CancelSignupDetails) => Promise<SignupResult>;
   submitMemberJoin: (details: MemberJoinDetails) => Promise<JoinResult>;
   loginMember: (params: LoginParams) => Promise<LoginResult>;
   syncProfile: (profile: UserProfile, sessionToken: string) => Promise<void>;
   logout: (sessionToken: string) => Promise<void>;
   verifyEmail: (token: string) => Promise<SimpleResult>;
   requestPasswordReset: (identifier: string) => Promise<SimpleResult>;
+  resendVerificationEmail: (sessionToken: string) => Promise<ResendVerificationResult>;
   resetPassword: (token: string, newPassword: string) => Promise<SimpleResult>;
   /** Adds an address to the Newsletter tab, which mirrors it into Sender.net. */
   subscribeNewsletter: (email: string, source?: string) => Promise<NewsletterResult>;
@@ -538,6 +553,38 @@ export function useSiteContent(): SiteContent {
     [refresh]
   );
 
+  /** The inverse of submitSignup — same `text/plain` reasoning applies. */
+  const cancelSignup = useCallback(
+    async (details: CancelSignupDetails): Promise<SignupResult> => {
+      if (!SHEET_API_URL) {
+        return { ok: false, error: 'Signups are not connected to the spreadsheet yet.' };
+      }
+
+      try {
+        const response = await fetch(SHEET_API_URL, {
+          method: 'POST',
+          redirect: 'follow',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'cancelSignup', ...details })
+        });
+
+        if (!response.ok) {
+          return { ok: false, error: `The server returned HTTP ${response.status}.` };
+        }
+
+        const result = JSON.parse(await response.text()) as SignupResult;
+        if (result.ok) void refresh();
+        return result;
+      } catch {
+        return {
+          ok: false,
+          error: 'Could not reach the server. Check your connection and try again.'
+        };
+      }
+    },
+    [refresh]
+  );
+
   const submitMemberJoin = useCallback(async (details: MemberJoinDetails): Promise<JoinResult> => {
     if (!SHEET_API_URL) {
       return { ok: false, error: 'Spreadsheet connection not configured.' };
@@ -660,6 +707,23 @@ export function useSiteContent(): SiteContent {
     }
   }, []);
 
+  const resendVerificationEmail = useCallback(async (sessionToken: string): Promise<ResendVerificationResult> => {
+    if (!SHEET_API_URL) return { ok: false, error: 'Spreadsheet connection not configured.' };
+
+    try {
+      const response = await fetch(SHEET_API_URL, {
+        method: 'POST',
+        redirect: 'follow',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'resendVerification', sessionToken })
+      });
+      if (!response.ok) return { ok: false, error: `Server error HTTP ${response.status}` };
+      return JSON.parse(await response.text()) as ResendVerificationResult;
+    } catch {
+      return { ok: false, error: 'Could not reach the club server. Please check your connection and try again.' };
+    }
+  }, []);
+
   const resetPassword = useCallback(async (token: string, newPassword: string): Promise<SimpleResult> => {
     if (!SHEET_API_URL) return { ok: false, error: 'Spreadsheet connection not configured.' };
 
@@ -758,12 +822,14 @@ export function useSiteContent(): SiteContent {
     error,
     refresh,
     submitSignup,
+    cancelSignup,
     submitMemberJoin,
     loginMember,
     syncProfile,
     logout,
     verifyEmail,
     requestPasswordReset,
+    resendVerificationEmail,
     resetPassword,
     subscribeNewsletter,
     subscribeMemberNewsletter

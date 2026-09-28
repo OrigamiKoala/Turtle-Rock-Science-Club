@@ -61,6 +61,7 @@ export interface UserProfile {
   unlockedBadges: string[];
   reservedMissionIds: string[];
   newsletterSubscribed: boolean;
+  emailVerified: boolean;
 }
 
 export type GameId =

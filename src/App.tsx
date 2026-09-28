@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { UserProfile, GalleryPhoto, Mission } from './types';
 import { useSiteContent, SignupResult } from './useSiteContent';
 import { useHeroScroll } from './useHeroScroll';
+import { ACCOUNT_EMAILS_ENABLED } from './config';
 
 import Header from './components/Header';
 import TitrationHeader from './components/TitrationHeader';
@@ -50,7 +51,7 @@ export default function App() {
   const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
   const [showLevelUpAlert, setShowLevelUpAlert] = useState<boolean>(false);
   const [signupMission, setSignupMission] = useState<Mission | null>(null);
-  const [signupNotice, setSignupNotice] = useState<{ mission: Mission; result: SignupResult } | null>(null);
+  const [signupNotice, setSignupNotice] = useState<{ mission: Mission; result: SignupResult; action: 'signup' | 'cancel'; studentName: string } | null>(null);
 
   // The newsletter confirmation email's button lands here with ?confirmed=1.
   // Without this the click just loads the homepage and looks like nothing
@@ -75,6 +76,13 @@ export default function App() {
   });
   const [subscribingFromBanner, setSubscribingFromBanner] = useState<boolean>(false);
   const [newsletterBannerError, setNewsletterBannerError] = useState<string | null>(null);
+
+  // Same permanent-once-dismissed treatment as the newsletter banner above.
+  const [verifyBannerDismissed, setVerifyBannerDismissed] = useState<boolean>(() => {
+    try { return localStorage.getItem('tr_sc_verify_banner_dismissed') === '1'; } catch { return false; }
+  });
+  const [resendingVerification, setResendingVerification] = useState<boolean>(false);
+  const [verificationResent, setVerificationResent] = useState<boolean>(false);
 
   useEffect(() => {
     const handlePopState = () => {
@@ -171,7 +179,7 @@ export default function App() {
       const saved = localStorage.getItem('tr_sc_user_profile');
       if (saved) return JSON.parse(saved);
     } catch (e) { console.error('Failed reading user profile from storage', e); }
-    return { name: '', school: '', role: '', joinedDate: '', level: 0, xp: 0, unlockedBadges: [], reservedMissionIds: [], newsletterSubscribed: false };
+    return { name: '', school: '', role: '', joinedDate: '', level: 0, xp: 0, unlockedBadges: [], reservedMissionIds: [], newsletterSubscribed: false, emailVerified: false };
   });
 
   const [sessionToken, setSessionToken] = useState<string>(() => {
@@ -209,6 +217,18 @@ export default function App() {
     return [];
   });
 
+  // Which student name each guest signup was made under — a logged-in member's
+  // is always their own profile name, but a guest's is whatever they typed
+  // into SignupModal, and cancelling has to send back that exact name for the
+  // server's (event title, student name) match to find the right row.
+  const [signupNames, setSignupNames] = useState<Record<string, string>>(() => {
+    try {
+      const saved = localStorage.getItem('tr_sc_signup_names');
+      return saved ? JSON.parse(saved) : {};
+    } catch (e) { console.error('Failed reading signup names from storage', e); }
+    return {};
+  });
+
   const { syncProfile } = content;
 
   useEffect(() => {
@@ -226,6 +246,7 @@ export default function App() {
   }, [sessionToken]);
   useEffect(() => { localStorage.setItem('tr_sc_gallery_photos', JSON.stringify(photos)); }, [photos]);
   useEffect(() => { localStorage.setItem('tr_sc_signed_up_ids', JSON.stringify(signedUpIds)); }, [signedUpIds]);
+  useEffect(() => { localStorage.setItem('tr_sc_signup_names', JSON.stringify(signupNames)); }, [signupNames]);
 
   useEffect(() => {
     if (!signupNotice) return;
@@ -268,12 +289,13 @@ export default function App() {
   const handleLogout = () => {
     if (sessionToken) void content.logout(sessionToken);
     setSessionToken('');
-    setUserProfile({ name: '', school: '', role: '', joinedDate: '', level: 0, xp: 0, unlockedBadges: [], reservedMissionIds: [], newsletterSubscribed: false });
+    setUserProfile({ name: '', school: '', role: '', joinedDate: '', level: 0, xp: 0, unlockedBadges: [], reservedMissionIds: [], newsletterSubscribed: false, emailVerified: false });
     navigateTo(TAB_PATHS.home, 'home');
   };
 
-  const handleSignupSuccess = (missionId: string) => {
+  const handleSignupSuccess = (missionId: string, studentName: string) => {
     setSignedUpIds((prev) => (prev.includes(missionId) ? prev : [...prev, missionId]));
+    setSignupNames((prev) => ({ ...prev, [missionId]: studentName }));
     setUserProfile((prev) => {
       const updatedMissions = prev.reservedMissionIds.includes(missionId)
         ? prev.reservedMissionIds
@@ -308,6 +330,26 @@ export default function App() {
     if (!result.alreadySubscribed) setShowConfirmEmailModal(true);
   };
 
+  const dismissVerifyBanner = () => {
+    setVerifyBannerDismissed(true);
+    try { localStorage.setItem('tr_sc_verify_banner_dismissed', '1'); } catch {}
+  };
+
+  const handleResendVerification = async () => {
+    if (resendingVerification || !sessionToken) return;
+    setResendingVerification(true);
+    const result = await content.resendVerificationEmail(sessionToken);
+    setResendingVerification(false);
+
+    if (result.ok) {
+      if (result.alreadyVerified) {
+        setUserProfile((prev) => ({ ...prev, emailVerified: true }));
+      } else {
+        setVerificationResent(true);
+      }
+    }
+  };
+
   const handleSignUp = async (mission: Mission) => {
     const alreadyReserved = signedUpIds.includes(mission.id);
     if (alreadyReserved) return;
@@ -326,11 +368,38 @@ export default function App() {
     });
 
     if (result.ok || result.alreadySignedUp || (result.error && result.error.toLowerCase().includes('already signed up'))) {
-      handleSignupSuccess(mission.id);
+      handleSignupSuccess(mission.id, userProfile.name);
     }
-    setSignupNotice({ mission, result });
+    setSignupNotice({ mission, result, action: 'signup', studentName: userProfile.name });
   };
 
+  const handleCancelSignUp = async (mission: Mission) => {
+    const studentName = isLoggedIn ? userProfile.name : signupNames[mission.id];
+    // No name on file for this mission means there's nothing to match against
+    // on the server — shouldn't happen from the UI, but bail rather than
+    // sending a request that can only fail.
+    if (!studentName) return;
+
+    const result = await content.cancelSignup({
+      eventId: mission.id,
+      eventTitle: mission.title,
+      studentName,
+      sessionToken: sessionToken || undefined
+    });
+
+    if (result.ok) {
+      setSignedUpIds((prev) => prev.filter((id) => id !== mission.id));
+      setSignupNames((prev) => {
+        const { [mission.id]: _removed, ...rest } = prev;
+        return rest;
+      });
+      setUserProfile((prev) => ({
+        ...prev,
+        reservedMissionIds: prev.reservedMissionIds.filter((id) => id !== mission.id)
+      }));
+    }
+    setSignupNotice({ mission, result, action: 'cancel', studentName });
+  };
 
   const handleAddPhoto = (newPhoto: GalleryPhoto) => {
     setPhotos((prev) => [newPhoto, ...prev]);
@@ -378,7 +447,8 @@ export default function App() {
   const hasTopBanner = Boolean(
     showConfirmedBanner ||
     emailVerifiedBanner ||
-    (isLoggedIn && !userProfile.newsletterSubscribed && !newsletterBannerDismissed)
+    (isLoggedIn && !userProfile.newsletterSubscribed && !newsletterBannerDismissed) ||
+    (ACCOUNT_EMAILS_ENABLED && isLoggedIn && !userProfile.emailVerified && !verifyBannerDismissed)
   );
 
   return (
@@ -464,6 +534,42 @@ export default function App() {
         </div>
       )}
 
+      {ACCOUNT_EMAILS_ENABLED && isLoggedIn && !userProfile.emailVerified && !verifyBannerDismissed && (
+        <div className="sticky top-0 z-[55] w-full bg-[#1F3A42] text-[#FBF7EC] border-b border-[#E4F5DA]/15 shadow-md">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center gap-3">
+            <Mail className="w-6 h-6 shrink-0 text-[#F2C94C]" strokeWidth={2} />
+            <div className="flex-1 text-left">
+              <p className="font-display font-bold text-sm sm:text-base leading-tight">
+                {verificationResent ? 'Verification email sent!' : 'Your email isn\'t verified yet'}
+              </p>
+              <p className="text-xs sm:text-sm leading-snug mt-0.5 text-[#FBF7EC]/80">
+                {verificationResent
+                  ? 'Check your inbox (and spam folder) for the link.'
+                  : "You won't be able to reset your password by email until you verify it."}
+              </p>
+            </div>
+            {!verificationResent && (
+              <button
+                id="resend-verification-banner"
+                onClick={handleResendVerification}
+                disabled={resendingVerification}
+                className="shrink-0 px-4 py-2 rounded-full font-display font-bold text-xs sm:text-sm transition flex items-center gap-1.5 cursor-pointer bg-[#6CC24A] text-[#14351F] shadow-[0_3px_0_#4C9A3A] disabled:opacity-60 disabled:cursor-wait"
+              >
+                {resendingVerification ? (<><Loader2 className="w-3.5 h-3.5 animate-spin" />Sending…</>) : ('Resend verification email')}
+              </button>
+            )}
+            <button
+              id="dismiss-verify-banner"
+              onClick={dismissVerifyBanner}
+              aria-label="Dismiss"
+              className="p-1.5 rounded-full hover:bg-white/10 transition cursor-pointer shrink-0"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {isTitrationPage ? (
         <>
           <TitrationHeader
@@ -515,7 +621,7 @@ export default function App() {
             ) : (
               <div key={currentTab} className="animate-tab-in">
                 {currentTab === 'missions' && (
-                  <UpcomingMissions missions={content.missions} contentStatus={content.status} signedUpIds={signedUpIds} onSignUp={handleSignUp} />
+                  <UpcomingMissions missions={content.missions} contentStatus={content.status} signedUpIds={signedUpIds} onSignUp={handleSignUp} onCancelSignUp={handleCancelSignUp} />
                 )}
 
                 {currentTab === 'lab' && <VirtualLab userProfile={userProfile} onUpdateXp={handleUpdateXp} />}
@@ -566,10 +672,16 @@ export default function App() {
       {signupNotice && (
         <div id="signup-toast" className={`fixed bottom-6 right-6 z-50 max-w-sm rounded-2xl border-2 px-4 py-3.5 shadow-2xl animate-fade-in font-sans bg-[#FBF7EC] ${signupNotice.result.ok ? 'border-[#6CC24A]/50' : 'border-red-400/50'}`}>
           <p className={`text-xs font-bold ${signupNotice.result.ok ? 'text-[#2E7D46]' : 'text-red-500'}`}>
-            {signupNotice.result.ok ? "You're signed up!" : 'Sign-up failed'}
+            {signupNotice.result.ok
+              ? (signupNotice.action === 'cancel' ? 'Spot cancelled' : "You're signed up!")
+              : (signupNotice.action === 'cancel' ? 'Cancellation failed' : 'Sign-up failed')}
           </p>
           <p className="text-[11px] text-[#4B6169] mt-0.5 leading-relaxed">
-            {signupNotice.result.ok ? `${userProfile.name} is booked in for ${signupNotice.mission.title}.` : signupNotice.result.error ?? 'Something went wrong. Please try again.'}
+            {signupNotice.result.ok
+              ? (signupNotice.action === 'cancel'
+                ? `${signupNotice.studentName} is no longer signed up for ${signupNotice.mission.title}.`
+                : `${signupNotice.studentName} is booked in for ${signupNotice.mission.title}.`)
+              : signupNotice.result.error ?? 'Something went wrong. Please try again.'}
           </p>
           <button id="close-signup-toast" onClick={() => setSignupNotice(null)} className="text-[11px] font-bold text-[#9AA6A6] hover:text-[#1F3A42] mt-2 cursor-pointer">
             Dismiss

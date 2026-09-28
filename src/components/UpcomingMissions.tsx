@@ -9,13 +9,15 @@ interface UpcomingMissionsProps {
   contentStatus: ContentStatus;
   signedUpIds: string[];
   onSignUp: (mission: Mission) => void;
+  onCancelSignUp: (mission: Mission) => void;
 }
 
 export default function UpcomingMissions({
   missions,
   contentStatus,
   signedUpIds,
-  onSignUp
+  onSignUp,
+  onCancelSignUp
 }: UpcomingMissionsProps) {
 
   return (
@@ -104,15 +106,22 @@ export default function UpcomingMissions({
 
                 <div className="pt-2">
                   {isReserved ? (
-                    <button
-                      id={`mission-reserve-btn-${mission.id}`}
-                      disabled
-                      aria-disabled="true"
-                      className="w-full py-2.5 px-4 rounded-full text-[12px] font-display font-bold flex items-center justify-center gap-1.5 cursor-not-allowed bg-[#E4F5DA] text-[#2E7D46] border border-[#2E7D46]/30 shadow-none opacity-90"
-                    >
-                      <CheckCircle className="w-4 h-4 text-[#2E7D46]" />
-                      <span>You're Signed Up ✔</span>
-                    </button>
+                    <div className="space-y-1.5">
+                      <div
+                        id={`mission-reserve-btn-${mission.id}`}
+                        className="w-full py-2.5 px-4 rounded-full text-[12px] font-display font-bold flex items-center justify-center gap-1.5 bg-[#E4F5DA] text-[#2E7D46] border border-[#2E7D46]/30"
+                      >
+                        <CheckCircle className="w-4 h-4 text-[#2E7D46]" />
+                        <span>You're Signed Up ✔</span>
+                      </div>
+                      <button
+                        id={`mission-cancel-btn-${mission.id}`}
+                        onClick={() => onCancelSignUp(mission)}
+                        className="w-full text-center text-[11px] font-bold text-[#9AA6A6] hover:text-[#E4574B] cursor-pointer transition-colors"
+                      >
+                        Cancel my spot
+                      </button>
+                    </div>
                   ) : (
                     <button
                       id={`mission-reserve-btn-${mission.id}`}

@@ -1167,6 +1167,8 @@ function doPost(e) {
     var body = e && e.postData ? JSON.parse(e.postData.contents) : {};
     if (body.action === 'signup') {
       result = handleSignup_(body);
+    } else if (body.action === 'cancelSignup') {
+      result = handleCancelSignup_(body);
     } else if (body.action === 'join') {
       result = handleJoin_(body);
     } else if (body.action === 'login') {
@@ -1175,6 +1177,8 @@ function doPost(e) {
       result = handleSyncProfile_(body);
     } else if (body.action === 'verifyEmail') {
       result = handleVerifyEmail_(body);
+    } else if (body.action === 'resendVerification') {
+      result = handleResendVerification_(body);
     } else if (body.action === 'requestPasswordReset') {
       result = handleRequestPasswordReset_(body);
     } else if (body.action === 'resetPassword') {
@@ -1354,7 +1358,8 @@ function handleJoin_(body) {
       xp: 15,
       unlockedBadges: ['Foundation Member'],
       reservedMissionIds: [],
-      newsletterSubscribed: subscribed
+      newsletterSubscribed: subscribed,
+      emailVerified: false
     }
   };
 }
@@ -1499,7 +1504,8 @@ function handleLogin_(body) {
       xp: xp || 15,
       unlockedBadges: unlockedBadges,
       reservedMissionIds: reservedMissionIds,
-      newsletterSubscribed: String(foundUser[MEM_IDX_NEWSLETTER_OPTIN]).toLowerCase() === 'true'
+      newsletterSubscribed: String(foundUser[MEM_IDX_NEWSLETTER_OPTIN]).toLowerCase() === 'true',
+      emailVerified: String(foundUser[MEM_IDX_EMAIL_VERIFIED]).toLowerCase() === 'true'
     }
   };
 }
@@ -1578,6 +1584,50 @@ function handleVerifyEmail_(body) {
   }
 
   return { ok: false, error: 'This verification link is invalid or has already been used.' };
+}
+
+/**
+ * Re-issues a fresh verify token/email for an already-logged-in member who
+ * ignored the one sent at join time — the only case with no other path to
+ * verification, since login itself never requires it (see "Preventing
+ * duplicate signups" — same idea: unverified fully works, it just can't
+ * receive a password reset). Identified by session token, not a typed
+ * identifier, since the caller is always someone already logged in.
+ */
+function handleResendVerification_(body) {
+  var sessionToken = String(body.sessionToken || '').trim();
+  if (!sessionToken) return { ok: false, error: 'Please log in again.' };
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var members = ss.getSheetByName(MEMBERS_SHEET);
+  if (!members) return { ok: false, error: 'No member records found in spreadsheet.' };
+
+  var rows = bodyRows_(members, MEMBER_HEADERS.length);
+  for (var i = 0; i < rows.length; i++) {
+    var row = rows[i];
+    if (String(row[MEM_IDX_SESSION_TOKEN] || '') !== sessionToken) continue;
+    if (tokenExpired_(row[MEM_IDX_SESSION_TOKEN_EXPIRES])) {
+      return { ok: false, error: 'Please log in again.' };
+    }
+
+    if (String(row[MEM_IDX_EMAIL_VERIFIED]).toLowerCase() === 'true') {
+      return { ok: true, alreadyVerified: true };
+    }
+
+    var email = pickAccountEmail_(row[MEM_IDX_PARENT_EMAIL], row[MEM_IDX_STUDENT_EMAIL]);
+    if (!email) return { ok: false, error: 'No email address on file for this account.' };
+
+    var sheetRow = i + 2;
+    var token = issueAccountToken_(members, sheetRow, 'verify');
+    try {
+      sendAccountEmail_(email, String(row[MEM_IDX_NAME] || '').trim(), 'verify', token);
+    } catch (err) {
+      Logger.log('sendAccountEmail_ (resend verify) failed: ' + (err && err.message ? err.message : err));
+    }
+    return { ok: true };
+  }
+
+  return { ok: false, error: 'Please log in again.' };
 }
 
 /**
@@ -1776,6 +1826,83 @@ function handleSignup_(body) {
 }
 
 /**
+ * The inverse of handleSignup_: removes a student's Signups row for one event,
+ * gives the spot back, and drops the event id from their Members record.
+ * Matched the same way a signup is deduped — by (event title, student name),
+ * since a guest has no session token to key off of.
+ */
+function handleCancelSignup_(body) {
+  var studentName = String(body.studentName || '').trim();
+  var eventId = String(body.eventId || '').trim();
+  var sessionToken = String(body.sessionToken || '').trim();
+
+  if (!studentName) return { ok: false, error: 'Missing the student’s name.' };
+  if (!eventId) return { ok: false, error: 'Missing which event this is for.' };
+
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(15000);
+  } catch (err) {
+    return { ok: false, error: 'The server is busy. Please try again in a moment.' };
+  }
+
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var eventsSheet = ss.getSheetByName(EVENTS_SHEET);
+    if (!eventsSheet) return { ok: false, error: 'The Events tab is missing.' };
+
+    var rowNumber = resolveEventRow_(eventsSheet, eventId, body.eventTitle);
+    if (!rowNumber) {
+      // The event itself is gone — nothing left to hold a spot on, so the
+      // visitor's actual goal (not being signed up) is already satisfied.
+      removeMemberMission_(ss, sessionToken, studentName, eventId);
+      return { ok: true };
+    }
+
+    var title = String(eventsSheet.getRange(rowNumber, EVENT_COL_TITLE).getValue()).trim();
+    var signups = ss.getSheetByName(SIGNUPS_SHEET);
+    var removed = false;
+
+    if (signups) {
+      var sRows = bodyRows_(signups, SIGNUP_HEADERS.length);
+      var nameLower = studentName.toLowerCase();
+      var titleLower = title.toLowerCase();
+
+      // Walk backwards so deleteRow doesn't shift the index of the row we're about to check.
+      for (var i = sRows.length - 1; i >= 0; i--) {
+        var existingEventTitle = String(sRows[i][1] || '').trim().toLowerCase();
+        var existingStudentName = String(sRows[i][2] || '').trim().toLowerCase();
+        if (existingEventTitle === titleLower && existingStudentName === nameLower) {
+          signups.deleteRow(i + 2);
+          removed = true;
+          break;
+        }
+      }
+    }
+
+    var total = toWholeNumber_(eventsSheet.getRange(rowNumber, EVENT_COL_SPOTS_TOTAL).getValue(), 0);
+    var taken = toWholeNumber_(eventsSheet.getRange(rowNumber, EVENT_COL_SPOTS_TAKEN).getValue(), 0);
+
+    if (removed) {
+      taken = Math.max(0, taken - 1);
+      eventsSheet.getRange(rowNumber, EVENT_COL_SPOTS_TAKEN).setValue(taken);
+      bumpPublishedSpots_(ss, eventId, taken);
+    }
+
+    removeMemberMission_(ss, sessionToken, studentName, eventId);
+
+    return {
+      ok: true,
+      spotsTotal: total,
+      spotsReserved: taken,
+      spotsLeft: Math.max(0, total - taken)
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
  * Persists an event reservation directly into the member's record in the Members tab.
  * Looks up member by session token first, falling back to student name match.
  */
@@ -1813,6 +1940,47 @@ function recordMemberMission_(ss, sessionToken, studentName, eventId) {
     var list = existingRaw ? existingRaw.split(',').map(function(s) { return s.trim(); }).filter(Boolean) : [];
     if (list.indexOf(eventId) === -1) {
       list.push(eventId);
+      members.getRange(targetRow, MEM_COL_MISSIONS).setValue(list.join(','));
+    }
+  }
+}
+
+/** The inverse of recordMemberMission_ — drops an event id off the member's Missions column. */
+function removeMemberMission_(ss, sessionToken, studentName, eventId) {
+  if (!eventId) return;
+  var members = ss.getSheetByName(MEMBERS_SHEET);
+  if (!members) return;
+
+  var rows = bodyRows_(members, MEMBER_HEADERS.length);
+  var targetRow = -1;
+
+  if (sessionToken) {
+    for (var i = 0; i < rows.length; i++) {
+      if (String(rows[i][MEM_IDX_SESSION_TOKEN] || '') === sessionToken) {
+        if (!tokenExpired_(rows[i][MEM_IDX_SESSION_TOKEN_EXPIRES])) {
+          targetRow = i + 2;
+          break;
+        }
+      }
+    }
+  }
+
+  if (targetRow === -1 && studentName) {
+    var nameLower = studentName.toLowerCase();
+    for (var j = 0; j < rows.length; j++) {
+      if (String(rows[j][MEM_IDX_NAME] || '').trim().toLowerCase() === nameLower) {
+        targetRow = j + 2;
+        break;
+      }
+    }
+  }
+
+  if (targetRow !== -1) {
+    var existingRaw = String(members.getRange(targetRow, MEM_COL_MISSIONS).getValue() || '').trim();
+    var list = existingRaw ? existingRaw.split(',').map(function(s) { return s.trim(); }).filter(Boolean) : [];
+    var idx = list.indexOf(eventId);
+    if (idx !== -1) {
+      list.splice(idx, 1);
       members.getRange(targetRow, MEM_COL_MISSIONS).setValue(list.join(','));
     }
   }
