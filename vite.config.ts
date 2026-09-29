@@ -12,11 +12,25 @@ function spaFallbackPlugin(): Plugin {
       const indexHtml = path.join(distDir, 'index.html');
       if (fs.existsSync(indexHtml)) {
         fs.copyFileSync(indexHtml, path.join(distDir, '404.html'));
-        const titrationDir = path.join(distDir, 'titration');
-        if (!fs.existsSync(titrationDir)) {
-          fs.mkdirSync(titrationDir, { recursive: true });
+        const routes = [
+          'titration',
+          'admin',
+          'join',
+          'events',
+          'games',
+          'resources',
+          'announcements',
+          'gallery',
+          'about',
+          'dashboard'
+        ];
+        for (const route of routes) {
+          const routeDir = path.join(distDir, route);
+          if (!fs.existsSync(routeDir)) {
+            fs.mkdirSync(routeDir, { recursive: true });
+          }
+          fs.copyFileSync(indexHtml, path.join(routeDir, 'index.html'));
         }
-        fs.copyFileSync(indexHtml, path.join(titrationDir, 'index.html'));
       }
     },
   };

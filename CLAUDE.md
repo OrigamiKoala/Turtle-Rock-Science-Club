@@ -50,13 +50,18 @@ match: `'/'` for any domain-root deploy (custom domain or user/org root page),
 
 Static assets referenced at runtime (not imported as modules) live in
 `public/` (`Logo.png`, `favicon.ico`) and must be addressed with
-`` `${import.meta.env.BASE_URL}Logo.png` `` rather than a hardcoded
+`${import.meta.env.BASE_URL}Logo.png` rather than a hardcoded
 `/Logo.png` — a leading-slash string in JS resolves against the domain root,
 not the configured `base`, so it 404s under the `/Turtle-Rock-Science-Club/`
 subpath the same way the old Jekyll deploy did. HTML-level references (the
 `<link rel="icon">` in `index.html`) don't need the same treatment — Vite
 rewrites root-relative asset URLs it finds in `index.html` itself to include
 `base` at build time.
+
+`spaFallbackPlugin` in `vite.config.ts` copies `dist/index.html` to `dist/404.html`
+and generates `index.html` inside route subdirectories (`titration`, `admin`, `join`,
+`events`, `games`, `resources`, `announcements`, `gallery`, `about`, `dashboard`) so
+direct navigation and hard refreshes avoid HTTP 404 on GitHub Pages.
 
 ### Standalone static pages (`public/<name>/index.html`)
 
