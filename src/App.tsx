@@ -435,7 +435,7 @@ export default function App() {
           onJoinSuccess={handleJoinSuccess}
           onJoinSubmit={async (details) => {
             const result = await content.submitMemberJoin(details);
-            if (result.ok) setShowConfirmEmailModal(true);
+            if (result.ok && details.newsletterOptIn) setShowConfirmEmailModal(true);
             return result;
           }}
         />
@@ -447,8 +447,7 @@ export default function App() {
   const hasTopBanner = Boolean(
     showConfirmedBanner ||
     emailVerifiedBanner ||
-    (isLoggedIn && !userProfile.newsletterSubscribed && !newsletterBannerDismissed) ||
-    (ACCOUNT_EMAILS_ENABLED && isLoggedIn && !userProfile.emailVerified && !verifyBannerDismissed)
+    (isLoggedIn && !userProfile.newsletterSubscribed && !newsletterBannerDismissed)
   );
 
   return (
@@ -534,41 +533,6 @@ export default function App() {
         </div>
       )}
 
-      {ACCOUNT_EMAILS_ENABLED && isLoggedIn && !userProfile.emailVerified && !verifyBannerDismissed && (
-        <div className="sticky top-0 z-[55] w-full bg-[#1F3A42] text-[#FBF7EC] border-b border-[#E4F5DA]/15 shadow-md">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center gap-3">
-            <Mail className="w-6 h-6 shrink-0 text-[#F2C94C]" strokeWidth={2} />
-            <div className="flex-1 text-left">
-              <p className="font-display font-bold text-sm sm:text-base leading-tight">
-                {verificationResent ? 'Verification email sent!' : 'Your email isn\'t verified yet'}
-              </p>
-              <p className="text-xs sm:text-sm leading-snug mt-0.5 text-[#FBF7EC]/80">
-                {verificationResent
-                  ? 'Check your inbox (and spam folder) for the link.'
-                  : "You won't be able to reset your password by email until you verify it."}
-              </p>
-            </div>
-            {!verificationResent && (
-              <button
-                id="resend-verification-banner"
-                onClick={handleResendVerification}
-                disabled={resendingVerification}
-                className="shrink-0 px-4 py-2 rounded-full font-display font-bold text-xs sm:text-sm transition flex items-center gap-1.5 cursor-pointer bg-[#6CC24A] text-[#14351F] shadow-[0_3px_0_#4C9A3A] disabled:opacity-60 disabled:cursor-wait"
-              >
-                {resendingVerification ? (<><Loader2 className="w-3.5 h-3.5 animate-spin" />Sending…</>) : ('Resend verification email')}
-              </button>
-            )}
-            <button
-              id="dismiss-verify-banner"
-              onClick={dismissVerifyBanner}
-              aria-label="Dismiss"
-              className="p-1.5 rounded-full hover:bg-white/10 transition cursor-pointer shrink-0"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-      )}
 
       {isTitrationPage ? (
         <>

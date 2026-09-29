@@ -271,7 +271,7 @@ export default function LoginModal({ onClose, onLoginSubmit, onLoginSuccess, onR
           ) : view === 'forgotRequest' ? (
             <form onSubmit={handleForgotSubmit} className="space-y-4">
               <p className="text-xs text-[#4B6169] leading-relaxed">
-                Enter your child's name or guardian's email. If that account has a verified email on file, we'll send a reset link.
+                Enter your email address or child's name. We'll send a password reset link to your email.
               </p>
 
               <div className="space-y-1">

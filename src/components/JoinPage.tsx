@@ -236,9 +236,6 @@ export default function JoinPage({ onClose, onJoinSuccess, onJoinSubmit }: JoinP
             <p className="text-sm text-[#4B6169] max-w-sm leading-relaxed">
               We've logged 15 welcome XP and unlocked your Foundation Member badge!
             </p>
-            {ACCOUNT_EMAILS_ENABLED && needsVerification && (
-              <p className="text-xs font-bold text-[#2E7D46]">Check your email to verify your address.</p>
-            )}
             {newsletterOptIn && (
               <p className="text-xs font-bold text-[#2E7D46]">Check your email to confirm your newsletter subscription.</p>
             )}

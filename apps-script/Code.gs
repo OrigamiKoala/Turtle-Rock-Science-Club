@@ -1293,30 +1293,17 @@ function handleJoin_(body) {
   var passwordHash = makePasswordHash_(password);
   var sessionToken = generateToken_();
   var sessionExpires = new Date(Date.now() + SESSION_DURATION_MS);
-  var accountToken = generateToken_();
-  var accountTokenExpires = new Date(Date.now() + ACCOUNT_TOKEN_TTL_MS.verify);
   var joinedAt = new Date();
 
   members.appendRow([
     joinedAt, name, school, role, parentName, email, childGrade, 1, 15,
     'Foundation Member', '', studentEmail, newsletterOptIn,
-    passwordHash, false, accountToken, 'verify', accountTokenExpires,
+    passwordHash, true, '', '', '',
     sessionToken, sessionExpires,
     parent1Phone, parent2Name, parent2Email, parent2Phone, videoConsent, waiverConsent
   ]);
 
-  // Joining still logs the student in immediately — the unverified email only
-  // blocks a future password-reset request, not first use.
-  var verifyEmailAddress = pickAccountEmail_(email, studentEmail);
-  var needsVerification = !!verifyEmailAddress;
-  if (verifyEmailAddress) {
-    try {
-      sendAccountEmail_(verifyEmailAddress, parentName || name, 'verify', accountToken);
-    } catch (err) {
-      Logger.log('sendAccountEmail_ (verify) failed: ' + (err && err.message ? err.message : err));
-    }
-  }
-
+  // Account verification group is unused — accounts are active immediately.
   // Joining the club is NOT consent to the newsletter — only the opt-in box is.
   // The member row is written either way so the club still has the contact.
   // subscribeEmail_ swallows its own failures on purpose: a Sender.net problem
@@ -1348,7 +1335,7 @@ function handleJoin_(body) {
     ok: true,
     sessionToken: sessionToken,
     newsletterSubscribed: subscribed,
-    needsVerification: needsVerification,
+    needsVerification: false,
     profile: {
       name: name,
       school: school,
@@ -1359,7 +1346,7 @@ function handleJoin_(body) {
       unlockedBadges: ['Foundation Member'],
       reservedMissionIds: [],
       newsletterSubscribed: subscribed,
-      emailVerified: false
+      emailVerified: true
     }
   };
 }
@@ -1505,7 +1492,7 @@ function handleLogin_(body) {
       unlockedBadges: unlockedBadges,
       reservedMissionIds: reservedMissionIds,
       newsletterSubscribed: String(foundUser[MEM_IDX_NEWSLETTER_OPTIN]).toLowerCase() === 'true',
-      emailVerified: String(foundUser[MEM_IDX_EMAIL_VERIFIED]).toLowerCase() === 'true'
+      emailVerified: true
     }
   };
 }
@@ -1595,77 +1582,67 @@ function handleVerifyEmail_(body) {
  * identifier, since the caller is always someone already logged in.
  */
 function handleResendVerification_(body) {
-  var sessionToken = String(body.sessionToken || '').trim();
-  if (!sessionToken) return { ok: false, error: 'Please log in again.' };
-
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var members = ss.getSheetByName(MEMBERS_SHEET);
-  if (!members) return { ok: false, error: 'No member records found in spreadsheet.' };
-
-  var rows = bodyRows_(members, MEMBER_HEADERS.length);
-  for (var i = 0; i < rows.length; i++) {
-    var row = rows[i];
-    if (String(row[MEM_IDX_SESSION_TOKEN] || '') !== sessionToken) continue;
-    if (tokenExpired_(row[MEM_IDX_SESSION_TOKEN_EXPIRES])) {
-      return { ok: false, error: 'Please log in again.' };
-    }
-
-    if (String(row[MEM_IDX_EMAIL_VERIFIED]).toLowerCase() === 'true') {
-      return { ok: true, alreadyVerified: true };
-    }
-
-    var email = pickAccountEmail_(row[MEM_IDX_PARENT_EMAIL], row[MEM_IDX_STUDENT_EMAIL]);
-    if (!email) return { ok: false, error: 'No email address on file for this account.' };
-
-    var sheetRow = i + 2;
-    var token = issueAccountToken_(members, sheetRow, 'verify');
-    try {
-      sendAccountEmail_(email, String(row[MEM_IDX_NAME] || '').trim(), 'verify', token);
-    } catch (err) {
-      Logger.log('sendAccountEmail_ (resend verify) failed: ' + (err && err.message ? err.message : err));
-    }
-    return { ok: true };
-  }
-
-  return { ok: false, error: 'Please log in again.' };
+  return { ok: true, alreadyVerified: true };
 }
 
 /**
- * Always answers `{ ok: true }` — whether or not the identifier matched a
- * verified account with a usable email — so the response itself never
- * confirms which addresses are registered.
+ * For password resets, directly adds whatever address was inputted to the
+ * Sender.net Password Reset group with an account_link token.
+ * If a matching account row exists in Members, writes the reset token onto that
+ * row so the link actually updates their password.
+ * Always answers `{ ok: true }`.
  */
 function handleRequestPasswordReset_(body) {
-  var identifier = String(body.identifier || '').trim().toLowerCase();
-  if (!identifier) return { ok: true };
+  var rawInput = String(body.identifier || body.email || '').trim();
+  if (!rawInput) return { ok: true };
+
+  var email = normaliseEmail_(rawInput);
+  var isInputEmail = isEmail_(email);
 
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var members = ss.getSheetByName(MEMBERS_SHEET);
-  if (!members) return { ok: true };
 
-  var rows = bodyRows_(members, MEMBER_HEADERS.length);
-  for (var i = 0; i < rows.length; i++) {
-    var row = rows[i];
-    var rName = String(row[MEM_IDX_NAME] || '').trim().toLowerCase();
-    var rParentEmail = String(row[MEM_IDX_PARENT_EMAIL] || '').trim().toLowerCase();
-    var rStudentEmail = String(row[MEM_IDX_STUDENT_EMAIL] || '').trim().toLowerCase();
+  var targetRow = -1;
+  var targetName = '';
+  var sendToEmail = isInputEmail ? email : '';
 
-    if (rName !== identifier && rParentEmail !== identifier && rStudentEmail !== identifier) continue;
+  if (members) {
+    var rows = bodyRows_(members, MEMBER_HEADERS.length);
+    var inputLower = rawInput.toLowerCase();
+    for (var i = 0; i < rows.length; i++) {
+      var row = rows[i];
+      var rName = String(row[MEM_IDX_NAME] || '').trim().toLowerCase();
+      var rParentEmail = String(row[MEM_IDX_PARENT_EMAIL] || '').trim().toLowerCase();
+      var rStudentEmail = String(row[MEM_IDX_STUDENT_EMAIL] || '').trim().toLowerCase();
+      var rParent2Email = String(row[MEM_IDX_PARENT2_EMAIL] || '').trim().toLowerCase();
 
-    var verified = String(row[MEM_IDX_EMAIL_VERIFIED]).toLowerCase() === 'true';
-    var hasPassword = !!String(row[MEM_IDX_PASSWORD_HASH] || '').trim();
-    var email = pickAccountEmail_(row[MEM_IDX_PARENT_EMAIL], row[MEM_IDX_STUDENT_EMAIL]);
-
-    if (verified && hasPassword && email) {
-      var sheetRow = i + 2;
-      var token = issueAccountToken_(members, sheetRow, 'reset');
-      try {
-        sendAccountEmail_(email, String(row[MEM_IDX_NAME] || '').trim(), 'reset', token);
-      } catch (err) {
-        Logger.log('sendAccountEmail_ (reset) failed: ' + (err && err.message ? err.message : err));
+      if (
+        (isInputEmail && (rParentEmail === email || rStudentEmail === email || rParent2Email === email)) ||
+        (!isInputEmail && rName === inputLower)
+      ) {
+        targetRow = i + 2;
+        targetName = String(row[MEM_IDX_NAME] || '').trim();
+        if (!sendToEmail) {
+          sendToEmail = pickAccountEmail_(row[MEM_IDX_PARENT_EMAIL], row[MEM_IDX_STUDENT_EMAIL]);
+        }
+        break;
       }
     }
-    break;
+  }
+
+  // Issue the token on the matching member row so the reset link works
+  var token = generateToken_();
+  if (members && targetRow > 1) {
+    token = issueAccountToken_(members, targetRow, 'reset');
+  }
+
+  // Directly add whatever address they inputted to the Password Reset group
+  if (sendToEmail && isEmail_(sendToEmail)) {
+    try {
+      sendAccountEmail_(sendToEmail, targetName, 'reset', token);
+    } catch (err) {
+      Logger.log('sendAccountEmail_ (reset) failed: ' + (err && err.message ? err.message : err));
+    }
   }
 
   return { ok: true };
@@ -2251,7 +2228,6 @@ function senderSubscribe_(email, name, audience) {
 // Sender.net UI (see SETUP.md).
 
 var ACCOUNT_SENDER_GROUPS = {
-  verify: 'Account Verification',
   reset: 'Password Reset'
 };
 
@@ -2274,6 +2250,7 @@ function sendAccountEmail_(email, name, kind, token) {
   if (!token_) return { ok: false, status: STATUS_PENDING, message: 'No Sender.net API token set.' };
 
   var groupTitle = ACCOUNT_SENDER_GROUPS[kind];
+  if (!groupTitle) return { ok: false, status: 'Skipped — unused group' };
   var group = senderGroupByTitle_(groupTitle, token_);
   if (!group.id) {
     return { ok: false, status: 'Error: could not resolve the "' + groupTitle + '" group — ' + group.error };

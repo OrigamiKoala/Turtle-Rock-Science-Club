@@ -199,35 +199,12 @@ itself requires it.
 
 A guest has no session token, so cancelling has to resubmit the *exact* student name the signup was made under — which the client has no other record of once `SignupModal` closes. `App.tsx` keeps a small `signupNames` map (`Record<missionId, studentName>`, persisted to `localStorage` as `tr_sc_signup_names`) purely for this: populated in `handleSignupSuccess` alongside `signedUpIds`, read by `handleCancelSignUp` for a guest (a logged-in member's is always just `userProfile.name`), and pruned on a successful cancel. This is a separate concern from XP: cancelling does not claw back the +15 XP a signup already granted — reversing gamification state on an unwind like this was judged not worth the complexity.
 
-## Email verification is real but easy to miss, and now resendable
+## Account verification group is unused & simplified password reset
 
-Joining sets `Email Verified` to `false` and emails a verify link (see
-`apps-script/SETUP.md`'s "Member accounts" section for the Sender.net side of
-that), but **login never checks it** — `handleLogin_` only checks the
-password hash, so an unverified member gets full site access, XP, and event
-sign-ups immediately. The one thing verification actually gates is
-`handleRequestPasswordReset_`, which silently sends nothing (`{ ok: true }`
-either way, by design, to avoid confirming which accounts exist) unless the
-member is both verified and has a password. Because nothing else nudges
-anyone to verify, a live check of the Members sheet on 2026-09-27 found only
-1 of 300 members had ever done it — so "forgot password" silently does
-nothing for almost the entire membership, which looks exactly like a broken
-reset flow but isn't one.
-
-There was no way to fix this short of digging up the original join email,
-since a verify link is otherwise only ever sent once, at signup. `App.tsx`
-now shows a dismissible banner (same pattern as the newsletter opt-in banner
-below — `verifyBannerDismissed`/`tr_sc_verify_banner_dismissed`) to any
-logged-in member with `!userProfile.emailVerified`, with a "Resend
-verification email" button wired to a new `resendVerification` action /
-`handleResendVerification_` in `Code.gs`. That handler is keyed by session
-token (the caller is always already logged in, so there's no
-anti-enumeration reason to accept a typed identifier the way
-`handleRequestPasswordReset_` does) and just re-runs `issueAccountToken_` +
-`sendAccountEmail_` with a fresh `verify` token — the same mechanism
-`handleJoin_` uses the first time. `handleLogin_`'s and `handleJoin_`'s
-`profile` responses both now include `emailVerified` so the client knows
-whether to show the banner at all.
+The Sender.net **Account Verification** group is now unused.
+1. **Join opt-in only:** Joining sets `Email Verified` to `true` immediately and no verification email is sent. Only if the user explicitly checks the newsletter opt-in box (`newsletterOptIn`) are addresses added to Sender.net under the **Newsletter** (+ **Parents** / **Students**) groups. If the box is not checked, no emails are added to Sender.net.
+2. **Password resets:** `handleRequestPasswordReset_` directly adds whatever email address the user inputted into the Sender.net **Password Reset** group with an `account_link` token, without gating on prior email verification, whether a password was already set, or overriding with `pickAccountEmail_`. If a matching account row exists in **Members**, the reset token is written to that row so the reset link successfully updates their password.
+3. **Banner removed:** The client-side unverified email banner in `App.tsx` and the verification note on the join completion screen have been removed.
 
 ## Newsletter (Sender.net)
 
