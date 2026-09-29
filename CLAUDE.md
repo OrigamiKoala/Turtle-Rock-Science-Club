@@ -190,11 +190,11 @@ neither prompts for one nor triggers the confirm-email modal. `parentEmail` is
 therefore optional in `SignupDetails`/`handleSignup_` even though the modal
 itself requires it.
 
-**Preventing duplicate signups:**
+**Multiple student signups and duplicate prevention:**
 - Once signed up for an event, `signedUpIds` and `userProfile.reservedMissionIds` store the event ID in `localStorage` (`tr_sc_signed_up_ids` and `tr_sc_user_profile`) and sync to the spreadsheet via `syncProfile` and `recordMemberMission_`.
-- In `UpcomingMissions.tsx`, an already-reserved mission renders a non-interactive `You're Signed Up ✔` pill (plus a real "Cancel my spot" action underneath it — see below); the old "Sign up another student" button stays removed so a duplicate signup can't be re-triggered from the card.
-- `handleSignUp` exits immediately if `signedUpIds.includes(mission.id)`.
-- If `handleSignup_` detects an existing registration in the sheet, it returns `{ ok: false, alreadySignedUp: true }`, prompting the client to record the mission as reserved and display an informational message rather than decrementing spots.
+- In `UpcomingMissions.tsx`, an already-reserved mission renders the `You're Signed Up ✔` badge, a "Sign up another student" button (`mission-signup-again-btn-${mission.id}`), and a "Cancel my spot" action (`mission-cancel-btn-${mission.id}`).
+- Clicking "Sign up another student" opens `SignupModal` with an empty student name field (defaulting to the same school and parent email from localStorage), enabling one account or family to register multiple students for the same event while still linking to the member session.
+- Duplicate prevention is enforced per (event title + student name) by `handleSignup_` in `Code.gs`. If a user attempts to register the same student name again for the same event, it returns `{ ok: false, alreadySignedUp: true }` with an informational error, preventing duplicate spots from being consumed.
 
 **Cancelling a signup** is the exact inverse of the flow above, via a `cancelSignup` action / `handleCancelSignup_` in `Code.gs`, triggered by `UpcomingMissions.tsx`'s "Cancel my spot" link:
 1. matches the **Signups** row by (event title, student name) — the same pair `handleSignup_` dedupes on — and deletes it

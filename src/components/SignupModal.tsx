@@ -15,6 +15,7 @@ interface SignupModalProps {
 }
 
 const LAST_SCHOOL_KEY = 'tr_sc_last_school';
+const LAST_PARENT_EMAIL_KEY = 'tr_sc_last_parent_email';
 
 const isEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 
@@ -32,7 +33,9 @@ export default function SignupModal({
     if (defaultSchool) return defaultSchool;
     try { return localStorage.getItem(LAST_SCHOOL_KEY) ?? ''; } catch { return ''; }
   });
-  const [parentEmail, setParentEmail] = useState('');
+  const [parentEmail, setParentEmail] = useState(() => {
+    try { return localStorage.getItem(LAST_PARENT_EMAIL_KEY) ?? ''; } catch { return ''; }
+  });
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -82,7 +85,10 @@ export default function SignupModal({
       return;
     }
 
-    try { localStorage.setItem(LAST_SCHOOL_KEY, trimmedSchool); } catch {}
+    try {
+      localStorage.setItem(LAST_SCHOOL_KEY, trimmedSchool);
+      localStorage.setItem(LAST_PARENT_EMAIL_KEY, trimmedParentEmail);
+    } catch {}
 
     setConfirmed(result);
     onSuccess(mission.id, trimmedName);

@@ -376,9 +376,7 @@ export default function App() {
 
   const handleSignUp = async (mission: Mission) => {
     const alreadyReserved = signedUpIds.includes(mission.id);
-    if (alreadyReserved) return;
-
-    if (!isLoggedIn) {
+    if (!isLoggedIn || alreadyReserved) {
       setSignupMission(mission);
       return;
     }
@@ -641,7 +639,7 @@ export default function App() {
         <SignupModal
           mission={signupMission}
           sessionToken={sessionToken}
-          defaultStudentName={userProfile.name}
+          defaultStudentName={signedUpIds.includes(signupMission.id) ? '' : userProfile.name}
           defaultSchool={userProfile.school}
           onClose={() => setSignupMission(null)}
           onSubmit={async (details) => {

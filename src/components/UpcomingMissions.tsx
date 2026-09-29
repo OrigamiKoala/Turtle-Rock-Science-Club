@@ -115,6 +115,14 @@ export default function UpcomingMissions({
                         <span>You're Signed Up ✔</span>
                       </div>
                       <button
+                        id={`mission-signup-again-btn-${mission.id}`}
+                        onClick={() => onSignUp(mission)}
+                        disabled={isSoldOut}
+                        className="w-full py-1 text-center text-[11px] font-sans font-bold text-[#4B6169] hover:text-[#1F3A42] cursor-pointer hover:underline disabled:opacity-30 disabled:cursor-not-allowed disabled:no-underline"
+                      >
+                        Sign up another student
+                      </button>
+                      <button
                         id={`mission-cancel-btn-${mission.id}`}
                         onClick={() => onCancelSignUp(mission)}
                         className="w-full text-center text-[11px] font-bold text-[#9AA6A6] hover:text-[#E4574B] cursor-pointer transition-colors"
