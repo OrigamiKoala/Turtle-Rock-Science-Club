@@ -208,7 +208,7 @@ A guest has no session token, so cancelling has to resubmit the *exact* student 
 
 The Sender.net **Account Verification** group is now unused.
 1. **Join opt-in only:** Joining sets `Email Verified` to `true` immediately and no verification email is sent. Only if the user explicitly checks the newsletter opt-in box (`newsletterOptIn`) are addresses added to Sender.net under the **Newsletter** (+ **Parents** / **Students**) groups. If the box is not checked, no emails are added to Sender.net.
-2. **Password resets:** `handleRequestPasswordReset_` directly adds whatever email address the user inputted into the Sender.net **Password Reset** group with an `account_link` token, without gating on prior email verification, whether a password was already set, or overriding with `pickAccountEmail_`. If a matching account row exists in **Members**, the reset token is written to that row so the reset link successfully updates their password.
+2. **Password resets:** `handleRequestPasswordReset_` normalises input emails against `Members` rows. If a matching account row exists in **Members**, `issueAccountToken_` writes the reset token onto that row, and `sendAccountEmail_` clears any prior membership in the Sender.net **Password Reset** group before re-adding them so Sender's automation reliably re-triggers. If no member row matches, no orphan token email is dispatched.
 3. **Banner removed:** The client-side unverified email banner in `App.tsx` and the verification note on the join completion screen have been removed.
 
 ## Newsletter (Sender.net)
@@ -277,24 +277,20 @@ until you do" into a lie. Do not "simplify" this by targeting the group
 directly. Nothing in this repo enforces it — it is a discipline in the Sender
 UI, which is why it is written down here.
 
-**The confirm-click automation must use *Copy* to group, never *Move*.**
-Audited 2026-09-12: the only way into **Confirmed** is the Sender automation
-"Confirm Email", triggered by a click on the exact URL
-`https://trscienceclub.org/?confirmed=1` — no form, no import, no segment and
-no code path in this repo ever writes to that group (`SENDER_GROUP_TITLES`
-covers Parents/Students/Newsletter only). That gate is correct and should stay
-that way.
+**Newsletter confirmation tokens and tracking:**
+The `Newsletter` tab includes `Confirmation Token`, `Confirmed`, and `Confirmed At`. On subscription, `subscribeEmail_` generates a unique token and supplies `confirm_link` / `account_link` (`https://trscienceclub.org/?confirm_newsletter=<token>`) to Sender.net subscriber fields. `docs/newsletter/confirm-subscription.html` links its confirmation button to `{{confirm_link}}`.
+When clicked, `App.tsx` calls `confirmNewsletter(token)` (`handleConfirmNewsletter_` in Apps Script), which marks `Confirmed = true` and `Confirmed At` on that row in the `Newsletter` sheet, and also ensures the subscriber is copied to Sender.net's **Confirmed** group. (Legacy `?confirmed=1` and `?confirmed=<token>` links are also supported for backward compatibility).
 
-What was wrong was the *action*: it was set to **Move subscriber to another
+**The confirm-click automation in Sender must use *Copy* to group, never *Move*.**
+Audited 2026-09-12: The Sender automation "Confirm Email" triggered by link clicks must copy the subscriber to **Confirmed**.
+What was wrong previously was the *action*: it was set to **Move subscriber to another
 group**, which strips the subscriber out of Newsletter, Parents, Students and
 Account Verification on the way in. Confirming therefore deleted exactly the
 audience membership the `(audience group) AND Confirmed` segment depends on —
 31 of 37 confirmed people were left in **Confirmed and nothing else**. Changed
 to **Copy subscriber to another group** and the lost memberships were restored
 from the Newsletter tab's **Sender Groups** column. If you ever rebuild this
-automation, or activate the `?confirmed=2` / `?confirmed=3` drafts (Parent /
-Student Email Confirmation — both already use Copy), check the action before
-activating.
+automation, check the action before activating.
 
 Note also that a Sender **import** does not fire automations unless the
 "Trigger active automations upon import" box is ticked — that is what makes

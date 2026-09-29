@@ -77,11 +77,8 @@
       <td align="center" style="padding:10px 30px 22px 30px;">
         <table role="presentation" cellpadding="0" cellspacing="0" border="0">
           <tr><td align="center" bgcolor="#6CC24A" style="border-radius:999px;">
-            <!-- The ?confirmed=1 query string exists so this link is distinct from
-                 every other link to trscienceclub.org in other campaigns. The
-                 "link is clicked" automation trigger keys on it; without it, a
-                 click from any newsletter would mark someone Confirmed. -->
-            <a href="https://trscienceclub.org/?confirmed=1" target="_blank"
+            <!-- Uses {{confirm_link}} (or {{account_link}}) populated by Apps Script with unique token URL: https://trscienceclub.org/?confirm_newsletter=<token> -->
+            <a href="{{confirm_link}}" target="_blank"
                style="display:inline-block;padding:15px 38px;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:bold;color:#14351F;text-decoration:none;border-radius:999px;">
               Confirm my email
             </a>

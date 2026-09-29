@@ -127,21 +127,45 @@ export default function App() {
     navigateTo(TAB_PATHS[tab] ?? '/', tab);
   };
 
+  const content = useSiteContent();
+
+  // The newsletter confirmation email's button lands here with ?confirm_newsletter=<token>
+  // or ?confirmed=1 / ?confirmed=<token>.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('confirmed') !== '1') return;
+    const confirmToken = params.get('confirm_newsletter');
+    const confirmedParam = params.get('confirmed');
 
-    setShowConfirmedBanner(true);
-    params.delete('confirmed');
+    if (confirmToken) {
+      void content.confirmNewsletter(confirmToken).then((result) => {
+        if (result.ok) {
+          setShowConfirmedBanner(true);
+        }
+      });
+      params.delete('confirm_newsletter');
+    } else if (confirmedParam) {
+      if (confirmedParam === '1') {
+        setShowConfirmedBanner(true);
+      } else {
+        void content.confirmNewsletter(confirmedParam).then((result) => {
+          if (result.ok) {
+            setShowConfirmedBanner(true);
+          }
+        });
+      }
+      params.delete('confirmed');
+    } else {
+      return;
+    }
+
     const query = params.toString();
     window.history.replaceState(
       {},
       '',
       window.location.pathname + (query ? `?${query}` : '') + window.location.hash
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const content = useSiteContent();
 
   // The verify/reset emails link back here with ?verify=<token> / ?reset=<token>.
   // Same strip-the-query-string treatment as ?confirmed=1 above, so a refresh

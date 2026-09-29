@@ -154,8 +154,23 @@ var NEWSLETTER_HEADERS = [
   'Source',
   'Sender Groups',
   'Sender Status',
-  'Last Attempt'
+  'Last Attempt',
+  'Confirmation Token',
+  'Confirmed',
+  'Confirmed At'
 ];
+
+// 0-based positions matching a bodyRows_(sheet, NEWSLETTER_HEADERS.length) row.
+var NL_IDX_TIMESTAMP = 0;
+var NL_IDX_EMAIL = 1;
+var NL_IDX_NAME = 2;
+var NL_IDX_SOURCE = 3;
+var NL_IDX_GROUPS = 4;
+var NL_IDX_STATUS = 5;
+var NL_IDX_ATTEMPT = 6;
+var NL_IDX_CONFIRM_TOKEN = 7;
+var NL_IDX_CONFIRMED = 8;
+var NL_IDX_CONFIRMED_AT = 9;
 
 // Column positions in the Newsletter sheet (1-based).
 var NL_COL_TIMESTAMP = 1;
@@ -165,6 +180,9 @@ var NL_COL_SOURCE = 4;
 var NL_COL_GROUPS = 5;
 var NL_COL_STATUS = 6;
 var NL_COL_ATTEMPT = 7;
+var NL_COL_CONFIRM_TOKEN = 8;
+var NL_COL_CONFIRMED = 9;
+var NL_COL_CONFIRMED_AT = 10;
 
 // Values written into the "Sender Status" column. Anything that is not
 // STATUS_SUBSCRIBED is retried by 🔁 Sync Pending Subscribers.
@@ -763,11 +781,13 @@ function styleSignupsSheet_(sheet) {
 }
 
 function styleNewsletterSheet_(sheet) {
-  setWidths_(sheet, [180, 280, 200, 190, 180, 260, 180]);
+  setWidths_(sheet, [180, 280, 200, 190, 180, 260, 180, 260, 100, 180]);
   var body = Math.min(100, Math.max(20, sheet.getLastRow() - 1));
   if (body <= 0) return;
   sheet.getRange(2, NL_COL_TIMESTAMP, body, 1).setNumberFormat('yyyy-mm-dd hh:mm:ss');
   sheet.getRange(2, NL_COL_ATTEMPT, body, 1).setNumberFormat('yyyy-mm-dd hh:mm:ss');
+  sheet.getRange(2, NL_COL_CONFIRMED, body, 1).insertCheckboxes();
+  sheet.getRange(2, NL_COL_CONFIRMED_AT, body, 1).setNumberFormat('yyyy-mm-dd hh:mm:ss');
   sheet.getRange(1, 1, body + 1, NEWSLETTER_HEADERS.length).setVerticalAlignment('top');
 }
 
@@ -1187,6 +1207,8 @@ function doPost(e) {
       result = handleLogout_(body);
     } else if (body.action === 'subscribe') {
       result = handleSubscribe_(body);
+    } else if (body.action === 'confirmNewsletter') {
+      result = handleConfirmNewsletter_(body);
     } else if (body.action === 'subscribeMember') {
       result = handleSubscribeMember_(body);
     } else if (body.action === 'adminLogin') {
@@ -1612,9 +1634,9 @@ function handleRequestPasswordReset_(body) {
     for (var i = 0; i < rows.length; i++) {
       var row = rows[i];
       var rName = String(row[MEM_IDX_NAME] || '').trim().toLowerCase();
-      var rParentEmail = String(row[MEM_IDX_PARENT_EMAIL] || '').trim().toLowerCase();
-      var rStudentEmail = String(row[MEM_IDX_STUDENT_EMAIL] || '').trim().toLowerCase();
-      var rParent2Email = String(row[MEM_IDX_PARENT2_EMAIL] || '').trim().toLowerCase();
+      var rParentEmail = normaliseEmail_(row[MEM_IDX_PARENT_EMAIL]);
+      var rStudentEmail = normaliseEmail_(row[MEM_IDX_STUDENT_EMAIL]);
+      var rParent2Email = normaliseEmail_(row[MEM_IDX_PARENT2_EMAIL]);
 
       if (
         (isInputEmail && (rParentEmail === email || rStudentEmail === email || rParent2Email === email)) ||
@@ -1630,19 +1652,18 @@ function handleRequestPasswordReset_(body) {
     }
   }
 
-  // Issue the token on the matching member row so the reset link works
-  var token = generateToken_();
+  // Only dispatch email if a matching member account was found
   if (members && targetRow > 1) {
-    token = issueAccountToken_(members, targetRow, 'reset');
-  }
-
-  // Directly add whatever address they inputted to the Password Reset group
-  if (sendToEmail && isEmail_(sendToEmail)) {
-    try {
-      sendAccountEmail_(sendToEmail, targetName, 'reset', token);
-    } catch (err) {
-      Logger.log('sendAccountEmail_ (reset) failed: ' + (err && err.message ? err.message : err));
+    var token = issueAccountToken_(members, targetRow, 'reset');
+    if (sendToEmail && isEmail_(sendToEmail)) {
+      try {
+        sendAccountEmail_(sendToEmail, targetName, 'reset', token);
+      } catch (err) {
+        Logger.log('sendAccountEmail_ (reset) failed: ' + (err && err.message ? err.message : err));
+      }
     }
+  } else {
+    Logger.log('handleRequestPasswordReset_: No member account matched "' + rawInput + '"');
   }
 
   return { ok: true };
@@ -2121,6 +2142,53 @@ function handleSubscribeMember_(body) {
 }
 
 /**
+ * Verifies a newsletter subscriber by token from the confirmation email.
+ * Marks the matching row in Newsletter as Confirmed = true, records Confirmed At,
+ * and ensures they are copied into the Sender.net "Confirmed" group.
+ */
+function handleConfirmNewsletter_(body) {
+  var token = String(body.token || '').trim();
+  if (!token) return { ok: false, error: 'Missing confirmation token.' };
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = newsletterSheet_(ss);
+  if (!sheet) return { ok: false, error: 'Newsletter sheet not found.' };
+
+  var rows = bodyRows_(sheet, NEWSLETTER_HEADERS.length);
+  for (var i = rows.length - 1; i >= 0; i--) {
+    var row = rows[i];
+    if (String(row[NL_IDX_CONFIRM_TOKEN] || '').trim() === token) {
+      var sheetRow = i + 2;
+      var now = new Date();
+      sheet.getRange(sheetRow, NL_COL_CONFIRMED).setValue(true);
+      sheet.getRange(sheetRow, NL_COL_CONFIRMED_AT).setValue(now);
+
+      var email = String(row[NL_IDX_EMAIL] || '').trim();
+      var senderTok = senderToken_();
+      if (email && senderTok) {
+        try {
+          var group = senderGroupByTitle_('Confirmed', senderTok);
+          if (group.id) {
+            senderFetch_(
+              'post',
+              '/subscribers/groups/' + encodeURIComponent(group.id),
+              { subscribers: [email], trigger_automation: false },
+              senderTok
+            );
+          }
+        } catch (err) {
+          Logger.log('handleConfirmNewsletter_ sender copy failed: ' + (err && err.message ? err.message : err));
+        }
+      }
+
+      return { ok: true, email: email };
+    }
+  }
+
+  return { ok: false, error: 'This confirmation link is invalid or has already been used.' };
+}
+
+/**
  * Records one address in the Newsletter tab and adds it to its Sender.net group.
  *
  * `audience` is one of AUDIENCE_PARENT / AUDIENCE_STUDENT / AUDIENCE_NEWSLETTER
@@ -2136,9 +2204,11 @@ function subscribeEmail_(ss, email, name, source, audience) {
   }
 
   var titles = groupsForAudience_(audience);
+  var confirmToken = generateToken_();
+  var confirmUrl = 'https://trscienceclub.org/?confirm_newsletter=' + encodeURIComponent(confirmToken);
   var outcome;
   try {
-    outcome = senderSubscribe_(email, name, audience);
+    outcome = senderSubscribe_(email, name, audience, confirmUrl);
   } catch (err) {
     outcome = { ok: false, status: 'Error: ' + (err && err.message ? err.message : 'unknown'), groups: [] };
   }
@@ -2146,7 +2216,7 @@ function subscribeEmail_(ss, email, name, source, audience) {
   var groupsStr = (outcome.groups && outcome.groups.length ? outcome.groups : titles).join(', ');
   var sheet = newsletterSheet_(ss);
   var now = new Date();
-  sheet.appendRow([now, email, name, source, groupsStr, outcome.status, now]);
+  sheet.appendRow([now, email, name, source, groupsStr, outcome.status, now, confirmToken, false, '']);
 
   return outcome;
 }
@@ -2164,7 +2234,7 @@ function subscribeEmail_(ss, email, name, source, audience) {
  * Returns { ok, status, groups } where `groups` lists the titles that actually
  * took, so a partial failure still records what succeeded.
  */
-function senderSubscribe_(email, name, audience) {
+function senderSubscribe_(email, name, audience, confirmUrl) {
   var token = senderToken_();
   if (!token) {
     return { ok: false, status: STATUS_PENDING, groups: [], message: 'No Sender.net API token set.' };
@@ -2187,6 +2257,12 @@ function senderSubscribe_(email, name, audience) {
 
   var payload = { email: email, groups: ids, trigger_automation: true };
   if (name) payload.firstname = name;
+  if (confirmUrl) {
+    payload.fields = {
+      confirm_link: confirmUrl,
+      account_link: confirmUrl
+    };
+  }
 
   var created = senderFetch_('post', '/subscribers', payload, token);
   if (created.ok) {
@@ -2195,6 +2271,15 @@ function senderSubscribe_(email, name, audience) {
 
   if (!looksLikeDuplicate_(created)) {
     return { ok: false, status: 'Error: ' + senderError_(created), groups: [] };
+  }
+
+  if (confirmUrl) {
+    senderFetch_(
+      'patch',
+      '/subscribers/' + encodeURIComponent(email),
+      { fields: { confirm_link: confirmUrl, account_link: confirmUrl } },
+      token
+    );
   }
 
   var added = [];
@@ -2275,6 +2360,21 @@ function sendAccountEmail_(email, name, kind, token) {
   // Already a Sender.net subscriber (e.g. from the newsletter) — update the
   // link field, then add them to the group to (re)trigger the automation.
   senderFetch_('patch', '/subscribers/' + encodeURIComponent(email), { fields: { account_link: url } }, token_);
+
+  // If already in the group, Sender will not re-trigger the automation on re-add.
+  // Remove first so the add is seen as a new entry.
+  if (kind === 'reset') {
+    try {
+      senderFetch_(
+        'delete',
+        '/subscribers/groups/' + encodeURIComponent(group.id),
+        { subscribers: [email] },
+        token_
+      );
+    } catch (e) {
+      Logger.log('Sender delete before reset re-add failed: ' + e);
+    }
+  }
 
   var added = senderFetch_(
     'post',
@@ -2412,11 +2512,26 @@ function senderError_(response) {
 
 // --- Newsletter sheet ------------------------------------------------------
 
+function ensureNewsletterHeaders_(sheet) {
+  var lastCol = sheet.getLastColumn();
+  if (lastCol < NEWSLETTER_HEADERS.length) {
+    sheet.getRange(1, 1, 1, NEWSLETTER_HEADERS.length).setValues([NEWSLETTER_HEADERS]);
+    sheet.getRange(1, 1, 1, NEWSLETTER_HEADERS.length)
+      .setBackground(NEWSLETTER_HEADER_COLOR)
+      .setFontColor('#ffffff')
+      .setFontWeight('bold')
+      .setVerticalAlignment('middle');
+    styleNewsletterSheet_(sheet);
+  }
+}
+
 function newsletterSheet_(ss) {
   var sheet = ss.getSheetByName(NEWSLETTER_SHEET);
   if (!sheet) {
     sheet = ensureSheet_(ss, NEWSLETTER_SHEET, NEWSLETTER_HEADERS, NEWSLETTER_HEADER_COLOR);
     styleNewsletterSheet_(sheet);
+  } else {
+    ensureNewsletterHeaders_(sheet);
   }
   return sheet;
 }
@@ -3152,10 +3267,16 @@ function syncNewsletterToSender() {
     }
 
     var audience = audienceForRow_(rows[i][NL_COL_GROUPS - 1], rows[i][NL_COL_SOURCE - 1]);
+    var confirmToken = String(rows[i][NL_IDX_CONFIRM_TOKEN] || '').trim();
+    if (!confirmToken) {
+      confirmToken = generateToken_();
+      sheet.getRange(i + 2, NL_COL_CONFIRM_TOKEN).setValue(confirmToken);
+    }
+    var confirmUrl = 'https://trscienceclub.org/?confirm_newsletter=' + encodeURIComponent(confirmToken);
 
     var outcome;
     try {
-      outcome = senderSubscribe_(email, String(rows[i][NL_COL_NAME - 1] || '').trim(), audience);
+      outcome = senderSubscribe_(email, String(rows[i][NL_COL_NAME - 1] || '').trim(), audience, confirmUrl);
     } catch (err) {
       outcome = { ok: false, status: 'Error: ' + (err && err.message ? err.message : 'unknown'), groups: [] };
     }

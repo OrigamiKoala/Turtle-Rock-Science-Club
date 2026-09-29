@@ -117,6 +117,7 @@ export interface SiteContent {
   syncProfile: (profile: UserProfile, sessionToken: string) => Promise<void>;
   logout: (sessionToken: string) => Promise<void>;
   verifyEmail: (token: string) => Promise<SimpleResult>;
+  confirmNewsletter: (token: string) => Promise<SimpleResult>;
   requestPasswordReset: (identifier: string) => Promise<SimpleResult>;
   resendVerificationEmail: (sessionToken: string) => Promise<ResendVerificationResult>;
   resetPassword: (token: string, newPassword: string) => Promise<SimpleResult>;
@@ -690,6 +691,23 @@ export function useSiteContent(): SiteContent {
     }
   }, []);
 
+  const confirmNewsletter = useCallback(async (token: string): Promise<SimpleResult> => {
+    if (!SHEET_API_URL) return { ok: false, error: 'Spreadsheet connection not configured.' };
+
+    try {
+      const response = await fetch(SHEET_API_URL, {
+        method: 'POST',
+        redirect: 'follow',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'confirmNewsletter', token })
+      });
+      if (!response.ok) return { ok: false, error: `Server error HTTP ${response.status}` };
+      return JSON.parse(await response.text()) as SimpleResult;
+    } catch {
+      return { ok: false, error: 'Could not reach the club server. Please check your connection and try again.' };
+    }
+  }, []);
+
   const requestPasswordReset = useCallback(async (identifier: string): Promise<SimpleResult> => {
     if (!SHEET_API_URL) return { ok: false, error: 'Spreadsheet connection not configured.' };
 
@@ -828,6 +846,7 @@ export function useSiteContent(): SiteContent {
     syncProfile,
     logout,
     verifyEmail,
+    confirmNewsletter,
     requestPasswordReset,
     resendVerificationEmail,
     resetPassword,
