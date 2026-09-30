@@ -20,7 +20,8 @@ import {
   Telescope,
   Factory,
   Flashlight,
-  TestTube
+  TestTube,
+  ArrowUpDown
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -67,6 +68,7 @@ export default function Dashboard({ userProfile, missions, signedUpIds, onUpdate
     { name: 'Astrophysicist', desc: "Decoded a star's spectrum in Starlight Decoder.", icon: Telescope },
     { name: 'Chemical Engineer', desc: 'Ran a balanced production line in Reactor Line.', icon: Factory },
     { name: 'Spelunker', desc: 'Threaded a narrow scrolling cave in SF Cave.', icon: Flashlight },
+    { name: 'Algorithmist', desc: 'Cracked a sorting puzzle in Sort Squad.', icon: ArrowUpDown },
     { name: 'Analytical Chemist', desc: 'Identified a mystery solution by titration.', icon: TestTube }
   ];
 
