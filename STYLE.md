@@ -572,9 +572,9 @@ Stable icon → meaning pairings (keep these consistent):
 Icon tiles: `p-3 rounded-2xl bg-[#E4F5DA] text-[#2E7D46]` (or `w-12 h-12
 rounded-2xl` centered). Locked/inactive: `bg-[#1F3A42]/5 text-[#9AA6A6]`.
 
-Each of the twelve minigames owns a badge icon — `Orbit`, `FlaskConical`,
+Each of the thirteen minigames owns a badge icon — `Orbit`, `FlaskConical`,
 `Bot`, `Eye`, `Zap`, `Activity`, `Dna`, `Leaf`, `Telescope`, `Factory`,
-`Flashlight`, `ScrollText`. If a game is added, its icon must match between
+`Flashlight`, `ArrowUpDown`, `ScrollText`. If a game is added, its icon must match between
 `VirtualLab.tsx`'s `GAMES` and `Dashboard.tsx`'s `badgeCatalog`.
 
 ---
@@ -697,8 +697,8 @@ CSS.
 
 ## 11. The minigames are a deliberate exception
 
-`src/components/games/` mostly does **not** follow the light brand. Ten of
-the twelve tabs (everything except `ChemTextAdventure`, a link-out with no
+`src/components/games/` mostly does **not** follow the light brand. Eleven of
+the thirteen tabs (everything except `ChemTextAdventure`, a link-out with no
 panel of its own, and `SFCave`) render as always-dark instrument panels, on
 purpose — they read as lab equipment rather than page content.
 
@@ -715,11 +715,19 @@ The site chrome *around* the games — the section heading, tab grid, and the
 `rounded-[28px]` white host panel in `VirtualLab.tsx` — **is** normal brand
 style. Only the interior is dark — except in `SFCave`.
 
+**`SortSquad` draws its own buttons.** It is a canvas game whose buttons are
+drawn (and hit-tested) on the canvas, so it cannot use Tailwind classes: its
+palette is a block of constants at the top of `sortsquad/engine.ts` — the panel
+ground `#0d0d12`, zinc-200 / zinc-400 ink, and the original game's
+blue / green / orange / purple buttons and rainbow bars, kept because they read
+well on dark. The robots' look / swap / place highlights map onto this
+section's amber / red / emerald semantics.
+
 **`SFCave` genuinely used the light brand, and tracked the toggle — now
 retired along with it (CLAUDE.md's "Theming (dark-only)").** Its `<canvas>`
 playfield is a light interior with green walls (matching the real original
 PalmOS game's actual look, not a stylistic choice made for this site), so
-unlike its eleven siblings it reads `theme` directly in JS (`useTheme()`)
+unlike its twelve siblings it reads `theme` directly in JS (`useTheme()`)
 rather than through the CSS override system — that part of the code is
 unchanged. What changed is what `useTheme()` returns: it used to swap
 between the exact pairs §2.1 documents (Cream ↔ `#12181A`, Forest ↔

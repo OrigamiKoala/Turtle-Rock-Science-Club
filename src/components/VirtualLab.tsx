@@ -12,7 +12,8 @@ import IslandKeeper from './games/IslandKeeper';
 import StarlightDecoder from './games/StarlightDecoder';
 import ReactorLine from './games/ReactorLine';
 import SFCave from './games/SFCave';
-import { Orbit, FlaskConical, Bot, ScrollText, Lock, Eye, Zap, Activity, Dna, Leaf, Telescope, Factory, Flashlight } from 'lucide-react';
+import SortSquad from './games/SortSquad';
+import { Orbit, FlaskConical, Bot, ScrollText, Lock, Eye, Zap, Activity, Dna, Leaf, Telescope, Factory, Flashlight, ArrowUpDown } from 'lucide-react';
 
 interface VirtualLabProps {
   userProfile: UserProfile;
@@ -31,6 +32,7 @@ const GAMES: { id: GameId; title: string; tagline: string; field: string; icon: 
   { id: 'spectra', title: 'Starlight Decoder', tagline: "Read a star's absorption lines to find its composition, temperature, and motion.", field: 'Astronomy · Spectroscopy', icon: Telescope, badge: 'Astrophysicist' },
   { id: 'reactor', title: 'Reactor Line', tagline: 'Balance equations and pipe reagents through a factory that obeys conservation of mass.', field: 'Chemistry · Math', icon: Factory, badge: 'Chemical Engineer' },
   { id: 'cave', title: 'SFCave', tagline: 'The original Flappy Bird, on Windows 3.1.', field: 'Physics · Reflexes', icon: Flashlight, badge: 'Spelunker' },
+  { id: 'sort', title: 'Sort Squad', tagline: 'Work out which hidden robot is sorting, and which one wins, using real sorting algorithms.', field: 'Computer Science · Algorithms', icon: ArrowUpDown, badge: 'Algorithmist' },
   { id: 'adventure', title: 'Chemistry Text Adventure', tagline: 'A choose-your-own-path chemistry story hosted on its own site.', field: 'Chemistry · Storytelling', icon: ScrollText, badge: 'Adventurer' }
 ];
 
@@ -72,7 +74,7 @@ export default function VirtualLab({ userProfile, onUpdateXp }: VirtualLabProps)
         <p className="text-[11px] font-display font-bold text-[#4C9A3A]">Virtual Lab</p>
         <h2 className="font-display font-bold text-3xl sm:text-4xl text-[#1F3A42] tracking-tight">Science Minigames</h2>
         <p className="text-sm text-[#4B6169] max-w-2xl leading-relaxed">
-          A dozen mini-games based on science. Enjoy!
+          Thirteen mini-games based on science and computing. Enjoy!
         </p>
       </div>
 
@@ -106,6 +108,7 @@ export default function VirtualLab({ userProfile, onUpdateXp }: VirtualLabProps)
         {activeGame === 'spectra' && <StarlightDecoder solvedLevels={gameProgress.spectra} onSolve={makeSolveHandler('spectra', 'Astrophysicist')} />}
         {activeGame === 'reactor' && <ReactorLine solvedLevels={gameProgress.reactor} onSolve={makeSolveHandler('reactor', 'Chemical Engineer')} />}
         {activeGame === 'cave' && <SFCave solvedLevels={gameProgress.cave} onSolve={makeSolveHandler('cave', 'Spelunker')} />}
+        {activeGame === 'sort' && <SortSquad solvedLevels={gameProgress.sort} onSolve={makeSolveHandler('sort', 'Algorithmist')} />}
         {activeGame === 'adventure' && <ChemTextAdventure solvedLevels={gameProgress.adventure} onSolve={makeSolveHandler('adventure', 'Adventurer')} />}
       </div>
 

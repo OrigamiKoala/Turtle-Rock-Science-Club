@@ -718,14 +718,14 @@ whole site is styled:
 
 ## Minigames
 
-`src/components/games/` — eleven real puzzle games, not click toys, plus one
+`src/components/games/` — twelve real puzzle games, not click toys, plus one
 link-out. `docs/game-ideas.md` is the original design doc for the seven
 science-domain games (Lightbender through Reactor Line); read it before
 touching their level data or science model, since each level's numbers were
 tuned (some with scratch Node scripts, not just eyeballed) to make a specific
 lesson land. SF Cave postdates that doc and isn't in it.
 
-Every hosted game (all eleven but `ChemTextAdventure`, which links out)
+Every hosted game (all twelve but `ChemTextAdventure`, which links out)
 carries a small "live note" — plain-language commentary on the science behind
 an actual *outcome* — distinct from the per-level `hint` text hidden behind
 the Hint toggle, and deliberately **not** shown while the player is still
@@ -809,6 +809,46 @@ note behind a genuine mess-up or success, never a mere selection or drag.
   true and an enabled node is still unbalanced, naming it explicitly; don't
   remove it as "redundant" with the inline `unbalanced` tag next to the
   steppers — that tag is easy to miss, the banner is the one players notice.
+- `SortSquad.tsx` + `sortsquad/` — a port of a standalone canvas game
+  (immediate-mode: every screen is redrawn each frame, and the buttons are
+  drawn and hit-tested on the canvas itself). Three files: `sortsquad/logic.ts`
+  is pure — no DOM, no React — so `node scripts/check-sortsquad.mjs` can
+  import it straight into Node, the same arrangement as `titration/chem.ts`;
+  `sortsquad/engine.ts` is the canvas engine; `SortSquad.tsx` is a thin shell.
+  The robots are *recorded*: `buildSteps` runs an algorithm once on a private
+  copy of the list and writes down every look / swap / write, and the game
+  replays that list. Knowing the whole run up front is what makes the puzzles
+  possible — "which robot is this?" is answered by running every candidate on
+  the same list and finding the first step where it would have acted
+  differently (`whyNot`), so a wrong guess gets a rigorous reason, never a
+  guess about the robot's style.
+
+  **Only the five Robot Puzzles award XP** (`10 + 5·index`, 100 in total like
+  the other games' level lists). Hand-sorting and watching a robot are free
+  play *on purpose*: hand-sorting has no strategy to discover — swapping any
+  adjacent out-of-order pair reaches par, so the only way to miss it is to
+  make a bad swap — and it should not pay XP. The puzzles alternate two
+  kinds. *Who's That Robot?* hides the robot's name and its algorithm-specific
+  wording, shows only the raw evidence (which slots, look / swap / place
+  counts, a recent-steps tape), and gives two guesses; a round is only kept if
+  the evidence rules out every other robot in the pool within the first 40% of
+  the run (`DECISIVE_FRACTION`). *Which Robot Wins?* asks which robot needs the
+  fewest steps (looks + swaps + placements) on a fixed *shape* of list — nearly
+  sorted, or backwards — then races them; the lesson text appears only after
+  the answer is locked in, like every other game's live note.
+
+  **Every number in `PUZZLES` is tuned by the check script** — list sizes,
+  robot pools, candidate sets. Change one and run `node
+  scripts/check-sortsquad.mjs`: it asserts each Best Robot puzzle has one
+  clear winner (at least a 15% margin) on every randomised list, and every
+  Mystery round is answerable early. Two integration traps, both learned the
+  hard way: all game state lives in the engine's closure, not React, because
+  `VirtualLab` rebuilds `onSolve` on every render and an effect depending on it
+  would restart the game at the menu the instant the XP update re-rendered the
+  parent — right after a win; and Escape is handled on the *focused canvas*,
+  not `window`, because the Join and Sign-up modals also close on Escape.
+  One thing kept from the original on purpose: Merge, Timsort and Radix write
+  into the bar row in place, so duplicate bar heights flash mid-pass.
 - `ChemTextAdventure.tsx` — not hosted here. Links out to an external
   choose-your-own-path chemistry story; clicking the link *is* the win
   condition and the only way to earn its "Adventurer" badge.
@@ -856,7 +896,7 @@ note behind a genuine mess-up or success, never a mere selection or drag.
   (`#2E7D46`), the interior is Cream (`#FBF7EC`), the ship is Gold
   (`#F2C94C`), and the crashed ship / every obstacle block share Alert Red
   (`#E4574B`) — see STYLE.md §2.1 for the full table. This is also the one
-  game of the twelve that is *not* an "always-dark instrument panel"
+  game of the thirteen that is *not* an "always-dark instrument panel"
   (STYLE.md §11) — its light interior is what makes it read as SF Cave. It
   still reads `useTheme()` for that Cream/Forest ↔ `#12181A`/`#8FE07A` pair
   (STYLE.md §2.1), a leftover from when the site had a light/dark toggle it
@@ -904,20 +944,20 @@ note behind a genuine mess-up or success, never a mere selection or drag.
 `VirtualLab.tsx` is the shell that hosts them, keyed by `GameId` in
 `types.ts`, and awards XP once per level (`ChemTextAdventure` only ever has
 level 0; SF Cave's "levels" are its milestones). The tab grid is
-`sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4` — with twelve tabs it wraps
+`sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4` — with thirteen tabs it wraps
 into multiple rows by default CSS grid behaviour, no scroll container needed.
 
-All seven science-domain games are "always-dark" chrome like
+All seven science-domain games, and `SortSquad`, are "always-dark" chrome like
 `OrbitalSlingshot`, the same choice the doc's integration notes call for —
 none of them try to hook into the `.game-*` wrapper-class theming scheme
-described below. `SFCave` is the one exception among all twelve: its play
+described below. `SFCave` is the one exception among all thirteen: its play
 surface is a genuinely light interior (see above), and unlike its siblings it
 actually tracks the site's light/dark toggle rather than ignoring it — see
 "Theming" above for how. Its outer wrapper is still a plain `bg-black` canvas
 frame like the other games (the canvas repaints over it every tick regardless
 of theme, so the wrapper's own color is essentially never visible).
 
-`Dashboard.tsx`'s `badgeCatalog` now lists all fourteen earnable badges
+`Dashboard.tsx`'s `badgeCatalog` now lists all fifteen earnable badges
 (`Foundation Member` plus one per game, including `ChemTextAdventure`'s and
 Titration Lab's `Analytical Chemist` badge) instead of the leftover
 AI-Studio-era placeholder names it used to have. If you add another game or
