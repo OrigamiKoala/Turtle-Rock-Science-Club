@@ -715,13 +715,16 @@ The site chrome *around* the games — the section heading, tab grid, and the
 `rounded-[28px]` white host panel in `VirtualLab.tsx` — **is** normal brand
 style. Only the interior is dark — except in `SFCave`.
 
-**`SortSquad` draws its own buttons.** It is a canvas game whose buttons are
-drawn (and hit-tested) on the canvas, so it cannot use Tailwind classes: its
-palette is a block of constants at the top of `sortsquad/engine.ts` — the panel
-ground `#0d0d12`, zinc-200 / zinc-400 ink, and the original game's
-blue / green / orange / purple buttons and rainbow bars, kept because they read
-well on dark. The robots' look / swap / place highlights map onto this
-section's amber / red / emerald semantics.
+**`SortSquad` follows this section too, with a single canvas.** Its page chrome
+— level pills, the amber Hint link, chips, action buttons, banners — uses exactly
+the classes above, collected in `sortsquad/ui.tsx`. Teal
+(`bg-teal-500/20 border-teal-500/40 text-teal-300`) is its selected-pill accent,
+since sky, violet, orange and emerald are taken. Each robot wears a fixed tinted
+chip wherever it is named or chosen: Bubble sky, Selection amber, Insertion lime,
+Quick violet, Merge cyan, Timsort pink, Radix orange, Bogo red. The one canvas
+draws only the bars (`sortsquad/stage.ts`): panel ground `#0d0d12`, the semantic
+accents for highlights — amber = look, red = swap, emerald = placement,
+sky = selected — and the rainbow bars, kept because they read well on dark.
 
 **`SFCave` genuinely used the light brand, and tracked the toggle — now
 retired along with it (CLAUDE.md's "Theming (dark-only)").** Its `<canvas>`

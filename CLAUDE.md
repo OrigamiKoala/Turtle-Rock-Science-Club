@@ -809,12 +809,19 @@ note behind a genuine mess-up or success, never a mere selection or drag.
   true and an enabled node is still unbalanced, naming it explicitly; don't
   remove it as "redundant" with the inline `unbalanced` tag next to the
   steppers — that tag is easy to miss, the banner is the one players notice.
-- `SortSquad.tsx` + `sortsquad/` — a port of a standalone canvas game
-  (immediate-mode: every screen is redrawn each frame, and the buttons are
-  drawn and hit-tested on the canvas itself). Three files: `sortsquad/logic.ts`
-  is pure — no DOM, no React — so `node scripts/check-sortsquad.mjs` can
-  import it straight into Node, the same arrangement as `titration/chem.ts`;
-  `sortsquad/engine.ts` is the canvas engine; `SortSquad.tsx` is a thin shell.
+- `SortSquad.tsx` + `sortsquad/` — started as a port of a standalone canvas
+  game, then rebuilt as ordinary page chrome in the siblings' own vocabulary
+  (level pills, the amber Hint link, tinted chips, `rounded-full` action
+  buttons — the class strings are lifted from `RobotProgrammer` and collected
+  in `sortsquad/ui.tsx`). **The only canvas is the row of bars**
+  (`sortsquad/stage.ts`, wrapped by `BarStage.tsx`), so every control is a real
+  button a keyboard or screen reader can reach, and the text stays readable on
+  a phone. `sortsquad/logic.ts` is pure — no DOM, no React — so
+  `node scripts/check-sortsquad.mjs` can import it straight into Node, the same
+  arrangement as `titration/chem.ts`; `puzzles.tsx` has one panel per kind of
+  question, `FreePlay.tsx` has hand-sorting and watch-a-robot, and
+  `usePlayback.ts` plays a recorded run onto the stage.
+
   The robots are *recorded*: `buildSteps` runs an algorithm once on a private
   copy of the list and writes down every look / swap / write, and the game
   replays that list. Knowing the whole run up front is what makes the puzzles
@@ -823,32 +830,59 @@ note behind a genuine mess-up or success, never a mere selection or drag.
   differently (`whyNot`), so a wrong guess gets a rigorous reason, never a
   guess about the robot's style.
 
-  **Only the five Robot Puzzles award XP** (`10 + 5·index`, 100 in total like
-  the other games' level lists). Hand-sorting and watching a robot are free
-  play *on purpose*: hand-sorting has no strategy to discover — swapping any
-  adjacent out-of-order pair reaches par, so the only way to miss it is to
-  make a bad swap — and it should not pay XP. The puzzles alternate two
-  kinds. *Who's That Robot?* hides the robot's name and its algorithm-specific
-  wording, shows only the raw evidence (which slots, look / swap / place
-  counts, a recent-steps tape), and gives two guesses; a round is only kept if
-  the evidence rules out every other robot in the pool within the first 40% of
-  the run (`DECISIVE_FRACTION`). *Which Robot Wins?* asks which robot needs the
-  fewest steps (looks + swaps + placements) on a fixed *shape* of list — nearly
-  sorted, or backwards — then races them; the lesson text appears only after
-  the answer is locked in, like every other game's live note.
+  **Ten Robot Puzzles, seven kinds of question, and they are the only thing
+  that awards XP** (`10 + 5·index`, 325 in total — more than a typical 5-7
+  level game, which is a deliberate trade for having more levels). Hand-sorting
+  and watching a robot are free play *on purpose*: hand-sorting has no strategy
+  to discover — swapping any adjacent out-of-order pair reaches par — so it
+  should not pay XP.
+  - *Who's That Robot?* (`identify`, levels 1, 3, 5): the robot's name and its
+    algorithm-specific wording are hidden; the player sees raw evidence (which
+    slots, look / swap / place counts, the robot's opening moves and latest
+    moves) and gets two guesses. A round is only kept if the evidence rules out
+    every other robot in the pool within the first 40% of the run
+    (`DECISIVE_FRACTION`). The *opening* moves stay on screen because that is
+    where the evidence is — a "last few steps" tape alone lets it scroll away.
+  - *Which Robot Wins?* (`race`, 2, 4): which robot needs the fewest steps
+    (looks + swaps + placements) on a fixed *shape* of list, then a race.
+  - *Flip Flop* (`flip`, 6): pancake sorting — click a bar to reverse it and
+    everything left of it. Par comes from a breadth-first search over every
+    arrangement (`flipTable`), checked against the known pancake numbers.
+  - *Count the Swaps* (`count`, 7): Bubble and Insertion make exactly as many
+    swaps as there are wrong-way pairs; typed answer, two tries, and the pairs
+    are listed once it is over.
+  - *After One Pass* (`afterPass`, 8): pick the picture that shows the list
+    after the robot's first pass (`PASS_RULE` says what a pass is). Every
+    wrong picture is something real — another robot's pass, a half-finished
+    pass, an almost-right list — and says so, so a wrong pick teaches.
+  - *Swap Any Two* (`swapAny`, 9): sort by swapping any pair; par is bars
+    minus loops (`minSwaps`), confirmed against brute force.
+  - *Worst Day* (`worst`, 10): *build* the list that gives a robot its hardest
+    day, then run it. The goal is 90% of the true worst case, found by running
+    the robot on every arrangement (`worstInfo`) — and Quick Sort's real worst
+    case is `[2,3,4,5,6,1]`, not just "sorted".
 
-  **Every number in `PUZZLES` is tuned by the check script** — list sizes,
-  robot pools, candidate sets. Change one and run `node
-  scripts/check-sortsquad.mjs`: it asserts each Best Robot puzzle has one
-  clear winner (at least a 15% margin) on every randomised list, and every
-  Mystery round is answerable early. Two integration traps, both learned the
-  hard way: all game state lives in the engine's closure, not React, because
-  `VirtualLab` rebuilds `onSolve` on every render and an effect depending on it
-  would restart the game at the menu the instant the XP update re-rendered the
-  parent — right after a win; and Escape is handled on the *focused canvas*,
-  not `window`, because the Join and Sign-up modals also close on Escape.
-  One thing kept from the original on purpose: Merge, Timsort and Radix write
-  into the bar row in place, so duplicate bar heights flash mid-pass.
+  Commentary follows the site's live-note rule: nothing explains an answer
+  until the player has committed to one (hints live behind the Hint link).
+
+  **Level order is load-bearing.** Visitors' progress is stored by *index*, and
+  the shell pays `10 + 5·index`, so levels 1-5 must never move or be removed;
+  new levels are *appended*. The check script asserts the first five.
+  **Every number in `PUZZLES` is tuned by `scripts/check-sortsquad.mjs`** — list
+  sizes, robot pools, candidate sets, `minPar`, `goalFraction`. Change one and
+  run it: it asserts every kind is fair (a race has one clear winner with at
+  least a 15% margin, every pass question has exactly one right picture checked
+  against independent re-implementations of each pass, a worst-day goal is
+  reachable but not something luck hits, and so on).
+
+  Integration notes learned the hard way: this project has **no
+  `@types/react`**, so JSX `key` on a custom component fails to type-check
+  unless its props accept it — the older components dodge this by typing
+  themselves `React.FC<…>`, which resolves to `any`; Sort Squad keeps its props
+  checked and adds `Keyed` (in `ui.tsx`) instead. The stage outlives every
+  render, so it reads its handlers through refs. And one thing kept from the
+  original on purpose: Merge, Timsort and Radix write into the bar row in
+  place, so duplicate bar heights flash mid-pass.
 - `ChemTextAdventure.tsx` — not hosted here. Links out to an external
   choose-your-own-path chemistry story; clicking the link *is* the win
   condition and the only way to earn its "Adventurer" badge.
