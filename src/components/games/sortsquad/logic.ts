@@ -297,50 +297,74 @@ export function whyNot(alg: AlgId, seen: readonly Step[], start: readonly number
 
 /* ---------- the puzzles ---------- */
 
-export interface MysteryPuzzle {
-  kind: 'mystery';
-  title: string;
-  blurb: string;
-  hint: string;
+/**
+ * Seven kinds of question, so the ten levels don't all feel the same:
+ *
+ *   identify   Who's That Robot?     deduce a hidden robot from what it does
+ *   race       Which Robot Wins?     predict the cheapest robot for a list's shape
+ *   afterPass  After One Pass        simulate a robot's first pass, pick the picture
+ *   count      Count the Swaps       work out exactly how many swaps a robot will make
+ *   flip       Flip Flop             sort by flipping a prefix (pancake sorting)
+ *   swapAny    Swap Any Two          sort by swapping any pair, in as few swaps as you can
+ *   worst      Worst Day             BUILD the list that gives a robot the hardest day
+ *
+ * Every generator below is pure and takes an `Rng`, so `scripts/check-sortsquad.mjs`
+ * can hammer it and so a level can be replayed with a fresh list each time.
+ */
+interface PuzzleBase { title: string; brief: string; hint: string }
+
+export interface IdentifyPuzzle extends PuzzleBase {
+  kind: 'identify';
   n: number;
   /** The robot is drawn from this pool each attempt, so there is nothing to memorise. */
   pool: AlgId[];
 }
-export type BestShape = 'nearly-sorted' | 'reversed';
-export interface BestPuzzle {
-  kind: 'best';
-  title: string;
-  blurb: string;
-  hint: string;
+export type RaceShape = 'nearly-sorted' | 'reversed';
+export interface RacePuzzle extends PuzzleBase {
+  kind: 'race';
   n: number;
-  shape: BestShape;
+  shape: RaceShape;
   candidates: AlgId[];
   /** Shown only after the answer is locked in. */
   lesson: string;
 }
-export type Puzzle = MysteryPuzzle | BestPuzzle;
+export interface AfterPassPuzzle extends PuzzleBase { kind: 'afterPass'; n: number; pool: AlgId[] }
+export interface CountPuzzle extends PuzzleBase { kind: 'count'; n: number; pool: AlgId[] }
+export interface FlipPuzzle extends PuzzleBase { kind: 'flip'; n: number; minPar: number }
+export interface SwapAnyPuzzle extends PuzzleBase { kind: 'swapAny'; n: number; minPar: number }
+export interface WorstPuzzle extends PuzzleBase {
+  kind: 'worst';
+  n: number;
+  pool: AlgId[];
+  /** The goal is this fraction of the true worst case, rounded up. */
+  goalFraction: number;
+  /** A nudge specific to the robot, added to `hint`. */
+  algHints: Partial<Record<AlgId, string>>;
+}
+export type Puzzle = IdentifyPuzzle | RacePuzzle | AfterPassPuzzle | CountPuzzle | FlipPuzzle | SwapAnyPuzzle | WorstPuzzle;
+export type PuzzleKind = Puzzle['kind'];
 
 const ALL_SEVEN: AlgId[] = [ALG.BUBBLE, ALG.SELECTION, ALG.INSERTION, ALG.QUICK, ALG.MERGE, ALG.TIM, ALG.RADIX];
 
 /**
- * Five puzzles, alternating the two kinds and getting harder — XP is
- * `10 + 5·index`, so the set banks 100 XP like the other games' level lists.
- * Every number here (sizes, pools, candidates) is checked by
- * `scripts/check-sortsquad.mjs`; change one and run it.
+ * Ten puzzles. XP is `10 + 5·index` (the shell's formula), so the ORDER here is
+ * load-bearing in two ways: levels 0-4 are the original five and must never move —
+ * visitors' saved progress is stored by index — and later levels pay more, so the
+ * harder ones go last. New levels are appended, never inserted.
  */
 export const PUZZLES: Puzzle[] = [
   {
-    kind: 'mystery',
+    kind: 'identify',
     title: 'Three Signatures',
-    blurb: 'A hidden robot is sorting. Which one is it?',
+    brief: 'A hidden robot is sorting these bars. Work out which one it is from what it does.',
     hint: 'Robots leave fingerprints. Does it ever swap two bars? Does it ever place a bar? Does it ever look at two bars to compare them?',
     n: 8,
     pool: [ALG.BUBBLE, ALG.MERGE, ALG.RADIX]
   },
   {
-    kind: 'best',
+    kind: 'race',
     title: 'Almost Done',
-    blurb: 'The list is nearly sorted. Which robot has the least to do?',
+    brief: 'The list is nearly sorted. Which robot finishes with the fewest steps?',
     hint: 'Count what each robot MUST do even here. Some check every pair no matter how tidy the list already is.',
     n: 10,
     shape: 'nearly-sorted',
@@ -348,34 +372,87 @@ export const PUZZLES: Puzzle[] = [
     lesson: 'Insertion Sort only has to slide the one or two bars that are out of place. Bubble Sort checks every pair anyway, and Quick Sort (which pivots on the last bar) hits its worst case on a list that is already nearly in order.'
   },
   {
-    kind: 'mystery',
+    kind: 'identify',
     title: 'Neighbours or Not?',
-    blurb: 'Three robots that all swap. Tell them apart.',
+    brief: 'Three robots that all swap. Tell them apart.',
     hint: 'All three swap, so watch WHICH bars it looks at. Always neighbours? Does it turn around and walk back left? Does it scan a long way before its first swap?',
     n: 9,
     pool: [ALG.BUBBLE, ALG.INSERTION, ALG.SELECTION]
   },
   {
-    kind: 'best',
+    kind: 'race',
     title: 'Backwards',
-    blurb: 'The list is in exactly the wrong order. Who wins now?',
-    hint: 'A backwards list is every robot\'s worst day — unless a robot doesn\'t care about order at all.',
+    brief: 'The list is in exactly the wrong order. Which robot wins now?',
+    hint: "A backwards list is every robot's worst day, unless a robot doesn't care about order at all.",
     n: 10,
     shape: 'reversed',
     candidates: [ALG.BUBBLE, ALG.SELECTION, ALG.MERGE, ALG.RADIX],
-    lesson: 'A backwards list is Bubble Sort\'s worst day: every bar has to travel the whole way. Radix Sort never compares bars, so backwards costs it exactly what any order does: one placement per bar per binary digit.'
+    lesson: "A backwards list is Bubble Sort's worst day: every bar has to travel the whole way. Radix Sort never compares bars, so backwards costs it exactly what any order does: one placement per bar per binary digit."
   },
   {
-    kind: 'mystery',
+    kind: 'identify',
     title: 'Cold Case',
-    blurb: 'Any of the seven could be behind this one.',
-    hint: 'Rule robots out one at a time. What is the very first thing it does? Which bars does it compare against — a neighbour, a far-off bar, or none at all?',
+    brief: 'Any of the seven could be behind this one.',
+    hint: 'Rule robots out one at a time. What is the very first thing it does? Which bars does it compare against: a neighbour, a far-off bar, or none at all?',
     n: 12,
     pool: ALL_SEVEN
+  },
+  /* ---- added later: indices 5-9 ---- */
+  {
+    kind: 'flip',
+    title: 'Flip Flop',
+    brief: 'Click a bar to flip it and every bar to its left. Sort short to tall in as few flips as you can.',
+    hint: 'Park the tallest bar on the far right first. To do that, flip it to the far left, then flip the whole row. Then repeat with what is left.',
+    n: 5,
+    minPar: 4
+  },
+  {
+    kind: 'count',
+    title: 'Count the Swaps',
+    brief: 'How many swaps will this robot make to sort the list?',
+    hint: 'Every swap fixes exactly one pair of bars that are the wrong way round. So count the wrong-way pairs: a taller bar sitting somewhere to the left of a shorter one.',
+    n: 6,
+    pool: [ALG.BUBBLE, ALG.INSERTION]
+  },
+  {
+    kind: 'afterPass',
+    title: 'After One Pass',
+    brief: "Follow the robot's rule by hand. Which picture shows the list right after its first pass?",
+    hint: 'Do the pass slowly on the starting list, one bar at a time. Some pictures are what a DIFFERENT robot would make, and some are almost right.',
+    n: 7,
+    pool: [ALG.BUBBLE, ALG.SELECTION, ALG.INSERTION, ALG.RADIX]
+  },
+  {
+    kind: 'swapAny',
+    title: 'Swap Any Two',
+    brief: 'Click two bars to swap them, however far apart. Sort short to tall in as few swaps as you can.',
+    hint: 'Every swap can put a bar in its final spot. Look for two bars that each belong where the other one is, and for a chain of bars that belong one place along.',
+    n: 7,
+    minPar: 4
+  },
+  {
+    kind: 'worst',
+    title: 'Worst Day',
+    brief: 'Arrange the bars to give this robot the hardest possible day, then run it and reach the goal.',
+    hint: 'The robot only works hard when its comparisons keep leading to swaps. Which arrangement makes that happen every time?',
+    n: 6,
+    pool: [ALG.BUBBLE, ALG.INSERTION, ALG.QUICK],
+    goalFraction: 0.9,
+    algHints: {
+      [ALG.BUBBLE]: 'Bubble Sort swaps once for every pair that is the wrong way round. Which list has the MOST wrong-way pairs?',
+      [ALG.INSERTION]: 'Insertion Sort slides each bar back past every taller bar. Which list makes every bar slide all the way?',
+      [ALG.QUICK]: 'Quick Sort pivots on the LAST bar. What if the pivot is always the smallest or the tallest bar, so it never splits the list in two?'
+    }
   }
 ];
 
-export function makeBestList(p: BestPuzzle, rng: Rng): number[] {
+/** Extra steps over par that still count as solved. */
+export const PAR_SLACK = 1;
+export const starsForMoves = (moves: number, par: number): number => (moves <= par ? 3 : moves <= par + PAR_SLACK ? 2 : 1);
+
+/* ---------- Which Robot Wins? ---------- */
+
+export function makeRaceList(p: RacePuzzle, rng: Rng): number[] {
   const v: number[] = [];
   for (let i = 0; i < p.n; i++) v.push(i + 1);
   if (p.shape === 'reversed') return v.reverse();
@@ -392,18 +469,20 @@ export function makeBestList(p: BestPuzzle, rng: Rng): number[] {
   return v;
 }
 
-export interface BestResult extends StepCounts { alg: AlgId }
-export interface BestOutcome { results: BestResult[]; winner: AlgId; runnerUp: AlgId; margin: number }
+export interface RaceResult extends StepCounts { alg: AlgId }
+export interface RaceOutcome { results: RaceResult[]; winner: AlgId; runnerUp: AlgId; margin: number }
 
 /** Race every candidate on the same list. `margin` = runner-up steps ÷ winner steps. */
-export function evaluateBest(p: BestPuzzle, list: readonly number[]): BestOutcome {
-  const results: BestResult[] = p.candidates.map((alg) => ({ alg, ...countSteps(buildSteps(alg, list)) }));
+export function evaluateRace(p: RacePuzzle, list: readonly number[]): RaceOutcome {
+  const results: RaceResult[] = p.candidates.map((alg) => ({ alg, ...countSteps(buildSteps(alg, list)) }));
   const sorted = results.slice().sort((x, y) => x.total - y.total);
   return { results, winner: sorted[0].alg, runnerUp: sorted[1].alg, margin: sorted[1].total / sorted[0].total };
 }
 
-/** A recorded Mystery Robot run, plus how soon a careful watcher could name it. */
-export interface MysteryRound {
+/* ---------- Who's That Robot? ---------- */
+
+/** A recorded run, plus how soon a careful watcher could name the robot. */
+export interface IdentifyRound {
   start: number[];
   alg: AlgId;
   steps: Step[];
@@ -435,8 +514,8 @@ export function decisiveAt(alg: AlgId, start: readonly number[], steps: readonly
 /** A round is only kept if the evidence shows up early enough to reason from. */
 export const DECISIVE_FRACTION = 0.4;
 
-export function makeMysteryRound(p: MysteryPuzzle, rng: Rng): MysteryRound {
-  let last: MysteryRound | null = null;
+export function makeIdentifyRound(p: IdentifyPuzzle, rng: Rng): IdentifyRound {
+  let last: IdentifyRound | null = null;
   for (let attempt = 0; attempt < 500; attempt++) {
     const alg = p.pool[Math.floor(rng() * p.pool.length)];
     const start = randomUnsorted(p.n, rng);
@@ -445,5 +524,258 @@ export function makeMysteryRound(p: MysteryPuzzle, rng: Rng): MysteryRound {
     last = { start, alg, steps, decisiveAt: d };
     if (d >= 0 && d <= Math.ceil(steps.length * DECISIVE_FRACTION)) return last;
   }
-  return last as MysteryRound;
+  return last as IdentifyRound;
+}
+
+/* ---------- After One Pass ---------- */
+
+/** What "one pass" means for each robot, in words a player can follow by hand. */
+export const PASS_RULE: Partial<Record<AlgId, string>> = {
+  [ALG.BUBBLE]: 'One pass of Bubble Sort: compare each neighbouring pair from left to right, swapping any pair that is the wrong way round.',
+  [ALG.SELECTION]: 'One pass of Selection Sort: scan the whole list for the smallest bar, then swap it into the first slot.',
+  [ALG.INSERTION]: 'Insertion Sort takes the bars one at a time from the left and slides each back until it fits. Show the list after the first three bars have been slotted in.',
+  [ALG.RADIX]: 'One pass of Radix Sort (the last binary digit): move every bar whose last digit is 0 to the front, keeping their order, then every bar whose last digit is 1, keeping their order.'
+};
+
+/**
+ * How many recorded steps make up the robot's "first pass" (see `PASS_RULE`).
+ * Bubble, Selection: the first n-1 looks, plus the swap(s) that belong to them.
+ * Insertion: whatever it takes to slot in the first three bars (independent of the rest).
+ * Radix: the n placements of the first binary digit.
+ */
+export function passEnd(alg: AlgId, start: readonly number[], steps: readonly Step[]): number {
+  const n = start.length;
+  if (alg === ALG.RADIX) return n;
+  if (alg === ALG.INSERTION) return buildSteps(ALG.INSERTION, start.slice(0, 3)).length;
+  let looks = 0, k = 0;
+  while (k < steps.length && looks < n - 1) { if (steps[k].type === 0) looks++; k++; }
+  while (k < steps.length && steps[k].type === 1) k++;     /* the swaps that belong to the last look */
+  return k;
+}
+
+/** One of the pictures offered, and what it REALLY is — told to the player once they've picked. */
+export interface AfterPassOption { values: number[]; why: string }
+
+export interface AfterPassRound {
+  start: number[];
+  alg: AlgId;
+  /** Four distinct arrangements of the same bars, exactly one of which is right. */
+  options: AfterPassOption[];
+  answer: number;
+}
+
+const sameList = (a: readonly number[], b: readonly number[]) => a.length === b.length && a.every((v, i) => v === b[i]);
+
+/** Is `v` an arrangement of exactly the bars 1..n? (Radix writes in place, so a half-finished pass is not.) */
+export function isPermutation(v: readonly number[]): boolean {
+  const seen = new Array<boolean>(v.length + 1).fill(false);
+  for (const x of v) { if (x < 1 || x > v.length || seen[x]) return false; seen[x] = true; }
+  return true;
+}
+
+export function makeAfterPassRound(p: AfterPassPuzzle, rng: Rng): AfterPassRound {
+  for (let attempt = 0; attempt < 200; attempt++) {
+    const alg = p.pool[Math.floor(rng() * p.pool.length)];
+    const start = randomUnsorted(p.n, rng);
+    const steps = buildSteps(alg, start);
+    const correct = applySteps(start, steps.slice(0, passEnd(alg, start, steps)));
+    if (sameList(correct, start)) continue;                      /* a pass that changed nothing teaches nothing */
+
+    /* Distractors, best first: what a DIFFERENT robot's pass would make, a pass that
+       stopped half-way or ran on too far, and an almost-right list with two neighbours swapped. */
+    const cands: AfterPassOption[] = [];
+    for (const other of p.pool) {
+      if (other === alg) continue;
+      const os = buildSteps(other, start);
+      cands.push({ values: applySteps(start, os.slice(0, passEnd(other, start, os))), why: `what ${ALGO_NAME[other]}'s pass would make` });
+    }
+    const k = passEnd(alg, start, steps);
+    cands.push({ values: applySteps(start, steps.slice(0, Math.max(1, Math.floor(k / 2)))), why: 'the list part-way through the pass, before it had finished' });
+    cands.push({ values: applySteps(start, steps.slice(0, Math.min(steps.length, k + Math.max(2, Math.floor(k / 2))))), why: 'the list after the robot carried on past the end of the pass' });
+    const at = Math.floor(rng() * (p.n - 1));
+    const near = correct.slice(); const t = near[at]; near[at] = near[at + 1]; near[at + 1] = t;
+    cands.push({ values: near, why: 'almost right, but two neighbouring bars are the wrong way round' });
+    cands.push({ values: start.slice(), why: 'the starting list, before the robot had done anything' });
+
+    const picked: AfterPassOption[] = [];
+    for (const c of cands) {
+      if (!isPermutation(c.values) || sameList(c.values, correct) || picked.some((q) => sameList(q.values, c.values))) continue;
+      picked.push(c);
+      if (picked.length === 3) break;
+    }
+    if (picked.length < 3) continue;
+
+    const options: AfterPassOption[] = [{ values: correct, why: 'the list right after the pass' }, ...picked];
+    for (let i = options.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      const tmp = options[i]; options[i] = options[j]; options[j] = tmp;
+    }
+    return { start, alg, options, answer: options.findIndex((o) => sameList(o.values, correct)) };
+  }
+  throw new Error('makeAfterPassRound: could not build a fair round');
+}
+
+/* ---------- Count the Swaps ---------- */
+
+export interface CountRound {
+  start: number[];
+  alg: AlgId;
+  /** The number of swaps the robot will make. */
+  answer: number;
+  /** Every pair of bars that is the wrong way round, as [taller, shorter]. */
+  pairs: [number, number][];
+}
+
+/** Pairs [a, b] where a sits somewhere left of b and a > b. */
+export function inversionPairs(v: readonly number[]): [number, number][] {
+  const out: [number, number][] = [];
+  for (let i = 0; i < v.length; i++) for (let j = i + 1; j < v.length; j++) if (v[i] > v[j]) out.push([v[i], v[j]]);
+  return out;
+}
+
+export function makeCountRound(p: CountPuzzle, rng: Rng): CountRound {
+  const maxInv = (p.n * (p.n - 1)) / 2;
+  for (let attempt = 0; attempt < 500; attempt++) {
+    const alg = p.pool[Math.floor(rng() * p.pool.length)];
+    const start = randomUnsorted(p.n, rng);
+    const inv = inversions(start);
+    if (inv < Math.ceil(maxInv * 0.35) || inv > Math.floor(maxInv * 0.8)) continue;   /* not trivially few, not a wall of pairs */
+    return { start, alg, answer: countSteps(buildSteps(alg, start)).swaps, pairs: inversionPairs(start) };
+  }
+  throw new Error('makeCountRound: could not build a fair round');
+}
+
+/* ---------- Flip Flop (pancake sorting) ---------- */
+
+/** Reverse the first `k` bars. */
+export function flipPrefix(v: readonly number[], k: number): number[] {
+  const r = v.slice();
+  for (let a = 0, b = k - 1; a < b; a++, b--) { const t = r[a]; r[a] = r[b]; r[b] = t; }
+  return r;
+}
+
+const flipCache = new Map<number, Map<string, number>>();
+
+/**
+ * Fewest flips to sort every arrangement of 1..n, by breadth-first search outward
+ * from the sorted list. Flips undo themselves, so distance FROM sorted equals
+ * distance TO it. n ≤ 7 keeps this instant (7! = 5040).
+ */
+export function flipTable(n: number): Map<string, number> {
+  const hit = flipCache.get(n);
+  if (hit) return hit;
+  const dist = new Map<string, number>();
+  const sorted: number[] = [];
+  for (let i = 1; i <= n; i++) sorted.push(i);
+  dist.set(sorted.join(','), 0);
+  let frontier = [sorted];
+  while (frontier.length) {
+    const next: number[][] = [];
+    for (const v of frontier) {
+      const d = dist.get(v.join(',')) as number;
+      for (let k = 2; k <= n; k++) {
+        const w = flipPrefix(v, k);
+        const key = w.join(',');
+        if (!dist.has(key)) { dist.set(key, d + 1); next.push(w); }
+      }
+    }
+    frontier = next;
+  }
+  flipCache.set(n, dist);
+  return dist;
+}
+
+export interface MovesRound { start: number[]; par: number }
+
+export function makeFlipRound(p: FlipPuzzle, rng: Rng): MovesRound {
+  const table = flipTable(p.n);
+  for (let attempt = 0; attempt < 1000; attempt++) {
+    const start = randomUnsorted(p.n, rng);
+    const par = table.get(start.join(',')) as number;
+    if (par >= p.minPar) return { start, par };
+  }
+  throw new Error('makeFlipRound: could not build a fair round');
+}
+
+/* ---------- Swap Any Two ---------- */
+
+/** Fewest swaps of ANY two bars to sort: n minus the number of cycles. */
+export function minSwaps(v: readonly number[]): number {
+  const seen = new Array<boolean>(v.length).fill(false);
+  let cycles = 0;
+  for (let i = 0; i < v.length; i++) {
+    if (seen[i]) continue;
+    cycles++;
+    for (let j = i; !seen[j]; j = v[j] - 1) seen[j] = true;
+  }
+  return v.length - cycles;
+}
+
+export function makeSwapRound(p: SwapAnyPuzzle, rng: Rng): MovesRound {
+  for (let attempt = 0; attempt < 1000; attempt++) {
+    const start = randomUnsorted(p.n, rng);
+    const par = minSwaps(start);
+    if (par >= p.minPar) return { start, par };
+  }
+  throw new Error('makeSwapRound: could not build a fair round');
+}
+
+/* ---------- Worst Day ---------- */
+
+/** Call `visit` with every arrangement of 1..n (Heap's algorithm; the array is reused). */
+export function forEachPermutation(n: number, visit: (perm: number[]) => void): void {
+  const a: number[] = [];
+  for (let i = 1; i <= n; i++) a.push(i);
+  const c = new Array<number>(n).fill(0);
+  visit(a);
+  let i = 0;
+  while (i < n) {
+    if (c[i] < i) {
+      const j = i % 2 === 0 ? 0 : c[i];
+      const t = a[j]; a[j] = a[i]; a[i] = t;
+      visit(a);
+      c[i]++;
+      i = 0;
+    } else { c[i] = 0; i++; }
+  }
+}
+
+export interface WorstInfo {
+  /** The most steps any arrangement can cost this robot. */
+  max: number;
+  /** One arrangement that achieves it. */
+  example: number[];
+  /** Number of arrangements costing at least each total: `atLeast(g)`. */
+  atLeast: (g: number) => number;
+  total: number;
+}
+
+const worstCache = new Map<string, WorstInfo>();
+
+/** Brute force: run the robot on every arrangement of n bars. n ≤ 7 keeps this instant. */
+export function worstInfo(alg: AlgId, n: number): WorstInfo {
+  const key = `${alg}:${n}`;
+  const hit = worstCache.get(key);
+  if (hit) return hit;
+  const tally = new Map<number, number>();
+  let max = -1, example: number[] = [], total = 0;
+  forEachPermutation(n, (perm) => {
+    const cost = countSteps(buildSteps(alg, perm)).total;
+    tally.set(cost, (tally.get(cost) || 0) + 1);
+    total++;
+    if (cost > max) { max = cost; example = perm.slice(); }
+  });
+  const atLeast = (g: number) => { let c = 0; tally.forEach((count, cost) => { if (cost >= g) c += count; }); return c; };
+  const info = { max, example, atLeast, total };
+  worstCache.set(key, info);
+  return info;
+}
+
+export const worstGoal = (p: WorstPuzzle, alg: AlgId): number => Math.ceil(p.goalFraction * worstInfo(alg, p.n).max);
+
+export interface WorstRound { alg: AlgId; start: number[]; goal: number; max: number }
+
+export function makeWorstRound(p: WorstPuzzle, rng: Rng): WorstRound {
+  const alg = p.pool[Math.floor(rng() * p.pool.length)];
+  return { alg, start: randomUnsorted(p.n, rng), goal: worstGoal(p, alg), max: worstInfo(alg, p.n).max };
 }

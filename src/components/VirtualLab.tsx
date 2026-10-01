@@ -32,7 +32,7 @@ const GAMES: { id: GameId; title: string; tagline: string; field: string; icon: 
   { id: 'spectra', title: 'Starlight Decoder', tagline: "Read a star's absorption lines to find its composition, temperature, and motion.", field: 'Astronomy · Spectroscopy', icon: Telescope, badge: 'Astrophysicist' },
   { id: 'reactor', title: 'Reactor Line', tagline: 'Balance equations and pipe reagents through a factory that obeys conservation of mass.', field: 'Chemistry · Math', icon: Factory, badge: 'Chemical Engineer' },
   { id: 'cave', title: 'SFCave', tagline: 'The original Flappy Bird, on Windows 3.1.', field: 'Physics · Reflexes', icon: Flashlight, badge: 'Spelunker' },
-  { id: 'sort', title: 'Sort Squad', tagline: 'Work out which hidden robot is sorting, and which one wins, using real sorting algorithms.', field: 'Computer Science · Algorithms', icon: ArrowUpDown, badge: 'Algorithmist' },
+  { id: 'sort', title: 'Sort Squad', tagline: 'Ten sorting puzzles: unmask a hidden robot, predict its first pass, even build the list that gives it its worst day.', field: 'Computer Science · Algorithms', icon: ArrowUpDown, badge: 'Algorithmist' },
   { id: 'adventure', title: 'Chemistry Text Adventure', tagline: 'A choose-your-own-path chemistry story hosted on its own site.', field: 'Chemistry · Storytelling', icon: ScrollText, badge: 'Adventurer' }
 ];
 
