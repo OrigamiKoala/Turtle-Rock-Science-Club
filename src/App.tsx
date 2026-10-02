@@ -23,6 +23,7 @@ import ConfirmEmailModal from './components/ConfirmEmailModal';
 import LoginModal from './components/LoginModal';
 import ResetPasswordModal from './components/ResetPasswordModal';
 import SignupModal from './components/SignupModal';
+import EcologyGame from './components/EcologyGame';
 
 import { Trophy, Star, MailCheck, Mail, X, Loader2 } from 'lucide-react';
 
@@ -113,7 +114,8 @@ export default function App() {
   // /join being reachable but un-navigated-to) — an admin gets this URL
   // directly, not through the nav. See CLAUDE.md's Admin Hub section.
   const isAdminPage = pathname === '/admin' || pathname.startsWith('/admin');
-  const isHomeHero = currentTab === 'home' && !isTitrationPage && !isJoinPage && !isAdminPage;
+  const isEcologyPage = pathname === '/ecology' || pathname === '/ecology/' || pathname.startsWith('/ecology');
+  const isHomeHero = currentTab === 'home' && !isTitrationPage && !isJoinPage && !isAdminPage && !isEcologyPage;
   // Drives the Hero scroll sequence across moments. Only active
   // (listens for wheel/touch/key input, locks document scroll) while
   // isHomeHero is true.
@@ -437,6 +439,10 @@ export default function App() {
   // (staff, not visitors) and gates itself behind its own password screen.
   if (isAdminPage) {
     return <AdminHub onExit={() => navigateTo('/')} />;
+  }
+
+  if (isEcologyPage) {
+    return <EcologyGame />;
   }
 
   // A genuine separate screen, not a modal over the rest of the site — no

@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ecology: Infinite Food Web</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#07100a;color:#eef7eb;font-family:system-ui,-apple-system,Segoe UI,sans-serif;overflow:hidden}
+#app{height:100vh;display:flex;flex-direction:column}.top{height:78px;background:#101a14;border-bottom:2px solid #2d4932;display:flex;align-items:center;gap:9px;padding:8px 11px;z-index:5}
+.logo{font-size:23px;font-weight:900;color:#84e64b;min-width:245px}.logo small{display:block;color:#a9baac;font-size:9px;letter-spacing:2px}
+.stat{background:#17241b;border:1px solid #355039;border-radius:10px;padding:7px 11px;min-width:122px}.stat b{display:block;font-size:15px}.stat span{font-size:11px;color:#b7c5b9}.bar{height:8px;background:#29382b;border-radius:8px;overflow:hidden;margin-top:4px}.fill{height:100%;background:#8edb45}.water .fill{background:#2bb8e5}.breath .fill{background:#c9e8ff}
+.objective{margin-left:auto;background:#17241b;border:1px solid #355039;border-radius:10px;padding:8px 12px;font-size:11px;max-width:320px}
+.main{flex:1;display:flex;min-height:0}.side{width:225px;background:#101a14;padding:9px;overflow:auto;border-right:2px solid #2d4932}.right{border-left:2px solid #2d4932;border-right:0}
+.panel{background:#122017;border:1px solid #304b35;border-radius:10px;padding:9px;margin-bottom:9px}.panel h3{font-size:12px;margin:0 0 7px}
+.org{display:flex;align-items:center;gap:7px;padding:7px;border:1px solid #304a35;border-radius:8px;margin:5px 0;cursor:default}.org.selected{border-color:#91e64d;background:#1c321f}.org.locked{opacity:.42}.org .emoji{font-size:25px}.org small{color:#a9b8ab}.lockIcon{display:none;margin-left:auto;font-size:13px}.org.locked .lockIcon{display:inline}
+#gameWrap{flex:1;position:relative;overflow:hidden;background:#6eae43}canvas{width:100%;height:100%;display:block}
+#game3d{position:absolute;top:0;left:0;z-index:1;cursor:grab}#game3d:active{cursor:grabbing}
+.mode-toggle{position:absolute;top:11px;right:11px;background:#12231aeF;border:1px solid #71955d;border-radius:9px;padding:8px 14px;font-size:11px;z-index:6;cursor:pointer;color:#eef7eb}.mode-toggle:hover{background:#1c321f}
+#crosshair{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:3;display:none;pointer-events:none;color:#ffffffcc;font-size:17px;text-shadow:0 0 4px #0008}
+#shield{position:absolute;top:44px;left:50%;transform:translateX(-50%);background:#123a4eef;border:1px solid #57b6d8;border-radius:11px;padding:6px 14px;font-size:11px;z-index:4;display:none;pointer-events:none;color:#d6f1ff}
+#tip{position:absolute;top:11px;left:50%;transform:translateX(-50%);background:#12231aeF;border:1px solid #71955d;border-radius:11px;padding:7px 14px;font-size:11px;pointer-events:none;z-index:2;white-space:nowrap}
+.controls{position:absolute;bottom:9px;left:9px;background:#102019eF;border:1px solid #49634b;border-radius:9px;padding:8px;font-size:10px;z-index:2}
+#toast{position:absolute;bottom:48px;left:50%;transform:translateX(-50%);background:#15271bee;border:1px solid #86b961;border-radius:10px;padding:9px 14px;display:none;z-index:8}
+.guide button,.quizBtn{width:100%;background:#10231a;color:#dff0df;border:1px solid #31513a;padding:8px;margin:3px 0;border-radius:7px;text-align:left;cursor:pointer}.guide button:hover,.quizBtn:hover{background:#1d3b27}
+.log{font-size:10px;line-height:1.35;max-height:155px;overflow:auto}.log div{padding:4px;border-bottom:1px solid #22352a}
+#mini{width:100%;height:125px;background:#09130d;border-radius:8px;border:1px solid #304a35}
+.poprow{padding:3px 0;font-size:11px}.poprow span{float:right}
+.modal{position:absolute;inset:0;background:#06100bd9;display:none;align-items:center;justify-content:center;z-index:20}.modalBox{width:min(650px,92%);max-height:86vh;overflow:auto;background:#14231a;border:2px solid #739b5f;border-radius:15px;padding:20px;box-shadow:0 20px 70px #000}.modalBox h2{margin-top:0;color:#9be85d}.close{float:right;background:none;border:0;color:white;font-size:22px;cursor:pointer}
+.challenge{background:#1a3120;border-left:4px solid #8cda45;padding:10px;margin:10px 0}.answers button{display:block;width:100%;padding:9px;margin:6px 0;border:1px solid #456b4d;border-radius:8px;background:#102219;color:white;text-align:left;cursor:pointer}.answers button:hover{background:#25472e}.answers button:disabled{cursor:default}
+.badge{display:inline-block;border:1px solid #5f7c59;border-radius:99px;padding:3px 7px;margin:2px;font-size:9px}
+.qtimerbar{height:10px;background:#29382b;border-radius:8px;overflow:hidden;margin-top:9px}.qtimerfill{height:100%;background:#e0544c;width:100%}
+@media(max-width:1050px){.side{width:185px}.logo{min-width:170px;font-size:18px}.objective{display:none}}
+</style>
+</head>
+<body>
+<div id="app">
+<header class="top">
+ <div class="logo">🌎 ECOLOGY <small>INFINITE FOOD WEB</small></div>
+ <div class="stat">🗺️ <b id="biomeTop">Grassland</b><span id="coord">0, 0</span></div>
+ <div class="stat">🏆 <b id="level">Level 1</b><span id="role">Primary consumer</span></div>
+ <div class="stat">⚡ Energy <b id="energyText">80/100</b><div class="bar"><div id="energyFill" class="fill" style="width:80%"></div></div></div>
+ <div class="stat water">💧 Water <b id="waterText">75/100</b><div class="bar"><div id="waterFill" class="fill" style="width:75%"></div></div></div>
+ <div class="stat breath">🌬️ Breath <b id="breathText">100/100</b><div class="bar"><div id="breathFill" class="fill" style="width:100%"></div></div></div>
+ <div class="objective">🏆 <b>Goal:</b> answer hard ecology questions (trophic levels, energy/biomass pyramids, carbon/nitrogen/phosphorus cycles, and species interactions) in 15 seconds. Eating, reproducing, and escaping predators all earn skill points, which climb you up the food chain — higher levels need more points. Hold Shift to sprint. Missing a predator question is fatal, and you can't swim into deep water.</div>
+</header>
+<main class="main">
+<aside class="side">
+ <div class="panel"><h3>🪜 YOUR FOOD-CHAIN STAGE</h3>
+  <div class="org selected" data-kind="grasshopper"><span class="emoji">🦗</span><div><b>Grasshopper</b><br><small>Level 1 • primary consumer</small></div><span class="lockIcon">🔒</span></div>
+  <div class="org locked" data-kind="frog"><span class="emoji">🐸</span><div><b>Frog</b><br><small>Level 2 • secondary consumer</small></div><span class="lockIcon">🔒</span></div>
+  <div class="org locked" data-kind="snake"><span class="emoji">🐍</span><div><b>Snake</b><br><small>Level 3 • secondary consumer</small></div><span class="lockIcon">🔒</span></div>
+  <div class="org locked" data-kind="hawk"><span class="emoji">🦅</span><div><b>Hawk</b><br><small>Level 4 • tertiary consumer</small></div><span class="lockIcon">🔒</span></div>
+  <p style="font-size:9px;color:#aebdaf;margin:6px 0 0">You always start as a grasshopper. Earn skill points by eating, reproducing, and escaping predators to automatically advance to the next stage — you can't pick a stage directly.</p>
+ </div>
+ <div class="panel"><h3>🧬 YOUR REPRODUCTION</h3>
+  <div id="sexText">Sex: —</div><div id="reproText">Find a compatible mate, then answer a question.</div>
+ </div>
+ <div class="panel"><h3>✨ SKILL POINTS</h3>
+  <div id="progressText">0 / 50 skill pts</div><div class="bar"><div id="progressFill" class="fill" style="width:0%"></div></div>
+  <p style="font-size:9px;color:#aebdaf">Earn skill points by eating, reproducing, and escaping predators. Higher trophic levels need more points to advance.</p>
+ </div>
+ <div class="panel guide"><h3>📖 ECOLOGY GUIDE</h3>
+  <button onclick="showInfo('biomes')">Biome blending</button>
+  <button onclick="showInfo('food')">Trophic levels & food webs</button>
+  <button onclick="showInfo('biomass')">Biomass & energy pyramids</button>
+  <button onclick="showInfo('carbon')">Carbon cycle</button>
+  <button onclick="showInfo('nitrogen')">Nitrogen cycle</button>
+  <button onclick="showInfo('phosphorus')">Phosphorus cycle</button>
+  <button onclick="showInfo('interactions')">Species interactions</button>
+  <button onclick="showInfo('population')">Population & reproduction</button>
+  <button onclick="showInfo('survivorship')">Survivorship curves</button>
+  <button onclick="showInfo('water')">Water, lakes & drowning</button>
+  <button onclick="showInfo('city')">City & hazards</button>
+ </div>
+</aside>
+<section id="gameWrap">
+ <canvas id="game"></canvas>
+ <canvas id="game3d" style="display:none"></canvas>
+ <div id="crosshair">✛</div>
+ <div id="shield">🛡️ Spawn protection: <b id="shieldTime">10</b>s — predators can't touch you</div>
+ <button class="mode-toggle" id="toggle3d" onclick="toggle3D()">🎥 3D View</button>
+ <div id="tip">WASD / arrows = move • Shift = sprint • E = interact • R = reproduce • I = info</div>
+ <div id="toast"></div>
+ <div class="controls">🎮 <b>Move</b> WASD/arrows &nbsp; 🏃 <b>Sprint</b> Shift &nbsp; 🍽️ <b>Eat</b> E &nbsp; 🧬 <b>Reproduce</b> R &nbsp; 🔎 <b>Info</b> I</div>
+ <div class="modal" id="modal"><div class="modalBox"><button class="close" onclick="closeModal()">×</button><div id="modalContent"></div></div></div>
+</section>
+<aside class="side right">
+ <div class="panel"><h3>🗺️ LOCAL MAP</h3><canvas id="mini"></canvas><div style="font-size:8px;color:#aebdaf;margin-top:4px">The world generates as you explore.</div></div>
+ <div class="panel"><h3>👥 POPULATIONS</h3><div id="pop"></div></div>
+ <div class="panel"><h3>📜 EVENT LOG</h3><div class="log" id="log"></div></div>
+ <div class="panel"><h3>🧠 ECOLOGY QUESTION</h3><div id="challenge">Questions appear when you try to eat or reproduce. You get 15 seconds to answer. Missing a predator question ends your run.</div></div>
+</aside>
+</main>
+</div>
+<script>
+const c=document.getElementById('game'),ctx=c.getContext('2d'),mini=document.getElementById('mini'),mctx=mini.getContext('2d');
+let W,H,dpr,last=0,keys={},day=1,minutes=0,questionLock=false,questionPurpose='',lostLock=false;
+let cam={x:0,y:0},worldSeed=48291;
+const CHUNK=650;
+const TILE=50; // gameplay "block" unit — used for chase/safe radius distances, unrelated to visuals
+const TERRAIN_RES=25; // terrain color sampling resolution — finer than TILE so the smooth climate
+                       // blend actually reads as smooth on screen instead of showing flat color bands
+let terrainCache=new Map();
+// --- First-person 3D mode state ---
+const SCALE=0.04; // converts world px units into Three.js scene units
+const EYE_HEIGHT=1.6;
+const GROUND_TILES=44; // ground mesh spans 44x44 tiles around the player, with vertex-blended colors
+const GROUND_SEGS=26; // mesh subdivisions across that span — terrain varies on a ~820px scale, so a
+                      // coarser mesh than one-vertex-per-tile loses no visible detail and rebuilds ~3x faster
+const HILL=2.6; // amplitude of 3D terrain elevation, in scene units
+// Rolling elevation for the 3D view only — the simulation itself stays 2D, so this is purely visual.
+// Two octaves give broad hills with smaller undulations on top instead of one uniform wave.
+function heightAt(x,y){
+ return ((noise(x/820+11,y/820-7)-0.5)*1.0+(noise(x/260-3,y/260+5)-0.5)*0.32)*HILL;
+}
+// Fixed sun direction used to shade terrain slopes; the slope itself is derived from the height grid
+// in updateGroundColors, which avoids re-sampling the terrain four extra times per vertex.
+const SUN=(function(){let v=[0.45,1,0.3],l=Math.hypot(v[0],v[1],v[2]);return [v[0]/l,v[1]/l,v[2]/l]})();
+let mode3D=false,three=null,emojiTexCache={};
+// Each biome occupies a position in temperature/moisture space (0=cold/dry, 1=hot/wet), the same
+// idea behind a real-world Whittaker biome diagram. Terrain color blends continuously across ALL
+// biomes based on distance in this space, rather than just between two neighbors in a list — this
+// is what gives smooth, organic-looking transitions instead of a handful of visible color bands.
+const biomes=[
+ {name:'Tundra',color:'#b9d2d0',weight:1.0,t:0.06,m:0.38},
+ {name:'Taiga',color:'#4c7e52',weight:1.2,t:0.20,m:0.58},
+ {name:'Temperate Forest',color:'#4e934d',weight:1.5,t:0.42,m:0.62},
+ {name:'Grassland',color:'#80b94c',weight:1.7,t:0.50,m:0.38},
+ {name:'Savanna',color:'#b7aa4e',weight:1.2,t:0.70,m:0.28},
+ {name:'Desert',color:'#c8a563',weight:1.0,t:0.85,m:0.08},
+ {name:'Rainforest',color:'#2f8c55',weight:1.0,t:0.78,m:0.90},
+ {name:'Wetland',color:'#4d9b79',weight:1.1,t:0.48,m:0.86},
+ {name:'Alpine',color:'#8096a0',weight:.8,t:0.10,m:0.52},
+ {name:'Coastal',color:'#55a5b4',weight:1.0,t:0.56,m:0.72}
+];
+const defs={
+ grasshopper:{emoji:'🦗',food:'plant',speed:105,level:1,role:'Primary consumer',next:'frog',energyGain:22,pred:['frog','snake','hawk']},
+ rabbit:{emoji:'🐇',food:'plant',speed:110,level:1,role:'Primary consumer',next:'frog',energyGain:22,pred:['snake','hawk']},
+ frog:{emoji:'🐸',food:'grasshopper',speed:92,level:2,role:'Secondary consumer',next:'snake',energyGain:12,pred:['snake','hawk']},
+ snake:{emoji:'🐍',food:'frog',speed:82,level:3,role:'Secondary consumer',next:'hawk',energyGain:7,pred:['hawk']},
+ hawk:{emoji:'🦅',food:'snake',speed:105,level:4,role:'Tertiary consumer',next:null,energyGain:4,pred:[]}
+};
+const CHASE_RADIUS=TILE*5; // "5 blocks" — predators notice and actively chase the player within this range
+const SAFE_RADIUS=TILE*10; // "10 blocks" — no predator may spawn this close to you, so you can't be spawn-camped
+const SPAWN_IMMUNITY=10; // seconds of protection after a (re)spawn, so a fresh run always gets a fair start
+let player={x:0,y:0,r:18,kind:'grasshopper',sex:'',energy:80,water:75,breath:100,meals:0,skill:0,offspring:0,alive:true,wasInWater:false,immunity:SPAWN_IMMUNITY,waterBump:0};
+let animals=[],plants=[],waters=[],humans=[],fishes=[],cars=[],pedestrians=[],chunkCache=new Map(),pop={grasshopper:60,rabbit:37,frog:18,snake:8,hawk:3};
+function resize(){dpr=devicePixelRatio||1;W=c.clientWidth;H=c.clientHeight;c.width=W*dpr;c.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);if(three){three.renderer.setSize(W,H,false);three.camera.aspect=W/H;three.camera.updateProjectionMatrix()}}addEventListener('resize',resize);resize();
+// Integer bit-mixing hash. The original used Math.sin(...) on very large arguments, which forces
+// expensive floating-point argument reduction; this benchmarked ~2.3x faster with an equivalent
+// uniform [0,1) distribution. Still fully deterministic, so the world regenerates identically.
+function hash(x,y){
+ let h=Math.imul(((x*1000)|0)+0x9e3779b9,0x85ebca6b)^Math.imul(((y*1000)|0)+0xc2b2ae35,0x27d4eb2f);
+ h^=h>>>15;h=Math.imul(h,0x2c1b3c6d);h^=h>>>15;
+ return (h>>>0)/4294967296;
+}
+function noise(x,y){let x0=Math.floor(x),y0=Math.floor(y),sx=x-x0,sy=y-y0;let a=hash(x0,y0),b=hash(x0+1,y0),d=hash(x0,y0+1),e=hash(x0+1,y0+1);let u=sx*sx*(3-2*sx),v=sy*sy*(3-2*sy);return (a+(b-a)*u)+(d+(e-d)*u-a-(b-a)*u)*v}
+// Continuous biome field: domain-warped noise gives organic, jagged borders (not straight chunk edges),
+// and the fractional part is used to smoothly interpolate colors across the border — similar to how
+// Minecraft blends grass/foliage color across a biome edge instead of showing a hard color seam.
+function clamp01(v){return v<0?0:v>1?1:v}
+// Two large-scale noise fields (with a little high-frequency warp layered in for organic, non-arc
+// borders) stand in for real-world temperature and moisture gradients.
+function tempAt(x,y){return clamp01(noise(x/2100,y/2100)*0.72+noise(x/520+91,y/520-77)*0.28)}
+function moistAt(x,y){return clamp01(noise(x/2100+500,y/2100-500)*0.72+noise(x/520-33,y/520+61)*0.28)}
+const BLEND_SOFTNESS=0.05; // larger = broader, softer transition zones between biomes
+function biomeWeights(x,y){
+ let t=tempAt(x,y),m=moistAt(x,y),weights=new Array(biomes.length),sum=0;
+ for(let i=0;i<biomes.length;i++){
+  let b=biomes[i],dt=t-b.t,dm=m-b.m;
+  let w=Math.exp(-(dt*dt+dm*dm)/BLEND_SOFTNESS);
+  weights[i]=w;sum+=w;
+ }
+ if(sum>0)for(let i=0;i<biomes.length;i++)weights[i]/=sum;
+ return weights;
+}
+function biomeAt(x,y){
+ let weights=biomeWeights(x,y),best=0;
+ for(let i=1;i<biomes.length;i++)if(weights[i]>weights[best])best=i;
+ return biomes[best];
+}
+function hexToRgb(hex){let n=parseInt(hex.slice(1),16);return [(n>>16)&255,(n>>8)&255,n&255]}
+biomes.forEach(b=>b.rgb=hexToRgb(b.color)); // parse each biome colour once, not per sample
+function blendedRgbAt(x,y){
+ let weights=biomeWeights(x,y),r=0,g=0,bl=0;
+ for(let i=0;i<biomes.length;i++){let w=weights[i];if(w<=0.0008)continue;let c=biomes[i].rgb;r+=c[0]*w;g+=c[1]*w;bl+=c[2]*w}
+ return [r,g,bl];
+}
+function blendedColorAt(x,y){let c=blendedRgbAt(x,y);return 'rgb('+Math.round(c[0])+','+Math.round(c[1])+','+Math.round(c[2])+')'}
+function chunkKey(cx,cy){return cx+','+cy}
+// Each biome grows its own mix of producers, at its own density — rainforest is lush, desert is sparse.
+const plantTypes={
+ 'Tundra':['🌱','🍂'],'Taiga':['🌲','🌿','🍄'],'Temperate Forest':['🌳','🌿','🍄','🍃'],
+ 'Grassland':['🌿','🌾','🌼'],'Savanna':['🌾','🪴','🌿'],'Desert':['🌵','🪨'],
+ 'Rainforest':['🌴','🌺','🌿','🍃'],'Wetland':['🌾','🪷','🌿'],'Alpine':['🌲','🌱'],'Coastal':['🌴','🌾','🐚']
+};
+const plantDensity={'Tundra':9,'Taiga':24,'Temperate Forest':34,'Grassland':36,'Savanna':22,'Desert':7,'Rainforest':46,'Wetland':28,'Alpine':11,'Coastal':18};
+function generateChunk(cx,cy){
+ let key=chunkKey(cx,cy);if(chunkCache.has(key))return;let arr=[];
+ let baseX=cx*CHUNK,baseY=cy*CHUNK,b=biomeAt(baseX+CHUNK/2,baseY+CHUNK/2);
+ // Producers grow in irregular patches rather than an even sprinkle: pick a few patch centers, then
+ // scatter around each one. Summing two hashes approximates a bell curve, so growth thins out toward
+ // the patch edges the way real vegetation does. Each plant samples the biome at its OWN position, so
+ // a chunk straddling a border grows the right mix on each side.
+ let clusters=4+Math.floor(hash(cx*7+3,cy*11-5)*4);
+ for(let ci=0;ci<clusters;ci++){
+  let ccx=baseX+hash(cx*53+ci,cy*29+ci)*CHUNK,ccy=baseY+hash(cx*17-ci,cy*41+ci)*CHUNK;
+  // Flat base count per patch; the per-plant rejection test below is the single place biome
+  // density is applied, so lush and barren biomes differ without penalising twice.
+  let n=Math.max(1,Math.round(46/clusters*(0.7+hash(ci,cx+cy)*0.8)));
+  let spread=28+hash(ci*3,cx-cy)*62;
+  for(let i=0;i<n;i++){
+   let ox=(hash(cx*13+ci*7+i,cy*23+i)+hash(cx*3+i,cy*7+ci-i)-1)*spread;
+   let oy=(hash(cx*29+ci*5+i,cy*19+i)+hash(cx*11-i,cy*31+ci+i)-1)*spread;
+   let px=ccx+ox,py=ccy+oy;
+   let pb=biomeAt(px,py),types=plantTypes[pb.name]||['🌿'];
+   // Thin out growth using the density of the biome this plant actually landed in (not the patch
+   // center's), so a patch straddling a desert border genuinely thins as it crosses into the sand.
+   let keep=(plantDensity[pb.name]||20)/46;
+   if(hash(px*0.11-i,py*0.19+ci)>keep)continue;
+   let emoji=types[Math.floor(hash(px*0.37+i,py*0.53-i)*types.length)%types.length];
+   arr.push({x:px,y:py,kind:'plant',biome:pb.name,emoji,used:0});
+  }
+ }
+ if(b.name==='Wetland'||b.name==='Coastal'){
+  for(let i=0;i<3;i++){
+   let wx=baseX+80+hash(cx+i,cy-i)*490,wy=baseY+80+hash(cx-i,cy+i)*490,wr=55+hash(i,cx+cy)*40;
+   // A few overlapping offset circles give each lake an irregular, natural shoreline instead of a perfect circle.
+   let blobs=[0,1,2].map(k=>({dx:(hash(cx+i+k*3,cy-i-k*3)-0.5)*wr*0.8,dy:(hash(cx-i-k*3,cy+i+k*3)-0.5)*wr*0.8,r:wr*(0.55+hash(i+k,cy+cx+k)*0.55)}));
+   arr.push({x:wx,y:wy,r:wr,kind:'water',blobs});
+   let fishCount=1+Math.floor(hash(cx+i*5,cy-i*5)*3); // 1-3 fish per lake — the only wildlife adapted to swim
+   for(let f=0;f<fishCount;f++)arr.push({kind:'fish',x:wx,y:wy,homeX:wx,homeY:wy,homeR:wr*0.7,dx:Math.random()*2-1,dy:Math.random()*2-1});
+  }
+ }
+ // Cities are very rare (about a 0.5% chance per area) but bustling with roaming cars and pedestrians when they appear.
+ if(hash(cx+77,cy-41)>.995){
+  let cityX=baseX+110,cityY=baseY+110,cityW=410,cityH=340;
+  arr.push({x:cityX,y:cityY,kind:'city',w:cityW,h:cityH});
+  for(let i=0;i<4;i++)arr.push({kind:'car',x:cityX+30+hash(cx+i,cy+i*2)*(cityW-60),y:cityY+30+hash(cy+i,cx+i*2)*(cityH-60),dx:Math.random()*2-1,dy:Math.random()*2-1,homeX:cityX,homeY:cityY,homeW:cityW,homeH:cityH});
+  for(let i=0;i<6;i++)arr.push({kind:'pedestrian',x:cityX+20+hash(cx-i,cy-i*2)*(cityW-40),y:cityY+20+hash(cy-i,cx-i*2)*(cityH-40),dx:Math.random()*2-1,dy:Math.random()*2-1,homeX:cityX,homeY:cityY,homeW:cityW,homeH:cityH});
+ }
+ chunkCache.set(key,arr);
+ // Precompute a grid of smoothly-blended terrain tiles once per chunk — cheap to draw every frame after this.
+ let tiles=[];
+ for(let ty=0;ty<CHUNK;ty+=TERRAIN_RES)for(let tx=0;tx<CHUNK;tx+=TERRAIN_RES){
+  tiles.push({x:baseX+tx,y:baseY+ty,color:blendedColorAt(baseX+tx+TERRAIN_RES/2,baseY+ty+TERRAIN_RES/2)});
+ }
+ terrainCache.set(key,tiles);
+}
+let lastChunkX=null,lastChunkY=null;
+function collectLocal(cx0,cy0){
+ // Look up the 5x5 neighbourhood by key directly. The old version iterated the ENTIRE chunk cache
+ // every call, so this got steadily slower the further you explored; now the cost is constant.
+ plants=[];waters=[];humans=[];fishes=[];cars=[];pedestrians=[];
+ for(let cx=cx0-2;cx<=cx0+2;cx++)for(let cy=cy0-2;cy<=cy0+2;cy++){
+  let arr=chunkCache.get(chunkKey(cx,cy));if(!arr)continue;
+  for(let i=0;i<arr.length;i++){
+   let o=arr[i];
+   if(o.kind==='plant')plants.push(o);
+   else if(o.kind==='water')waters.push(o);
+   else if(o.kind==='city')humans.push(o);
+   else if(o.kind==='fish')fishes.push(o);
+   else if(o.kind==='car')cars.push(o);
+   else if(o.kind==='pedestrian')pedestrians.push(o);
+  }
+ }
+}
+function evictFarChunks(cx0,cy0){
+ // Without this both caches grow forever — a long session retains every chunk ever visited.
+ // Radius 5 stays well clear of the 5x5 collection window and anything draw() generates for the view.
+ for(let key of chunkCache.keys()){
+  let i=key.indexOf(','),cx=+key.slice(0,i),cy=+key.slice(i+1);
+  if(Math.abs(cx-cx0)>5||Math.abs(cy-cy0)>5){chunkCache.delete(key);terrainCache.delete(key)}
+ }
+}
+function ensureWorld(force){
+ let cx0=Math.floor(player.x/CHUNK),cy0=Math.floor(player.y/CHUNK);
+ if(force||cx0!==lastChunkX||cy0!==lastChunkY){
+  lastChunkX=cx0;lastChunkY=cy0;
+  for(let x=cx0-2;x<=cx0+2;x++)for(let y=cy0-2;y<=cy0+2;y++)generateChunk(x,y);
+  collectLocal(cx0,cy0);
+  evictFarChunks(cx0,cy0);
+ }
+ // Animals move independently of chunks, so they're still culled and topped up every frame.
+ animals=animals.filter(a=>Math.abs(a.x-player.x)<W+CHUNK&&Math.abs(a.y-player.y)<H+CHUNK);
+ while(animals.length<25){
+  let x=player.x+(Math.random()-.5)*(W+900),y=player.y+(Math.random()-.5)*(H+900),k=Object.keys(defs)[Math.floor(Math.random()*4)];
+  if(Math.random()<.08)k='hawk';
+  // Anti spawn-camping: nothing that eats you may materialise inside the safe radius. Rather than
+  // discarding the slot (which would thin the ecosystem near you), swap in a harmless herbivore.
+  if(defs[player.kind].pred.includes(k)&&Math.hypot(x-player.x,y-player.y)<SAFE_RADIUS)k=Math.random()<.5?'grasshopper':'rabbit';
+  let s=Math.random()<.5?'male':'female';
+  animals.push({x,y,kind:k,sex:s,dx:Math.random()*2-1,dy:Math.random()*2-1,mateCooldown:0,age:0});
+ }
+}
+ensureWorld();player.sex=Math.random()<.5?'male':'female';
+
+// Checks a point against each lake's real (multi-blob, irregular) shoreline rather than the coarse
+// bounding circle — margin lets us keep the player's body outside the shore instead of clipping in.
+function inWaterAt(x,y,margin){
+ margin=margin||0;
+ for(let i=0;i<waters.length;i++){
+  let w=waters[i],blobs=(w.blobs&&w.blobs.length)?w.blobs:[{dx:0,dy:0,r:w.r}];
+  for(let j=0;j<blobs.length;j++){
+   let bl=blobs[j];
+   if(Math.hypot(x-(w.x+bl.dx),y-(w.y+bl.dy))<bl.r+margin)return true;
+  }
+ }
+ return false;
+}
+function timeStr(){let total=8*60+minutes,h=Math.floor(total/60)%24,m=Math.floor(total%60);return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')}
+function log(s){let el=document.getElementById('log'),d=document.createElement('div');d.textContent='Day '+day+' · '+timeStr()+' — '+s;el.prepend(d);while(el.children.length>8)el.lastChild.remove()}
+function toast(t){let x=document.getElementById('toast');x.textContent=t;x.style.display='block';clearTimeout(window.tt);window.tt=setTimeout(()=>x.style.display='none',2200)}
+function setKind(k,fromLevel=false){player.kind=k;player.meals=0;player.skill=0;player.energy=Math.max(player.energy,55);player.sex=Math.random()<.5?'male':'female';updateOrgSidebar();if(!fromLevel)log('You started as a '+k+'. Sex: '+player.sex+'.');updateHUD()}
+function updateOrgSidebar(){
+ // The food chain is now a fixed, forced progression — no clicking to switch. This just reflects
+ // where the player currently is: the current stage is highlighted, every other stage stays locked.
+ document.querySelectorAll('.org').forEach(x=>{
+  let isCurrent=x.dataset.kind===player.kind;
+  x.classList.toggle('selected',isCurrent);
+  x.classList.toggle('locked',!isCurrent);
+ });
+}
+updateOrgSidebar();
+addEventListener('keydown',e=>{let k=e.key.toLowerCase();keys[k]=true;if([' ','arrowup','arrowdown','arrowleft','arrowright'].includes(k))e.preventDefault();if(k==='e'||k===' ')attemptEat();if(k==='r')attemptReproduce();if(k==='i')showInfo('food')});
+addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+
+// ---- Ecology question bank ----
+// diff 1 = Medium, 2 = Hard, 3 = Expert. Every question includes a short explanation shown after answering.
+const questions=[
+// Trophic levels / food chains / food webs
+{cat:'Trophic Levels',diff:1,q:"In the chain grass → grasshopper → frog → snake → hawk, which trophic level does the snake occupy?",choices:["Primary consumer","Secondary consumer","Tertiary consumer","Producer"],correct:2,explain:"Grass is the producer; grasshopper is the primary consumer; frog is the secondary consumer; snake is the tertiary consumer; hawk is the quaternary consumer."},
+{cat:'Trophic Levels',diff:2,q:"A decomposer differs from a detritivore mainly because a decomposer:",choices:["Digests dead matter outside its own body using released enzymes, rather than eating it first","Only ever grows directly on top of living, healthy plant tissue","Feeds strictly on other living animals rather than anything already dead","Absorbs energy from sunlight instead of breaking down organic material"],correct:0,explain:"Fungi and bacteria secrete enzymes to break matter down externally, while detritivores like earthworms physically consume and digest dead material internally."},
+{cat:'Trophic Levels',diff:2,q:"Why can an omnivore, like a bear, occupy more than one trophic level?",choices:["Its trophic level shifts depending on what it happens to be eating at the time","Every omnivore is technically classified as a decomposer in the food web","Omnivores automatically sit at the very top of every food chain they're in","It photosynthesizes for part of the year like a producer would"],correct:0,explain:"A bear eating berries acts as a primary consumer; the same bear eating salmon acts as a secondary or tertiary consumer."},
+{cat:'Trophic Levels',diff:3,q:"Sea otters preying on sea urchins protects kelp forests from being overgrazed. This chain reaction through multiple trophic levels is called a:",choices:["Trophic cascade","Biomass inversion","Nitrogen cascade","Competitive exclusion"],correct:0,explain:"A trophic cascade occurs when a change at one trophic level indirectly reshapes lower levels — fewer otters → more urchins → less kelp."},
+{cat:'Trophic Levels',diff:1,q:"Which sequence correctly lists increasing trophic level?",choices:["Producer → primary consumer → secondary consumer → tertiary consumer","Tertiary consumer → secondary consumer → primary consumer → producer","Secondary consumer → producer → tertiary consumer → primary consumer","Primary consumer → producer → secondary consumer → tertiary consumer"],correct:0,explain:"Energy flows from producers upward through each consumer level."},
+{cat:'Trophic Levels',diff:2,q:"Food webs are considered more realistic models of ecosystems than simple food chains because:",choices:["Most organisms feed at multiple points, creating a web of interconnected pathways","Food webs only ever include producers and no consumers at all","Food webs never involve any loss of energy between levels","Food chains always include more species than a full food web"],correct:0,explain:"A food web links many overlapping food chains, reflecting that most consumers eat — and are eaten by — more than one species."},
+{cat:'Trophic Levels',diff:2,q:"Removing an apex predator often causes 'mesopredator release.' This means:",choices:["Mid-level predators increase in number once their top predator is removed","Producers in the ecosystem gradually transform into active predators themselves","The apex predator's usual prey species goes extinct almost immediately","The efficiency of energy transfer between trophic levels jumps to 100 percent"],correct:0,explain:"Without the top predator suppressing them, smaller 'meso' predators can increase sharply, sometimes destabilizing lower trophic levels further."},
+{cat:'Trophic Levels',diff:1,q:"An apex predator's defining feature is that it:",choices:["Has no natural predators of its own within its ecosystem","Feeds exclusively on producers like grasses and other plants","Is always the smallest organism found anywhere in its food web","Can never also act as a decomposer under any circumstances"],correct:0,explain:"Apex predators sit at the top of the food chain; nothing in their ecosystem regularly preys on them."},
+// Biomass & energy pyramids
+{cat:'Biomass Pyramids',diff:2,q:"A producer level captures 1,000,000 kcal of energy. Using the ~10% energy-transfer rule, approximately how much energy reaches secondary consumers (two trophic transfers up)?",choices:["10,000 kcal","100,000 kcal","1,000 kcal","500,000 kcal"],correct:0,explain:"1,000,000 × 0.10 (to primary consumers) × 0.10 (to secondary consumers) ≈ 10,000 kcal."},
+{cat:'Biomass Pyramids',diff:3,q:"Biomass pyramids can appear inverted in some aquatic ecosystems (phytoplankton supporting zooplankton), but energy pyramids can never be inverted. Why?",choices:["Biomass is just a snapshot that can be low for fast-reproducing producers, while energy pyramids track total flow, which always shrinks upward","New energy is generated at every trophic level as organisms grow and reproduce","Biomass pyramids are fundamentally flawed measurements that ecologists no longer use at all","Phytoplankton actually function as decomposers rather than as producers in aquatic food webs"],correct:0,explain:"Energy pyramids measure flow over time and always shrink upward; biomass pyramids measure a momentary snapshot, which can invert if producers turn over quickly."},
+{cat:'Biomass Pyramids',diff:2,q:"Which type of ecological pyramid is never inverted, regardless of ecosystem?",choices:["Energy pyramid","Biomass pyramid","Pyramid of numbers","All three invert about equally often"],correct:0,explain:"Because of the second law of thermodynamics, usable energy decreases at every trophic transfer, so an energy pyramid must always be upright."},
+{cat:'Biomass Pyramids',diff:2,q:"A pyramid of numbers can appear inverted when:",choices:["One large producer, like a single tree, ends up supporting huge numbers of tiny consumers","The ecosystem happens to have no decomposers present at any trophic level","Energy transfer efficiency between levels somehow exceeds 100 percent","The ecosystem in question simply has no predators anywhere in it"],correct:0,explain:"Numbers pyramids count individual organisms rather than mass or energy, so one big tree can be outnumbered by the many small herbivores it supports."},
+{cat:'Biomass Pyramids',diff:1,q:"At each trophic transfer, roughly what percentage of energy is lost — mostly as heat from respiration and movement — rather than passed on?",choices:["~90%","~10%","~50%","~1%"],correct:0,explain:"Only about 10% of energy is transferred to the next level; the other ~90% is lost mainly as metabolic heat."},
+{cat:'Biomass Pyramids',diff:3,q:"Net Primary Productivity (NPP) is calculated as:",choices:["Gross Primary Productivity minus the energy producers spend on their own respiration","Gross Primary Productivity added together with the respiration rate of producers","The total amount of energy consumed by herbivores across the whole ecosystem","All of the energy that is permanently lost from the ecosystem overall"],correct:0,explain:"NPP = GPP − R, representing the energy actually available to be stored as biomass or passed on to consumers."},
+{cat:'Biomass Pyramids',diff:2,q:"From a pure energy-efficiency standpoint, why does a diet of plants generally support more people per acre than a diet of meat?",choices:["Eating lower on the food chain means fewer transfers, so less energy has been lost as heat along the way","Meat doesn't actually contain any energy that a human body is able to use","Plants simply have more total mass on Earth than animals do overall","Animals are physically incapable of performing photosynthesis themselves"],correct:0,explain:"Each additional trophic transfer loses ~90% of energy, so consuming producers directly retains far more of the sun's original energy than consuming animals that ate those producers."},
+{cat:'Biomass Pyramids',diff:1,q:"In a typical terrestrial ecosystem, a biomass pyramid is usually:",choices:["Upright, with biomass decreasing at each successively higher trophic level","Inverted, with biomass actually increasing at each higher trophic level","Perfectly rectangular, with identical biomass at every single trophic level","Essentially impossible to measure with any real accuracy"],correct:0,explain:"Land plants accumulate large standing biomass, so terrestrial biomass pyramids are typically upright, like energy pyramids."},
+// Carbon cycle
+{cat:'Carbon Cycle',diff:1,q:"Which process removes CO2 from the atmosphere and converts it into organic carbon compounds?",choices:["Photosynthesis","Cellular respiration","Combustion","Denitrification"],correct:0,explain:"Producers use photosynthesis to fix atmospheric CO2 into sugars, removing it from the atmosphere."},
+{cat:'Carbon Cycle',diff:2,q:"Which process returns carbon stored in organisms back to the atmosphere as CO2?",choices:["Cellular respiration and decomposition","Nitrogen fixation by soil bacteria","Sedimentation on the ocean floor","Weathering of exposed rock"],correct:0,explain:"Respiration by organisms — including decomposers breaking down dead matter — releases CO2 back into the atmosphere."},
+{cat:'Carbon Cycle',diff:2,q:"Fossil fuels (coal, oil, natural gas) form when:",choices:["Dead organic matter is buried and compressed over geologic time under low-oxygen conditions","Carbon dioxide gas dissolves directly into solid rock formations","Plants continue respiring for long periods after being buried underground","Nitrogen-fixing bacteria gradually convert stored carbon into nitrogen compounds"],correct:0,explain:"Anaerobic burial and immense pressure/heat over millions of years convert ancient organic matter into fossil fuels, storing carbon long-term."},
+{cat:'Carbon Cycle',diff:1,q:"Burning fossil fuels increases atmospheric CO2 mainly because it:",choices:["Releases carbon that had been locked away from the active cycle for millions of years","Physically creates brand new carbon atoms that did not exist before","Directly removes dissolved oxygen from the world's oceans","Converts atmospheric nitrogen gas directly into carbon dioxide"],correct:0,explain:"Combustion rapidly releases long-sequestered carbon back into the atmosphere, faster than natural processes can reabsorb it."},
+{cat:'Carbon Cycle',diff:2,q:"Oceans act as a major carbon reservoir mainly by:",choices:["Dissolving atmospheric CO2 into seawater, where it forms carbonic acid and related ions","Releasing large amounts of previously stored nitrogen back into the atmosphere","Slowly converting dissolved carbon into solid phosphate rock deposits","Fixing carbon exclusively through the bacterial process of denitrification"],correct:0,explain:"CO2 dissolves into oceans and reacts with water to form carbonic acid, which can contribute to ocean acidification as CO2 levels rise."},
+{cat:'Carbon Cycle',diff:2,q:"Which best describes a 'carbon sink'?",choices:["A reservoir, such as a forest or ocean, that absorbs more carbon than it releases","A specific location where fossil fuels are deliberately burned","Any place where CO2 molecules are destroyed permanently","Essentially just another synonym for the atmosphere itself"],correct:0,explain:"Carbon sinks such as forests, oceans, and soils take in more carbon (often via photosynthesis) than they emit."},
+// Nitrogen cycle
+{cat:'Nitrogen Cycle',diff:2,q:"Biological nitrogen fixation converts atmospheric N2 gas into what usable form, and is primarily carried out by:",choices:["Ammonia or ammonium, produced by specialized nitrogen-fixing bacteria in the soil","Nitrate, produced primarily by fungi living in the surrounding soil","Nitrogen gas, released back into the air by decomposer organisms","Phosphate, produced mainly by photosynthetic algae in the water"],correct:0,explain:"Nitrogen-fixing bacteria have the enzyme nitrogenase, which converts inert N2 into ammonia/ammonium that plants can use."},
+{cat:'Nitrogen Cycle',diff:2,q:"Nitrification is the process in which:",choices:["Nitrifying bacteria convert ammonium into nitrite, and then convert that nitrite into nitrate","Bacteria convert nitrate back into inert nitrogen gas that returns to the air","Plants absorb nitrogen gas directly out of the atmosphere through their leaves","Decomposers break down waste and release ammonia into the surrounding soil"],correct:0,explain:"Nitrification is a two-step bacterial oxidation, NH4+ → NO2− → NO3−, producing the nitrate form many plants absorb."},
+{cat:'Nitrogen Cycle',diff:2,q:"Denitrification returns nitrogen to the atmosphere mainly as:",choices:["Mostly nitrogen gas, produced by denitrifying bacteria in low-oxygen soil","Ammonium ions, released directly from bacteria back into the soil","Nitrate ions, which simply remain dissolved in the groundwater","Phosphate ions, freed up from decomposing organic matter"],correct:0,explain:"Denitrifying bacteria in anaerobic soils/sediments convert nitrate back into nitrogen gas, completing the cycle."},
+{cat:'Nitrogen Cycle',diff:2,q:"Farmers often rotate legume crops (soybeans, clover) with other crops mainly because legumes:",choices:["Host symbiotic bacteria in their root nodules that fix nitrogen and enrich the soil","Strip essentially all of the usable nitrogen out of the soil","Perform denitrification themselves, releasing nitrogen gas back into the air","Don't require any nitrogen at all in order to grow properly"],correct:0,explain:"The bacteria's fixed nitrogen becomes available to the legume and, after it decomposes, to future crops — reducing the need for synthetic fertilizer."},
+{cat:'Nitrogen Cycle',diff:2,q:"Ammonification is the process by which:",choices:["Decomposers break down nitrogen-containing waste and dead matter into ammonium","Bacteria convert nitrate ions directly back into inert nitrogen gas","Plants convert atmospheric nitrogen gas directly into usable protein","Lightning strikes fix nitrogen gas high up in the atmosphere"],correct:0,explain:"As decomposers digest proteins and other organic nitrogen compounds, they release ammonium back into the soil."},
+{cat:'Nitrogen Cycle',diff:3,q:"The industrial Haber-Bosch process is ecologically significant mainly because it:",choices:["Has roughly doubled the total nitrogen fixed on Earth, driving fertilizer runoff and eutrophication","Permanently removes nitrogen from the biosphere so it can never be reused","Is actually a completely natural process carried out by soil bacteria","Only has a measurable effect on the phosphorus cycle, not nitrogen"],correct:0,explain:"By synthetically fixing huge quantities of atmospheric nitrogen for fertilizer, humans have dramatically altered the natural nitrogen cycle."},
+// Phosphorus cycle
+{cat:'Phosphorus Cycle',diff:2,q:"The phosphorus cycle is considered unusual compared to the carbon and nitrogen cycles mainly because it:",choices:["Has essentially no gaseous phase, cycling mainly through rock, soil, and water instead","Occurs almost entirely within the atmosphere rather than in rock or soil","Is driven mainly by bacteria that fix gaseous phosphorus straight from the air","Doesn't involve any living organisms at any stage of the cycle"],correct:0,explain:"Unlike carbon and nitrogen, phosphorus has no significant gas form, so it moves through ecosystems via rock weathering, uptake, and sedimentation rather than the atmosphere."},
+{cat:'Phosphorus Cycle',diff:1,q:"The primary natural source of phosphorus entering ecosystems is:",choices:["The slow weathering and breakdown of phosphate-containing rocks","The activity of nitrogen-fixing bacteria living in the soil","Atmospheric deposition of phosphorus gas falling as precipitation","The process of photosynthesis carried out by producers"],correct:0,explain:"Phosphate ions are released into soil and water as rocks weather over long timescales, then taken up by plants and passed through the food web."},
+{cat:'Phosphorus Cycle',diff:2,q:"Excess phosphorus (often from agricultural fertilizer runoff) entering a lake typically triggers:",choices:["Eutrophication — a burst of algae growth whose decomposition depletes oxygen and creates dead zones","An immediate loss of all the phosphorus back out to the atmosphere","Full denitrification of the entire lake within a matter of days","A permanent, indefinite increase in how many fish the lake can support"],correct:0,explain:"Phosphorus is often the limiting nutrient in freshwater, so excess input fuels explosive algae growth; decomposing algae then crash oxygen levels."},
+{cat:'Phosphorus Cycle',diff:2,q:"Phosphorus is frequently the limiting nutrient (rather than nitrogen or carbon) in which type of ecosystem?",choices:["Freshwater ecosystems, such as lakes and ponds","The atmosphere, where gaseous nutrients cycle freely","Deep ocean trenches, far below the sunlit zone","Desert ecosystems, where water itself is scarce"],correct:0,explain:"Because phosphorus has no atmospheric source and is often scarce, it commonly limits primary productivity in freshwater systems."},
+{cat:'Phosphorus Cycle',diff:2,q:"Phosphorus is returned from organisms to the soil or water primarily through:",choices:["The decomposition of dead organisms and the excretion of waste","The combustion of fossil fuels deep underground","The bacterial process of denitrification in wet soils","The process of photosynthesis carried out by plants"],correct:0,explain:"When organisms die or excrete waste, decomposers release the phosphate they contained back into the surrounding soil or water."},
+// Ecological interactions
+{cat:'Interactions',diff:1,q:"A clownfish sheltering among a sea anemone's stinging tentacles, gaining protection while helping remove parasites/debris, is best classified as:",choices:["Mutualism — both the clownfish and anemone gain a benefit from the relationship","Parasitism — the clownfish benefits while quietly harming the anemone over time","Commensalism — the clownfish benefits and the anemone is essentially unaffected","Competition — both organisms are fighting over the same limited resource"],correct:0,explain:"Both partners gain something: the clownfish gets protection, and the anemone benefits from nutrients, defense, or debris removal."},
+{cat:'Interactions',diff:1,q:"A barnacle attached to a whale's skin, gaining transport and access to food-rich waters while the whale is largely unaffected, is an example of:",choices:["Commensalism","Mutualism","Parasitism","Predation"],correct:0,explain:"Commensalism benefits one species (the barnacle) while having a negligible effect on the other (the whale)."},
+{cat:'Interactions',diff:1,q:"A tapeworm living in a host's intestine, absorbing nutrients and harming the host, is an example of:",choices:["Parasitism","Mutualism","Commensalism","Amensalism"],correct:0,explain:"In parasitism, one organism (the parasite) benefits at the direct expense of the host, which is harmed."},
+{cat:'Interactions',diff:2,q:"Two bird species that both need the same limited tree cavities for nesting, reducing each other's reproductive success, are engaged in:",choices:["Interspecific competition","Mutualism","Predation","Commensalism"],correct:0,explain:"Interspecific competition occurs when different species vie for the same limited resource, harming both."},
+{cat:'Interactions',diff:2,q:"Lichen — a partnership between a fungus and a photosynthetic alga or cyanobacterium — is a classic example of:",choices:["Mutualism — the fungus gains carbohydrates while its partner gains protection and moisture","Parasitism — the fungus benefits while steadily harming the photosynthetic alga","Commensalism — only the alga benefits, while the fungus is unaffected","Predation — the fungus actively hunts and consumes the photosynthetic alga"],correct:0,explain:"The fungus provides a protected, moist structure while the photosynthetic partner supplies sugars from photosynthesis — both benefit."},
+{cat:'Interactions',diff:3,q:"The competitive exclusion principle states that:",choices:["Two species competing for the exact same limiting resource can't coexist indefinitely — one eventually displaces the other","Every species within an ecosystem is eventually driven to extinction over time","Predators will always exclude any competitors from their territory entirely","Species in a mutualistic relationship can never share the same habitat"],correct:0,explain:"If niches overlap completely for a limiting resource, the more efficient competitor typically drives the other to local extinction or forces a niche shift."},
+{cat:'Interactions',diff:2,q:"Niche partitioning allows similar species to coexist in the same habitat mainly by:",choices:["Dividing up resources, such as feeding at different times or depths, to reduce direct competition","Gradually merging together into a single combined species over time","Eliminating one of the two species entirely through direct predation","Both species sharing exactly identical resource use with no difference at all"],correct:0,explain:"By using slightly different resources or strategies, similar species reduce the overlap that would otherwise trigger competitive exclusion."},
+{cat:'Interactions',diff:3,q:"Amensalism describes an interaction where:",choices:["One organism is harmed while the other is unaffected, like a tall tree shading out smaller plants","Both organisms involved benefit from the interaction more or less equally","One organism benefits directly while the other is actively harmed","Neither organism involved in the interaction is affected in any way"],correct:0,explain:"Amensalism is a one-sided negative interaction with no benefit to the unaffected party, unlike parasitism or predation."},
+{cat:'Interactions',diff:2,q:"Cattle egrets that follow grazing cattle and eat insects the cattle stir up, without helping or harming the cattle, illustrate:",choices:["Commensalism","Mutualism","Parasitism","Interspecific competition"],correct:0,explain:"The egret benefits from easier access to insects while the cattle experience no meaningful benefit or harm."},
+{cat:'Interactions',diff:2,q:"Predation is generally distinguished from parasitism by the fact that predators:",choices:["Typically kill their prey quickly and consume many different individuals over a lifetime","Always live permanently inside a single host organism for life","Never cause any harm to the organism they interact with","Are always physically smaller in size than their prey"],correct:0,explain:"Predators usually kill and consume prey outright; parasites often live in or on one host for an extended time without immediately killing it."},
+// Population ecology
+{cat:'Population Ecology',diff:2,q:"The logistic growth model differs from the exponential growth model mainly by incorporating:",choices:["A carrying capacity that slows population growth as resources become limiting","The assumption of unlimited resources available at all times","A fixed birth rate that never changes regardless of population size","The idea of immediate extinction the moment carrying capacity is reached"],correct:0,explain:"Logistic growth follows an S-shaped curve because growth rate declines as the population nears carrying capacity, unlike unchecked exponential growth."},
+{cat:'Population Ecology',diff:2,q:"Which is a density-dependent limiting factor (its effect intensifies as population density increases)?",choices:["Disease transmission and competition for food, both of which worsen in crowded populations","A sudden, unpredictable volcanic eruption affecting the whole region","An unusually cold and harsh winter affecting the whole population","A wildfire sweeping rapidly through the entire habitat"],correct:0,explain:"Density-dependent factors like disease and competition spread more easily in crowded populations, unlike density-independent factors such as weather or natural disasters."},
+{cat:'Population Ecology',diff:2,q:"An r-selected species is best characterized by:",choices:["Producing many offspring with little parental care, maturing quickly in unstable environments","Producing few offspring with intensive parental care in stable environments","Essentially having no defined reproductive strategy of any kind","Living exclusively in very stable habitats near carrying capacity"],correct:0,explain:"r-selected species (like insects) prioritize rapid reproduction; K-selected species (like elephants) prioritize offspring quality near carrying capacity."},
+{cat:'Population Ecology',diff:1,q:"Carrying capacity (K) is best defined as:",choices:["The maximum population size an environment can sustain long-term given its resources","The current size of a population at this particular moment","The smallest population size considered viable long-term","The total number of species living within an ecosystem"],correct:0,explain:"K represents the population ceiling set by available resources like food, water, and space."},
+{cat:'Population Ecology',diff:2,q:"When a population overshoots its carrying capacity, the most likely outcome is:",choices:["A population crash, or die-off, as resources become depleted","Permanent, unchecked exponential growth that never slows down","An immediate increase in the environment's actual carrying capacity","Essentially no change at all to the population size"],correct:0,explain:"Overshooting K typically depletes resources faster than they regenerate, leading to increased death rates and a sharp decline."},
+{cat:'Population Ecology',diff:2,q:"Primary succession differs from secondary succession in that primary succession:",choices:["Begins on bare substrate with no soil at all, while secondary succession begins where soil already exists","Always proceeds noticeably faster than secondary succession does","Only ever occurs within aquatic ecosystems, never on land","Requires no pioneer species to get started at all"],correct:0,explain:"Primary succession must start with pioneer species like lichen building soil from scratch, making it far slower than secondary succession."},
+// Survivorship
+{cat:'Survivorship',diff:2,q:"A species with a Type III survivorship curve (like most fish or insects) is characterized by:",choices:["Very high mortality early in life, though the few survivors then tend to live much longer","Low mortality throughout most of life, right up until old age","A constant, unchanging mortality risk at every single age","Essentially no offspring produced by the species at all"],correct:0,explain:"Type III species produce huge numbers of offspring, most of which die young, but the rare survivors tend to persist."},
+{cat:'Survivorship',diff:2,q:"Humans in modern developed countries typically show which survivorship curve pattern?",choices:["Type I — high survival through most of life, with mortality concentrated later in old age","Type II — a roughly constant mortality rate at every age","Type III — very high mortality concentrated early in life","No consistent survivorship pattern exists in humans at all"],correct:0,explain:"Type I curves are typical of species with few offspring and high parental investment, where most individuals survive to old age."}
+];
+
+let currentQuestion=null,qTimer=null,qStart=0;
+const QUESTION_TIME=15000;
+
+function pickQuestion(){
+ let lvl=defs[player.kind].level;
+ let allowed=lvl<=1?[1,2]:lvl===2?[1,2,3]:[2,3];
+ let pool=questions.filter(q=>allowed.includes(q.diff));
+ if(!pool.length)pool=questions;
+ let base=pool[Math.floor(Math.random()*pool.length)];
+ // The question bank writes the correct choice first for readability, so every question would
+ // otherwise show the right answer in the same obvious top slot. Shuffle a fresh copy of the
+ // choices each time it's asked (Fisher-Yates) and remap which index is now correct.
+ let order=base.choices.map((_,i)=>i);
+ for(let i=order.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));let tmp=order[i];order[i]=order[j];order[j]=tmp}
+ return Object.assign({},base,{choices:order.map(i=>base.choices[i]),correct:order.indexOf(base.correct)});
+}
+function askQuestion(purpose,title){
+ if(questionLock)return;questionLock=true;questionPurpose=purpose;
+ currentQuestion=pickQuestion();
+ renderQuestion(title,currentQuestion);
+ startTimer();
+}
+function renderQuestion(title,q){
+ let closeBtn=document.querySelector('.close');if(closeBtn)closeBtn.style.display='none';
+ let diffLabel=q.diff===1?'Medium':q.diff===2?'Hard':'Expert';
+ document.getElementById('modalContent').innerHTML=
+  '<h2>'+title+'</h2>'+
+  '<div><span class="badge">'+q.cat+'</span><span class="badge" style="border-color:#d98a4f;color:#f2c397">'+diffLabel+'</span></div>'+
+  '<div class="qtimerbar"><div class="qtimerfill" id="qtimerfill"></div></div>'+
+  '<div id="qtimernum" style="font-size:11px;text-align:right;color:#f0a597;margin-top:2px">15.0s</div>'+
+  '<div class="challenge"><b>'+q.q+'</b></div>'+
+  '<div class="answers" id="answersWrap">'+q.choices.map((a,i)=>'<button onclick="answerQuestion('+i+')">'+a+'</button>').join('')+'</div>'+
+  '<div id="modalExplain"></div>';
+ document.getElementById('modal').style.display='flex';
+}
+function startTimer(){
+ clearInterval(qTimer);qTimer=null;qStart=performance.now();
+ function tick(){
+  let elapsed=performance.now()-qStart,remain=Math.max(0,QUESTION_TIME-elapsed);
+  let fill=document.getElementById('qtimerfill'),num=document.getElementById('qtimernum');
+  if(fill)fill.style.width=(remain/QUESTION_TIME*100)+'%';
+  if(num)num.textContent=(remain/1000).toFixed(1)+'s';
+  if(remain<=0){clearInterval(qTimer);qTimer=null;handleTimeout()}
+ }
+ qTimer=setInterval(tick,50);tick();
+}
+function disableAnswers(){document.querySelectorAll('#answersWrap button').forEach(b=>b.disabled=true)}
+function handleTimeout(){
+ if(!questionLock||!currentQuestion)return;
+ disableAnswers();
+ resolveQuestion(false,true,-1);
+}
+function answerQuestion(i){
+ if(!questionLock||!currentQuestion)return;
+ clearInterval(qTimer);qTimer=null;
+ disableAnswers();
+ resolveQuestion(i===currentQuestion.correct,false,i);
+}
+function resolveQuestion(correct,timedOut,selectedIndex){
+ clearInterval(qTimer);qTimer=null;
+ let q=currentQuestion;
+ document.querySelectorAll('#answersWrap button').forEach((b,idx)=>{
+  if(idx===q.correct){b.style.borderColor='#6fdd6f';b.style.background='#1c3a20'}
+  else if(idx===selectedIndex){b.style.borderColor='#e07a6a';b.style.background='#3a1f1a'}
+ });
+ let headline=timedOut?"⏰ Time's up!":(correct?'✅ Correct!':'❌ Incorrect.');
+ let expl=document.getElementById('modalExplain');
+ if(expl)expl.innerHTML='<div style="margin-top:9px;padding:9px;border-radius:8px;background:'+(correct?'#173a22':'#3a1f1a')+';border:1px solid '+(correct?'#4f9a5f':'#a6584a')+'"><b>'+headline+'</b> '+q.explain+'</div><button class="quizBtn" style="margin-top:8px;text-align:center;background:#1c3a20;border-color:#4f9a5f" onclick="proceedAfterQuestion('+correct+')">Continue ▶</button>';
+}
+function proceedAfterQuestion(correct){
+ let q=currentQuestion;
+ closeModal();
+ let closeBtn=document.querySelector('.close');if(closeBtn)closeBtn.style.display='block';
+ questionLock=false;currentQuestion=null;
+ if(correct){
+  toast('✅ Correct!');log('Ecology question answered correctly ('+q.cat+').');
+  if(questionPurpose==='eat')finishEat();else if(questionPurpose==='reproduce')finishReproduce();else if(questionPurpose==='escape')escapeSuccess();
+ }else if(questionPurpose==='escape'){
+  log('Escape question missed (Topic: '+q.cat+'). The predator caught you.');
+  lose('A predator caught you — the escape question was missed.');
+ }else{
+  toast('❌ Incorrect — try again before you can continue.');
+  log('Ecology question missed. Topic: '+q.cat+'.');
+ }
+}
+function closeModal(){document.getElementById('modal').style.display='none'}
+function nearbyPrey(){let d=defs[player.kind];if(d.food==='plant')return plants.find(p=>!p.used&&Math.hypot(p.x-player.x,p.y-player.y)<55);return animals.find(a=>a.kind===d.food&&Math.hypot(a.x-player.x,a.y-player.y)<58)}
+function attemptEat(){if(!player.alive||questionLock)return;let prey=nearbyPrey();let water=waters.find(w=>Math.hypot(w.x-player.x,w.y-player.y)<w.r+25);
+ if(!prey&&water){player.water=100;toast('💧 Water restored.');log('You drank water.');return}
+ if(!prey){toast('Nothing edible nearby. Explore to find food.');return}
+ askQuestion('eat','🍽️ Answer to Eat')
+}
+// Skill points replace the old "5 meals to level up" rule. All three interactions — eating,
+// reproducing, and successfully escaping a predator — earn points, and the requirement rises at
+// each higher trophic level, so climbing the food chain gets progressively harder, not just riskier.
+const SKILL_REQUIREMENT={grasshopper:50,rabbit:50,frog:80,snake:120};
+const SKILL_AWARD={eat:10,reproduce:15,escape:8};
+function levelRequirement(kind){return SKILL_REQUIREMENT[kind]||Infinity}
+function gainSkill(amount,reason){
+ if(!player.alive)return;
+ player.skill+=amount;
+ toast('✨ +'+amount+' skill points ('+reason+')');
+ log('Gained '+amount+' skill points from '+reason+'.');
+ let need=levelRequirement(player.kind);
+ if(player.skill>=need)levelUp();
+ updateHUD();
+}
+function finishEat(){
+ let d=defs[player.kind],prey=nearbyPrey();if(!prey){toast('The food moved away!');return}
+ if(d.food==='plant'){prey.used=1;player.energy=Math.min(100,player.energy+d.energyGain);toast('🌿 Ate food: +'+d.energyGain+' energy');log('You ate a producer.')}else{let ix=animals.indexOf(prey);if(ix>=0)animals.splice(ix,1);player.energy=Math.min(100,player.energy+d.energyGain);pop[d.food]=Math.max(0,pop[d.food]-1);toast('🍽️ Ate '+d.food+': +'+d.energyGain+' energy');log('Predation: '+player.kind+' ate '+d.food+'.')}
+ player.meals++;gainSkill(SKILL_AWARD.eat,'eating')
+}
+function levelUp(){let n=defs[player.kind].next;if(!n)return;let old=player.kind;setKind(n,true);player.x+=45;player.y-=20;toast('⬆️ You advanced to '+n+'! Skill requirements get steeper from here.');log('Food-chain advancement: '+old+' → '+n+'. The next level requires more skill points and receives less energy per meal.')}
+function attemptReproduce(){
+ if(!player.alive||questionLock)return;if(player.energy<35){toast('❌ Not enough energy. Eat first.');return}
+ let mate=animals.find(a=>a.kind===player.kind&&a.sex!==player.sex&&Math.hypot(a.x-player.x,a.y-player.y)<75);
+ if(!mate){toast('🧬 Find a nearby '+(player.sex==='male'?'female':'male')+' '+player.kind+'.');return}
+ askQuestion('reproduce','🧬 Answer to Reproduce')
+}
+function finishReproduce(){
+ let mate=animals.find(a=>a.kind===player.kind&&a.sex!==player.sex&&Math.hypot(a.x-player.x,a.y-player.y)<75);if(!mate){toast('Your potential mate moved away.');return}
+ player.energy-=30;player.offspring++;pop[player.kind]++;animals.push({x:player.x+35,y:player.y+25,kind:player.kind,sex:Math.random()<.5?'male':'female',dx:Math.random()*2-1,dy:Math.random()*2-1,mateCooldown:10,age:0});toast('🧬 Offspring born!');log('Reproduction added a '+player.kind+' to the population.');gainSkill(SKILL_AWARD.reproduce,'reproducing')}
+function clearSafeZone(){
+ // Existing predators that happen to be sitting on the respawn point get pushed outside the safe
+ // radius rather than deleted, so population counts stay honest.
+ let pd=defs[player.kind].pred;
+ animals.forEach(a=>{
+  if(!pd.includes(a.kind))return;
+  let dx=a.x-player.x,dy=a.y-player.y,dist=Math.hypot(dx,dy);
+  if(dist<SAFE_RADIUS){
+   let ang=dist>0.001?Math.atan2(dy,dx):Math.random()*Math.PI*2,push=SAFE_RADIUS+60+Math.random()*140;
+   a.x=player.x+Math.cos(ang)*push;a.y=player.y+Math.sin(ang)*push;a.chasing=false;
+  }
+ });
+}
+function lose(reason){
+ if(lostLock)return;lostLock=true;player.alive=false;toast('💥 '+reason);setTimeout(()=>{player.kind='grasshopper';player.x=0;player.y=0;player.energy=80;player.water=80;player.breath=100;player.wasInWater=false;player.meals=0;player.skill=0;player.offspring=0;player.alive=true;player.immunity=SPAWN_IMMUNITY;player._warned10=false;player.sex=Math.random()<.5?'male':'female';cam.x=0;cam.y=0;lostLock=false;activeChaser=null;ensureWorld(true);clearSafeZone();toast('↩️ Restarted as a grasshopper — you have '+SPAWN_IMMUNITY+'s of protection.');log('You restarted at Level 1 with '+SPAWN_IMMUNITY+'s of spawn protection. No predators can reach you yet.');updateHUD()},1100)}
+let predatorX=0,predatorY=0;
+function checkPredator(){if(player.immunity>0)return;let d=defs[player.kind],p=animals.find(a=>d.pred.includes(a.kind)&&Math.hypot(a.x-player.x,a.y-player.y)<68);if(p&&!questionLock){predatorX=p.x;predatorY=p.y;askQuestion('escape','⚠️ Predator Encounter — Escape Challenge')}}
+const POST_ESCAPE_IMMUNITY=10; // seconds of grace after successfully escaping a predator — without this,
+                                // the same (or another nearby) predator can re-trigger the encounter instantly
+function escapeSuccess(){player.x+= (player.x-predatorX)*1.4;player.y+=(player.y-predatorY)*1.4;player.x=Math.max(-999999,Math.min(999999,player.x));player.y=Math.max(-999999,Math.min(999999,player.y));player.immunity=Math.max(player.immunity,POST_ESCAPE_IMMUNITY);player._warned10=false;activeChaser=null;toast('🏃 You escaped! 10s of protection while you get clear.');log('You escaped a predator by answering an ecology question, earning '+POST_ESCAPE_IMMUNITY+'s of protection.');gainSkill(SKILL_AWARD.escape,'escaping a predator')}
+function cityCheck(){
+ let city=humans.find(h=>h.kind==='city'&&player.x>h.x&&player.x<h.x+h.w&&player.y>h.y&&player.y<h.y+h.h);
+ if(city){lose('You entered a city where humans can be dangerous to wildlife.')}
+}
+function autoReproduce(dt){
+ animals.forEach(a=>a.age+=dt);
+ if(animals.length>=54)return; // ecosystem cap — predation and limited food already balance population, this is a hard backstop
+ // Automatic reproduction happens occasionally when compatible adults are nearby and resources are sufficient.
+ // Use a snapshot of the count so offspring born this pass aren't immediately eligible to pair again this same frame.
+ let n=animals.length;
+ for(let i=0;i<n;i++)for(let j=i+1;j<n;j++){
+  let a=animals[i],b=animals[j];if(!a||!b||a.kind!==b.kind||a.sex===b.sex||a.age<8||b.age<8)continue;
+  if(Math.hypot(a.x-b.x,a.y-b.y)<42&&Math.random()<.0009*dt){animals.push({x:(a.x+b.x)/2+10,y:(a.y+b.y)/2+10,kind:a.kind,sex:Math.random()<.5?'male':'female',dx:Math.random()*2-1,dy:Math.random()*2-1,mateCooldown:10,age:0});pop[a.kind]++;log('Two '+a.kind+'s reproduced automatically.');break}
+ }
+}
+let activeChaser=null;
+function updatePredatorChase(dt){
+ let d=defs[player.kind];
+ if(player.immunity>0){animals.forEach(a=>{if(a.chasing)a.chasing=false});activeChaser=null;return} // ignored while protected
+ // Only one predator actively gives chase at a time. Without this, every predator within range starts
+ // beelining for the player the instant spawn protection ends, which feels like a coordinated ambush
+ // rather than a single fair threat — real predators don't hunt in a five-species mob.
+ if(activeChaser&&(!d.pred.includes(activeChaser.kind)||animals.indexOf(activeChaser)===-1||Math.hypot(activeChaser.x-player.x,activeChaser.y-player.y)>=CHASE_RADIUS*1.15)){
+  activeChaser.chasing=false;activeChaser=null;
+ }
+ if(!activeChaser){
+  let nearest=null,nearestDist=Infinity;
+  animals.forEach(a=>{
+   if(!d.pred.includes(a.kind))return;
+   let dist=Math.hypot(a.x-player.x,a.y-player.y);
+   if(dist<CHASE_RADIUS&&dist<nearestDist){nearest=a;nearestDist=dist}
+  });
+  if(nearest){activeChaser=nearest;activeChaser.chasing=true;toast('⚠️ A '+nearest.kind+' spotted you and is giving chase — sprint (Shift) to get away!');log('A '+nearest.kind+' started chasing you.')}
+ }
+ animals.forEach(a=>{
+  if(a!==activeChaser&&a.chasing)a.chasing=false; // any predator that isn't the active chaser stays calm
+  if(a===activeChaser){let dist=Math.hypot(a.x-player.x,a.y-player.y),l=dist||1;a.dx=(player.x-a.x)/l;a.dy=(player.y-a.y)/l}
+ });
+}
+function autoEat(dt){
+ // NPC animals also eat on their own — herbivores graze plants, predators occasionally take prey —
+ // so the ecosystem keeps moving even when you are not the one eating.
+ animals.forEach(a=>{
+  if(Math.random()>dt*0.4)return;
+  let d=defs[a.kind];if(!d)return;
+  if(d.food==='plant'){
+   let p=plants.find(pl=>!pl.used&&Math.hypot(pl.x-a.x,pl.y-a.y)<40);
+   if(p)p.used=1;
+  }else{
+   let idx=animals.findIndex(bb=>bb!==a&&bb.kind===d.food&&Math.hypot(bb.x-a.x,bb.y-a.y)<40);
+   if(idx>=0){let preyKind=animals[idx].kind;animals.splice(idx,1);pop[preyKind]=Math.max(0,pop[preyKind]-1)}
+  }
+ });
+}
+function updateFish(dt){
+ fishes.forEach(f=>{
+  f.x+=f.dx*14*dt;f.y+=f.dy*14*dt;
+  let dist=Math.hypot(f.x-f.homeX,f.y-f.homeY);
+  if(dist>f.homeR){f.dx=(f.homeX-f.x)/(dist||1);f.dy=(f.homeY-f.y)/(dist||1)}
+  else if(Math.random()<.01){f.dx=Math.random()*2-1;f.dy=Math.random()*2-1}
+ });
+}
+function updateCityLife(dt){
+ function wanderBounded(list,speed){
+  list.forEach(o=>{
+   o.x+=o.dx*speed*dt;o.y+=o.dy*speed*dt;
+   if(o.x<o.homeX+10||o.x>o.homeX+o.homeW-10||o.y<o.homeY+10||o.y>o.homeY+o.homeH-10){
+    o.dx=-o.dx;o.dy=-o.dy;
+    o.x=Math.max(o.homeX+10,Math.min(o.homeX+o.homeW-10,o.x));
+    o.y=Math.max(o.homeY+10,Math.min(o.homeY+o.homeH-10,o.y));
+   }else if(Math.random()<.01){o.dx=Math.random()*2-1;o.dy=Math.random()*2-1}
+  });
+ }
+ wanderBounded(cars,55);
+ wanderBounded(pedestrians,22);
+}
+function update(dt){
+ if(!player.alive)return;
+ if(player.immunity>0){
+  player.immunity-=dt;
+  if(player.immunity<=3&&!player._warned10){player._warned10=true;toast('⏳ Spawn protection ends in 3 seconds.')}
+  if(player.immunity<=0){player.immunity=0;player._warned10=false;toast('🛡️ Spawn protection has ended — watch for predators.');log('Spawn protection expired. Predators can now hunt you.')}
+ }
+ let d=defs[player.kind],vx=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0),vy=(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0);
+ let sprinting=!!keys.shift&&(vx||vy)&&player.energy>8;
+ if(player.waterBump>0)player.waterBump-=dt;
+ if((vx||vy)&&!questionLock){
+  let l=Math.hypot(vx,vy),spdMult=sprinting?1.6:1;
+  let mx=vx/l,my=vy/l;
+  if(mode3D&&three){
+   // In first person, W should mean "forward from where I'm looking", not "north". Rotate the input
+   // by the camera yaw: forward = (-sin, -cos), right = (cos, -sin) in world x/y.
+   let s=Math.sin(three.yaw),cs=Math.cos(three.yaw),fwd=-my,strafe=mx;
+   mx=cs*strafe-s*fwd;my=-s*strafe-cs*fwd;
+  }
+  let step=d.speed*spdMult*dt,margin=player.r*0.75,blocked=false;
+  // Axis-separated collision: shorelines act as a solid wall, but sliding along one axis at a time
+  // lets you walk along the water's edge instead of getting stuck the instant you touch it.
+  let tryX=player.x+mx*step;
+  if(!inWaterAt(tryX,player.y,margin))player.x=tryX;else blocked=true;
+  let tryY=player.y+my*step;
+  if(!inWaterAt(player.x,tryY,margin))player.y=tryY;else blocked=true;
+  if(blocked&&player.waterBump<=0){toast("🚫 You can't swim — this organism has to stay on land.");player.waterBump=1.6}
+  player.energy-=dt*(sprinting?1.3:.42);player.water-=dt*.24;minutes+=dt*2.3;
+ }
+ // Collision above should make entering a lake impossible, but this stays as a safety net in case
+ // a lake ever generates on top of an existing position (e.g. right at spawn).
+ let inWater=inWaterAt(player.x,player.y);
+ if(inWater){
+  if(!player.wasInWater){toast('🌊 Somehow in deep water — you cannot swim! Get to land before you run out of air.');log('Ended up in deep water without the ability to swim.')}
+  player.wasInWater=true;player.breath-=dt*15;
+  if(player.breath<=0){lose('You drowned — your organism cannot swim and ran out of air.')}
+ }else{
+  if(player.wasInWater)toast('💨 Back on land, catching your breath.');
+  player.wasInWater=false;player.breath=Math.min(100,player.breath+dt*30);
+ }
+ cam.x=player.x-W/2;cam.y=player.y-H/2;ensureWorld();
+ updatePredatorChase(dt);
+ animals.forEach(a=>{let spd=a.chasing?(defs[a.kind].speed||60):18;a.x+=a.dx*spd*dt;a.y+=a.dy*spd*dt;if(!a.chasing&&Math.random()<.006){a.dx=Math.random()*2-1;a.dy=Math.random()*2-1}if(a.mateCooldown>0)a.mateCooldown-=dt});
+ updateFish(dt);updateCityLife(dt);
+ autoReproduce(dt);autoEat(dt);checkPredator();cityCheck();
+ plants.forEach(p=>{if(p.used){p.used-=dt;if(p.used<0)p.used=0}});
+ if(player.energy<=0){player.energy=35;toast('⚠️ You need food to keep your energy up.');log('Low energy was a limiting factor.')}
+ if(player.water<=0){player.water=45;toast('⚠️ Find water.');log('Water availability became a limiting factor.')}
+ if(minutes>=720){day++;minutes=0;log('A new day began. Populations continue to change through births, deaths, resources, and predation.')}
+ updateHUD()
+}
+// Small colored M/F badge drawn above an organism's head — blue for male, pink for female, so sex
+// is readable at a glance for both the player and every NPC animal.
+function sexLetter(s){return s==='male'?'M':'F'}
+function sexColor(s){return s==='male'?'#5ec8ff':'#ff9fd0'}
+function drawSexBadge(x,y,sex){
+ if(!sex)return;
+ ctx.save();
+ ctx.beginPath();ctx.arc(x,y,9,0,7);ctx.fillStyle=sexColor(sex);ctx.fill();
+ ctx.strokeStyle='#00000066';ctx.lineWidth=1;ctx.stroke();
+ ctx.font='bold 11px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';
+ ctx.fillStyle='#0b1a10';ctx.fillText(sexLetter(sex),x,y+0.5);
+ ctx.restore();
+}
+function draw(){
+ ctx.clearRect(0,0,W,H);ctx.save();ctx.translate(-cam.x,-cam.y);
+ let minX=Math.floor((player.x-W/2)/CHUNK)-1,maxX=Math.floor((player.x+W/2)/CHUNK)+1,minY=Math.floor((player.y-H/2)/CHUNK)-1,maxY=Math.floor((player.y+H/2)/CHUNK)+1;
+ for(let cx=minX;cx<=maxX;cx++)for(let cy=minY;cy<=maxY;cy++){
+  generateChunk(cx,cy);
+  let tiles=terrainCache.get(chunkKey(cx,cy));
+  if(tiles)for(let i=0;i<tiles.length;i++){let t=tiles[i];ctx.fillStyle=t.color;ctx.fillRect(t.x,t.y,TERRAIN_RES+1,TERRAIN_RES+1)} // +1 covers seams
+ }
+ // city blocks + roaming cars/pedestrians
+ humans.forEach(h=>{if(h.kind==='city'){ctx.fillStyle='#777';ctx.fillRect(h.x,h.y,h.w,h.h);for(let x=h.x+25;x<h.x+h.w-20;x+=55)for(let y=h.y+25;y<h.y+h.h-20;y+=55){ctx.fillStyle='#b7b1a2';ctx.fillRect(x,y,35,28)}ctx.fillStyle='#333';ctx.font='bold 22px system-ui';ctx.fillText('🏙️ CITY',h.x+145,h.y+28);ctx.fillStyle='#6a6a6a';ctx.fillRect(h.x+190,h.y,35,h.h);ctx.fillRect(h.x,h.y+155,h.w,35)}})
+ cars.forEach(cr=>{ctx.font='22px serif';ctx.fillText('🚗',cr.x-11,cr.y+8)});
+ pedestrians.forEach(pd=>{ctx.font='18px serif';ctx.fillText('🧍',pd.x-8,pd.y+7)});
+ plants.forEach(p=>{if(!p.used){ctx.font='23px serif';ctx.fillText(p.emoji||'🌿',p.x-10,p.y+8)}});
+ // lakes: soft sandy shoreline, a few overlapping blobs for a natural (non-circular) outline, and a stroked edge for definition
+ waters.forEach(w=>{
+  ctx.fillStyle='rgba(217,198,138,0.4)';ctx.beginPath();ctx.arc(w.x,w.y,w.r+10,0,7);ctx.fill();
+  let blobs=(w.blobs&&w.blobs.length)?w.blobs:[{dx:0,dy:0,r:w.r}];
+  ctx.fillStyle='#2f96bd';blobs.forEach(bl=>{ctx.beginPath();ctx.arc(w.x+bl.dx,w.y+bl.dy,bl.r,0,7);ctx.fill()});
+  ctx.strokeStyle='#1c6e88';ctx.lineWidth=2.5;blobs.forEach(bl=>{ctx.beginPath();ctx.arc(w.x+bl.dx,w.y+bl.dy,bl.r,0,7);ctx.stroke()});
+  ctx.fillStyle='#54c2e6';ctx.beginPath();ctx.arc(w.x,w.y,w.r*0.55,0,7);ctx.fill();
+ });
+ fishes.forEach(f=>{ctx.font='18px serif';ctx.fillText('🐟',f.x-9,f.y+6)});
+ animals.forEach(a=>{ctx.font='28px serif';ctx.fillText(defs[a.kind].emoji,a.x-13,a.y+10);drawSexBadge(a.x,a.y-19,a.sex);if(a.chasing){ctx.font='14px serif';ctx.fillText('❗',a.x+8,a.y-14)}});
+ ctx.beginPath();ctx.arc(player.x,player.y,29,0,7);ctx.strokeStyle='#efff78';ctx.lineWidth=3;ctx.stroke();ctx.font='37px serif';ctx.fillText(defs[player.kind].emoji,player.x-18,player.y+13);
+ drawSexBadge(player.x,player.y-29,player.sex);
+ ctx.fillStyle='#132118';ctx.font='11px system-ui';ctx.fillText('Level '+defs[player.kind].level,player.x-25,player.y-38);
+ ctx.restore();
+ // minimap local window
+ mctx.clearRect(0,0,mini.width,mini.height);let range=900,sx=mini.width/(range*2),sy=mini.height/(range*2);for(let ix=0;ix<12;ix++)for(let iy=0;iy<8;iy++){let wx=player.x-range+ix*150,wy=player.y-range+iy*225;mctx.fillStyle=blendedColorAt(wx,wy);mctx.fillRect(ix*mini.width/12,iy*mini.height/8,mini.width/12+1,mini.height/8+1)}mctx.fillStyle='#fff';mctx.beginPath();mctx.arc(mini.width/2,mini.height/2,4,0,7);mctx.fill()
+}
+function updateHUD(){
+ let sh=document.getElementById('shield');
+ if(sh){if(player.immunity>0){sh.style.display='block';document.getElementById('shieldTime').textContent=Math.ceil(player.immunity)}else sh.style.display='none'}
+ let b=biomeAt(player.x,player.y),d=defs[player.kind];document.getElementById('biomeTop').textContent=b.name;document.getElementById('coord').textContent='x '+Math.round(player.x)+' · y '+Math.round(player.y);document.getElementById('level').textContent='Level '+d.level;document.getElementById('role').textContent=d.role;document.getElementById('energyText').textContent=Math.round(player.energy)+'/100';document.getElementById('waterText').textContent=Math.round(player.water)+'/100';document.getElementById('breathText').textContent=Math.round(player.breath)+'/100';document.getElementById('energyFill').style.width=Math.max(0,player.energy)+'%';document.getElementById('waterFill').style.width=Math.max(0,player.water)+'%';document.getElementById('breathFill').style.width=Math.max(0,player.breath)+'%';document.getElementById('sexText').innerHTML='Sex: <b>'+player.sex+'</b> · Offspring: <b>'+player.offspring+'</b>';document.getElementById('reproText').textContent='R = find a compatible mate + answer an ecology question';
+ if(d.next){let need=levelRequirement(player.kind);document.getElementById('progressText').textContent=Math.floor(player.skill)+' / '+need+' skill pts';document.getElementById('progressFill').style.width=Math.min(100,player.skill/need*100)+'%'}
+ else{document.getElementById('progressText').textContent='🏆 Apex predator — max level';document.getElementById('progressFill').style.width='100%'}
+ document.getElementById('pop').innerHTML=Object.entries(pop).map(([k,v])=>'<div class="poprow">'+({grasshopper:'🦗',rabbit:'🐇',frog:'🐸',snake:'🐍',hawk:'🦅'}[k])+' '+k[0].toUpperCase()+k.slice(1)+' <span>'+v+'</span></div>').join('')}
+function showInfo(type){
+ let closeBtn=document.querySelector('.close');if(closeBtn)closeBtn.style.display='block';
+ let data={
+ biomes:['🌍 Infinite Terrain, Blended Biomes & Vegetation','The world has no fixed edge. Terrain is generated from a deterministic seed, and biome colors are smoothly interpolated with noisy warping — similar to how Minecraft blends grass and foliage color across a biome edge. In first-person 3D the ground is a single mesh with per-vertex colors, so the GPU blends biomes into a continuous gradient with no visible tiles, and distance fog fades the horizon into the sky. Vegetation is generated in irregular patches rather than an even sprinkle, and every biome grows its own mix at its own density: rainforest is lush with palms and flowers, while desert is sparse scrub and cactus. Because each plant samples the biome where it actually lands, a patch straddling a border genuinely thins out as it crosses into drier ground.'],
+ food:['🔗 Trophic Levels & Food Webs','Grass (producer) → grasshopper (primary consumer) → frog (secondary consumer) → snake (tertiary consumer) → hawk (quaternary consumer) is one simplified pathway. Real ecosystems contain many overlapping pathways forming a food web, and many animals (like omnivores) shift trophic level depending on what they are eating. Animals move and reproduce automatically, so populations change while you explore.'],
+ biomass:['📊 Biomass & Energy Pyramids','Energy pyramids are always upright because roughly 90% of energy is lost as heat at every trophic transfer (the ~10% rule) — a consequence of the laws of thermodynamics. Biomass pyramids are usually upright on land too, but can invert in some aquatic systems where fast-reproducing producers (like phytoplankton) have low standing mass despite high turnover. Pyramids of numbers can look strange too — one large tree can support far more individual insects than itself.'],
+ carbon:['🌫️ The Carbon Cycle','Producers pull CO2 from the atmosphere via photosynthesis; respiration and decomposition return it. Over geologic time, buried organic matter can become fossil fuels — carbon storage that humans release rapidly by burning it. Oceans absorb large amounts of CO2, forming carbonic acid, which drives ocean acidification.'],
+ nitrogen:['🌱 The Nitrogen Cycle','Atmospheric N2 is unusable by most organisms until nitrogen-fixing bacteria (often in legume root nodules) convert it to ammonium. Nitrifying bacteria convert ammonium → nitrite → nitrate, which plants absorb. Denitrifying bacteria return nitrogen to the atmosphere as N2 gas. Humans now fix roughly as much nitrogen industrially (Haber-Bosch, for fertilizer) as nature does, and runoff often causes eutrophication.'],
+ phosphorus:['🪨 The Phosphorus Cycle','Unlike carbon and nitrogen, phosphorus has essentially no atmospheric phase. It enters ecosystems through the slow weathering of phosphate rock, gets taken up by organisms, and returns to soil/water through decomposition and waste. Because it is often scarce, phosphorus is commonly the limiting nutrient in freshwater ecosystems — excess fertilizer runoff can trigger eutrophication and oxygen-depleted dead zones.'],
+ interactions:['🤝 Ecological Interactions','Mutualism: both species benefit (clownfish & anemone, lichen). Commensalism: one benefits, the other is unaffected (barnacle on a whale). Parasitism: one benefits while harming the host (tapeworm & host). Predation: one organism kills and eats another. Competition: species vie for the same limited resource, which can drive competitive exclusion or niche partitioning. Amensalism: one is harmed while the other is unaffected.'],
+ population:['🧬 Reproduction & Population','Every animal has a sex. Nearby compatible animals can reproduce automatically over time. You can also reproduce manually with R, but you must first find a compatible mate and answer an ecology question correctly within 15 seconds.'],
+ survivorship:['📊 Survivorship Curves','Type I: high survival until later life. Type II: relatively constant mortality risk. Type III: high early mortality with greater survival among those that make it past early life.'],
+ restart:['↩️ Restart','A predator or dangerous city encounter can end your run. When you lose, you restart as a Level 1 grasshopper at the starting area.'],
+ escape:['🏃 Escape Challenge & Spawn Protection','Every run begins with 10 seconds of spawn protection: predators ignore you completely, and none can spawn within 10 blocks of you, so you always get a fair start instead of being camped. Once it expires, predators notice you from 5 blocks away and give chase — hold Shift to sprint and outrun them. If one catches up, you get an ecology question with 15 seconds on the clock: answer correctly to escape, or answer wrong or run out of time and the predator catches you, ending your run.'],
+ city:['🏙️ City Biome','Cities are rare (about a 0.5% chance per area) but now bustling with roaming cars and pedestrians. They still represent real danger: entering one ends your run immediately, reflecting genuine human-wildlife conflict, without depicting graphic harm.'],
+ water:['🌊 Lakes & Drowning','Lakes now have a soft sandy shoreline and an irregular, natural shape instead of a plain circle. None of the five playable organisms are true aquatic animals, so swimming into deep water starts draining your breath meter — get back to land before it hits zero or you will drown. Small fish live inside lakes and swim freely, since they are the ones actually adapted to water.']
+ }[type]||['Ecology','Explore, learn, eat, reproduce, and climb the food web.'];
+ document.getElementById('modalContent').innerHTML='<h2>'+data[0]+'</h2><p>'+data[1]+'</p>';document.getElementById('modal').style.display='flex'
+}
+// ---- First-person 3D mode ----
+// Renders the SAME shared simulation state (player, animals, plants, waters, etc.) that drives the
+// 2D top-down view — nothing about update(dt) changes based on which view is active. Entities are
+// drawn as camera-facing billboard sprites (classic Doom/Build-engine technique) built from the same
+// emoji used in the 2D view, and the ground reuses blendedColorAt() so both views agree visually.
+function getEmojiTexture(emoji){
+ if(emojiTexCache[emoji])return emojiTexCache[emoji];
+ // 128px (not 64) with mipmaps and anisotropic filtering — emoji sprites are viewed from very close
+ // range in first person, where a low-res texture reads as an obvious blurry smear.
+ let cnv=document.createElement('canvas');cnv.width=128;cnv.height=128;
+ let cctx=cnv.getContext('2d');cctx.font='96px serif';cctx.textAlign='center';cctx.textBaseline='middle';cctx.fillText(emoji,64,70);
+ let tex=new THREE.CanvasTexture(cnv);
+ tex.minFilter=THREE.LinearMipmapLinearFilter;tex.magFilter=THREE.LinearFilter;
+ tex.generateMipmaps=true;
+ if(three&&three.renderer)tex.anisotropy=three.renderer.capabilities.getMaxAnisotropy();
+ emojiTexCache[emoji]=tex;
+ return tex;
+}
+function makeSprite(emoji,scale){
+ let mat=new THREE.SpriteMaterial({map:getEmojiTexture(emoji),transparent:true});
+ let spr=new THREE.Sprite(mat);
+ spr.scale.set(scale,scale,1);spr.visible=false;spr._kind=emoji;
+ return spr;
+}
+function init3D(){
+ if(three)return;
+ let scene=new THREE.Scene();
+ let sky=new THREE.Color('#9ccbe4');
+ scene.background=sky;
+ // Fog fades distant terrain into the sky, so the edge of the drawn ground never shows as a hard line.
+ scene.fog=new THREE.Fog(sky,14,GROUND_TILES*TILE*SCALE*0.48);
+ let camera=new THREE.PerspectiveCamera(75,Math.max(1,W)/Math.max(1,H),0.1,400);
+ camera.rotation.order='YXZ';
+ let renderer=new THREE.WebGLRenderer({canvas:document.getElementById('game3d'),antialias:true});
+ renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
+ renderer.setSize(W,H,false);
+ // One large ground mesh with a per-vertex color attribute. The GPU interpolates between vertices,
+ // so biome transitions come out as a continuous gradient instead of visible flat-colored tiles.
+ let span=GROUND_TILES*TILE*SCALE;
+ let groundGeo=new THREE.PlaneGeometry(span,span,GROUND_SEGS,GROUND_SEGS);
+ groundGeo.rotateX(-Math.PI/2);
+ groundGeo.setAttribute('color',new THREE.BufferAttribute(new Float32Array(groundGeo.attributes.position.count*3),3));
+ let ground=new THREE.Mesh(groundGeo,new THREE.MeshBasicMaterial({vertexColors:true}));
+ scene.add(ground);
+ function buildPool(n,emoji,scale){let arr=[];for(let i=0;i<n;i++){let s=makeSprite(emoji,scale);scene.add(s);arr.push(s)}return arr}
+ let plantPool=buildPool(170,'🌿',1.1);
+ let animalPool=buildPool(75,'❓',1.4);
+ let labelPool=buildPool(75,'M',0.55); // M/F badge floated above each animal sprite
+ let fishPool=buildPool(24,'🐟',0.7);
+ let carPool=buildPool(6,'🚗',1.7);
+ let pedPool=buildPool(10,'🧍',1.5);
+ // Circle geometry (not a square plane) so lakes read as actual ponds from ground level.
+ let waterPool=[],waterGeo=new THREE.CircleGeometry(0.5,28);waterGeo.rotateX(-Math.PI/2);
+ for(let i=0;i<15;i++){let mesh=new THREE.Mesh(waterGeo,new THREE.MeshBasicMaterial({color:0x2f96bd,transparent:true,opacity:.88}));mesh.visible=false;scene.add(mesh);waterPool.push(mesh)}
+ let cityPool=[];
+ for(let i=0;i<2;i++){let mesh=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),new THREE.MeshBasicMaterial({color:0x8a8a86}));mesh.visible=false;scene.add(mesh);cityPool.push(mesh)}
+ // Soft blob shadows under animals — without them, sprites read as floating stickers on the hillside.
+ let shadowPool=[],shadowGeo=new THREE.CircleGeometry(0.34,14);shadowGeo.rotateX(-Math.PI/2);
+ for(let i=0;i<75;i++){let mesh=new THREE.Mesh(shadowGeo,new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:0.2,depthWrite:false}));mesh.visible=false;scene.add(mesh);shadowPool.push(mesh)}
+ three={scene,camera,renderer,ground,plantPool,animalPool,labelPool,fishPool,carPool,pedPool,waterPool,cityPool,shadowPool,yaw:0,pitch:0,dragging:false,lastX:0,lastY:0,snapX:null,snapY:null};
+ setup3DControls();
+}
+function updateGroundColors(){
+ let t=three,geo=t.ground.geometry,pos=geo.attributes.position,col=geo.attributes.color;
+ let N=GROUND_SEGS,W1=N+1,step=GROUND_TILES*TILE*SCALE/N,half=N*step/2;
+ let Hs=t._heights||(t._heights=new Float32Array(W1*W1));
+ let GI=t._gridIdx||(t._gridIdx=new Int32Array(pos.count));
+ let WX=t._wx||(t._wx=new Float32Array(pos.count)),WY=t._wy||(t._wy=new Float32Array(pos.count));
+ // Pass 1 — sample elevation once per vertex. Map each vertex to grid coordinates from its own local
+ // position, so this does not depend on PlaneGeometry's internal vertex ordering.
+ for(let i=0;i<pos.count;i++){
+  let lx=pos.getX(i),lz=pos.getZ(i);
+  let ix=Math.round((lx+half)/step),iy=Math.round((lz+half)/step);
+  ix=ix<0?0:(ix>N?N:ix);iy=iy<0?0:(iy>N?N:iy);
+  let g=iy*W1+ix;GI[i]=g;
+  let wx=(t.ground.position.x+lx)/SCALE,wy=(t.ground.position.z+lz)/SCALE;
+  WX[i]=wx;WY[i]=wy;
+  Hs[g]=heightAt(wx,wy);
+ }
+ // Pass 2 — slope comes from neighbouring grid samples we already have, so lighting costs no extra
+ // terrain evaluations (this replaced 4 heightAt calls per vertex and was the main rebuild cost).
+ let inv=1/(2*step);
+ for(let i=0;i<pos.count;i++){
+  let g=GI[i],ix=g%W1,iy=(g-ix)/W1;
+  let l=Hs[iy*W1+(ix>0?ix-1:ix)],r=Hs[iy*W1+(ix<N?ix+1:ix)];
+  let u=Hs[(iy>0?iy-1:iy)*W1+ix],d=Hs[(iy<N?iy+1:iy)*W1+ix];
+  let sx=(l-r)*inv,sz=(u-d)*inv;
+  let len=Math.sqrt(sx*sx+1+sz*sz),dot=(sx*SUN[0]+SUN[1]+sz*SUN[2])/len;
+  let s=0.70+0.34*(dot>0?dot:0);
+  pos.setY(i,Hs[g]);
+  let rgb=blendedRgbAt(WX[i],WY[i]);
+  let cr=rgb[0]/255*s,cg=rgb[1]/255*s,cb=rgb[2]/255*s;
+  col.setXYZ(i,cr>1?1:cr,cg>1?1:cg,cb>1?1:cb);
+ }
+ pos.needsUpdate=true;col.needsUpdate=true;
+ geo.computeBoundingSphere();
+}
+function setup3DControls(){
+ let canvas3d=document.getElementById('game3d');
+ function look(dx,dy){three.yaw-=dx*0.0026;three.pitch=Math.max(-1.3,Math.min(1.3,three.pitch-dy*0.0026))}
+ // Pointer lock gives proper free-look mouse aiming; click-drag stays as the fallback for browsers
+ // that refuse the lock, and touch drag covers mobile.
+ canvas3d.addEventListener('click',()=>{if(mode3D&&canvas3d.requestPointerLock)canvas3d.requestPointerLock()});
+ addEventListener('mousemove',e=>{
+  if(document.pointerLockElement===canvas3d){look(e.movementX||0,e.movementY||0);return}
+  if(!three||!three.dragging)return;
+  look(e.clientX-three.lastX,e.clientY-three.lastY);three.lastX=e.clientX;three.lastY=e.clientY;
+ });
+ canvas3d.addEventListener('mousedown',e=>{three.dragging=true;three.lastX=e.clientX;three.lastY=e.clientY});
+ addEventListener('mouseup',()=>{if(three)three.dragging=false});
+ canvas3d.addEventListener('touchstart',e=>{let t=e.touches[0];three.dragging=true;three.lastX=t.clientX;three.lastY=t.clientY},{passive:true});
+ canvas3d.addEventListener('touchmove',e=>{if(!three.dragging)return;let t=e.touches[0];look((t.clientX-three.lastX)*1.7,(t.clientY-three.lastY)*1.7);three.lastX=t.clientX;three.lastY=t.clientY},{passive:true});
+ canvas3d.addEventListener('touchend',()=>{three.dragging=false});
+}
+function placeInPool(list,pool,getEmoji,heightFn,isStatic){
+ let px=player.x,py=player.y;
+ // Nearest-first, and drop anything past the fog wall — a sprite drawn beyond the visible ground
+ // would otherwise hang in the haze with nothing under it.
+ let maxD=(GROUND_TILES*TILE*0.5),maxD2=maxD*maxD;
+ let scored=[];
+ for(let i=0;i<list.length;i++){let o=list[i],dx=o.x-px,dy=o.y-py,d=dx*dx+dy*dy;if(d<=maxD2)scored.push({o,d})}
+ scored.sort((a,b)=>a.d-b.d);
+ for(let i=0;i<pool.length;i++){
+  let spr=pool[i];
+  if(i<scored.length){
+   let o=scored[i].o;
+   // Plants never move, so their terrain height is computed once and cached on the object.
+   let gh=isStatic?(o._h!==undefined?o._h:(o._h=heightAt(o.x,o.y))):heightAt(o.x,o.y);
+   spr.visible=true;spr._groundY=gh;
+   spr.position.set(o.x*SCALE,gh+(heightFn?heightFn(o):0.6),o.y*SCALE);
+   if(getEmoji){let emo=getEmoji(o);if(spr._kind!==emo){spr.material.map=getEmojiTexture(emo);spr.material.needsUpdate=true;spr._kind=emo}}
+  }else spr.visible=false;
+ }
+}
+function placeAnimalsIn3D(){
+ let t=three,px=player.x,py=player.y;
+ let maxD=(GROUND_TILES*TILE*0.5),maxD2=maxD*maxD;
+ let scored=[];
+ for(let i=0;i<animals.length;i++){let o=animals[i],dx=o.x-px,dy=o.y-py,d=dx*dx+dy*dy;if(d<=maxD2)scored.push({o,d})}
+ scored.sort((a,b)=>a.d-b.d);
+ for(let i=0;i<t.animalPool.length;i++){
+  let spr=t.animalPool[i],lbl=t.labelPool[i];
+  if(i<scored.length){
+   let o=scored[i].o,gh=heightAt(o.x,o.y),baseY=gh+(o.chasing?0.9:0.7);
+   spr.visible=true;spr._groundY=gh;
+   spr.position.set(o.x*SCALE,baseY,o.y*SCALE);
+   let emo=defs[o.kind].emoji;
+   if(spr._kind!==emo){spr.material.map=getEmojiTexture(emo);spr.material.needsUpdate=true;spr._kind=emo}
+   let letter=sexLetter(o.sex);
+   lbl.visible=true;
+   lbl.position.set(o.x*SCALE,baseY+0.55,o.y*SCALE);
+   if(lbl._kind!==letter){lbl.material.map=getEmojiTexture(letter);lbl.material.needsUpdate=true;lbl._kind=letter}
+  }else{spr.visible=false;lbl.visible=false}
+ }
+}
+function draw3D(){
+ if(!three)return;
+ let t=three;
+ let groundY=heightAt(player.x,player.y);
+ t.camera.position.set(player.x*SCALE,groundY+EYE_HEIGHT,player.y*SCALE);
+ t.camera.rotation.y=t.yaw;t.camera.rotation.x=t.pitch;
+ // A subtle FOV widening while sprinting reads as speed without changing the simulation.
+ let wantFov=(keys.shift&&(keys.w||keys.a||keys.s||keys.d||keys.arrowup||keys.arrowdown||keys.arrowleft||keys.arrowright)&&player.energy>8)?82:75;
+ if(Math.abs(t.camera.fov-wantFov)>0.15){t.camera.fov+=(wantFov-t.camera.fov)*0.12;t.camera.updateProjectionMatrix()}
+ // Underwater: drop the camera, tint everything blue and choke the fog, so running out of breath
+ // is something you can see coming rather than just a bar ticking down.
+ let submerged=player.wasInWater;
+ if(submerged!==t._sub){
+  t._sub=submerged;
+  let col=new THREE.Color(submerged?'#14688f':'#9ccbe4');
+  t.scene.background=col;t.scene.fog.color=col;
+  t.scene.fog.near=submerged?0.5:14;
+  t.scene.fog.far=submerged?7:GROUND_TILES*TILE*SCALE*0.48;
+ }
+ if(submerged)t.camera.position.y=groundY+EYE_HEIGHT*0.45;
+ // Snap the ground to whole tiles and only recolor when that snap actually changes — recomputing
+ // ~2000 vertex colors every frame would be wasteful when the player hasn't crossed a tile yet.
+ // Snap on a coarser grid than a single tile: the mesh is 44 tiles wide, so moving it in 4-tile steps
+ // keeps the player far from the edge while cutting rebuild frequency by 4x.
+ let GS=TILE*4,snapX=Math.round(player.x/GS)*GS,snapY=Math.round(player.y/GS)*GS;
+ if(snapX!==t.snapX||snapY!==t.snapY){
+  t.snapX=snapX;t.snapY=snapY;
+  t.ground.position.set(snapX*SCALE,0,snapY*SCALE);
+  updateGroundColors();
+ }
+ placeInPool(plants.filter(p=>!p.used),t.plantPool,p=>p.emoji||'🌿',()=>0.5,true);
+ placeAnimalsIn3D();
+ // Mirror each visible animal sprite with a shadow sitting flat on the terrain beneath it,
+ // reusing the ground height already computed for that sprite.
+ for(let i=0;i<t.shadowPool.length;i++){
+  let spr=t.animalPool[i],sh=t.shadowPool[i];
+  if(spr&&spr.visible){sh.visible=true;sh.position.set(spr.position.x,spr._groundY+0.03,spr.position.z)}
+  else sh.visible=false;
+ }
+ placeInPool(fishes,t.fishPool,null,()=>0.05);
+ placeInPool(cars,t.carPool,null,()=>0.5);
+ placeInPool(pedestrians,t.pedPool,null,()=>0.7);
+ let ws=waters.slice(0,t.waterPool.length);
+ for(let i=0;i<t.waterPool.length;i++){let mesh=t.waterPool[i];if(i<ws.length){let w=ws[i];mesh.visible=true;mesh.position.set(w.x*SCALE,heightAt(w.x,w.y)+0.04,w.y*SCALE);mesh.scale.set(w.r*2*SCALE,1,w.r*2*SCALE)}else mesh.visible=false}
+ let cts=humans.filter(h=>h.kind==='city').slice(0,t.cityPool.length);
+ for(let i=0;i<t.cityPool.length;i++){let mesh=t.cityPool[i];if(i<cts.length){let h=cts[i],hx=h.x+h.w/2,hy=h.y+h.h/2;mesh.visible=true;mesh.scale.set(h.w*SCALE,6,h.h*SCALE);mesh.position.set(hx*SCALE,heightAt(hx,hy)+3,hy*SCALE)}else mesh.visible=false}
+ t.renderer.render(t.scene,t.camera);
+}
+function toggle3D(){
+ mode3D=!mode3D;
+ if(mode3D){
+  init3D();
+  three.snapX=null;three.snapY=null; // force a ground recolor on the first 3D frame
+  document.getElementById('game').style.display='none';
+  document.getElementById('game3d').style.display='block';
+  document.getElementById('crosshair').style.display='block';
+  document.getElementById('toggle3d').textContent='🗺️ 2D Map';
+  document.getElementById('tip').textContent='Click to lock mouse look • WASD = move where you face • Shift = sprint • E = interact • R = reproduce';
+  resize();
+  toast('🎥 First-person mode: click to lock the mouse, WASD moves where you face.');
+ }else{
+  document.getElementById('game').style.display='block';
+  document.getElementById('game3d').style.display='none';
+  document.getElementById('crosshair').style.display='none';
+  document.getElementById('toggle3d').textContent='🎥 3D View';
+  document.getElementById('tip').textContent='WASD / arrows = move • Shift = sprint • E = interact • R = reproduce • I = info';
+ }
+}
+log('Welcome! You are a Level 1 grasshopper.');log('All animals have male/female sexes and can reproduce, eat, and grow the ecosystem on their own.');log('Answer a hard ecology question — trophic levels, biomass pyramids, carbon/nitrogen/phosphorus cycles, or species interactions — every time you eat or reproduce.');log('You get 15 seconds per question, so think it through but do not stall.');log('You start with '+SPAWN_IMMUNITY+' seconds of spawn protection, and no predator can spawn within 10 blocks of you.');log('Predators spot you from 5 blocks away and give chase. Hold Shift to sprint away, or answer the escape question in time — miss it and your run ends.');log('None of the playable organisms can swim. Deep water drains your breath, and running out means drowning.');updateHUD();
+function loop(t){let dt=Math.min(.035,(t-last)/1000||0);last=t;update(dt);if(mode3D&&three)draw3D();else draw();requestAnimationFrame(loop)}requestAnimationFrame(loop);
+</script>
+</body>
+</html>
