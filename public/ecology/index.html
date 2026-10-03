@@ -4,23 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Ecology: Infinite Food Web</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <style>
 *{box-sizing:border-box}body{margin:0;background:#07100a;color:#eef7eb;font-family:system-ui,-apple-system,Segoe UI,sans-serif;overflow:hidden}
 #app{height:100vh;display:flex;flex-direction:column}.top{height:78px;background:#101a14;border-bottom:2px solid #2d4932;display:flex;align-items:center;gap:9px;padding:8px 11px;z-index:5}
 .logo{font-size:23px;font-weight:900;color:#84e64b;min-width:245px}.logo small{display:block;color:#a9baac;font-size:9px;letter-spacing:2px}
 .stat{background:#17241b;border:1px solid #355039;border-radius:10px;padding:7px 11px;min-width:122px}.stat b{display:block;font-size:15px}.stat span{font-size:11px;color:#b7c5b9}.bar{height:8px;background:#29382b;border-radius:8px;overflow:hidden;margin-top:4px}.fill{height:100%;background:#8edb45}.water .fill{background:#2bb8e5}.breath .fill{background:#c9e8ff}
-.objective{margin-left:auto;background:#17241b;border:1px solid #355039;border-radius:10px;padding:8px 12px;font-size:11px;max-width:320px}
+.helpBtn{background:#17241b;border:1px solid #355039;border-radius:10px;padding:9px 16px;font-size:12px;color:#eef7eb;cursor:pointer}.helpBtn:hover{background:#1c321f;border-color:#91e64d}
 .main{flex:1;display:flex;min-height:0}.side{width:225px;background:#101a14;padding:9px;overflow:auto;border-right:2px solid #2d4932}.right{border-left:2px solid #2d4932;border-right:0}
 .panel{background:#122017;border:1px solid #304b35;border-radius:10px;padding:9px;margin-bottom:9px}.panel h3{font-size:12px;margin:0 0 7px}
 .org{display:flex;align-items:center;gap:7px;padding:7px;border:1px solid #304a35;border-radius:8px;margin:5px 0;cursor:default}.org.selected{border-color:#91e64d;background:#1c321f}.org.locked{opacity:.42}.org .emoji{font-size:25px}.org small{color:#a9b8ab}.lockIcon{display:none;margin-left:auto;font-size:13px}.org.locked .lockIcon{display:inline}
 #gameWrap{flex:1;position:relative;overflow:hidden;background:#6eae43}canvas{width:100%;height:100%;display:block}
-#game3d{position:absolute;top:0;left:0;z-index:1;cursor:grab}#game3d:active{cursor:grabbing}
-.mode-toggle{position:absolute;top:11px;right:11px;background:#12231aeF;border:1px solid #71955d;border-radius:9px;padding:8px 14px;font-size:11px;z-index:6;cursor:pointer;color:#eef7eb}.mode-toggle:hover{background:#1c321f}
-#crosshair{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:3;display:none;pointer-events:none;color:#ffffffcc;font-size:17px;text-shadow:0 0 4px #0008}
 #shield{position:absolute;top:44px;left:50%;transform:translateX(-50%);background:#123a4eef;border:1px solid #57b6d8;border-radius:11px;padding:6px 14px;font-size:11px;z-index:4;display:none;pointer-events:none;color:#d6f1ff}
-#tip{position:absolute;top:11px;left:50%;transform:translateX(-50%);background:#12231aeF;border:1px solid #71955d;border-radius:11px;padding:7px 14px;font-size:11px;pointer-events:none;z-index:2;white-space:nowrap}
-.controls{position:absolute;bottom:9px;left:9px;background:#102019eF;border:1px solid #49634b;border-radius:9px;padding:8px;font-size:10px;z-index:2}
 #toast{position:absolute;bottom:48px;left:50%;transform:translateX(-50%);background:#15271bee;border:1px solid #86b961;border-radius:10px;padding:9px 14px;display:none;z-index:8}
 .guide button,.quizBtn{width:100%;background:#10231a;color:#dff0df;border:1px solid #31513a;padding:8px;margin:3px 0;border-radius:7px;text-align:left;cursor:pointer}.guide button:hover,.quizBtn:hover{background:#1d3b27}
 .log{font-size:10px;line-height:1.35;max-height:155px;overflow:auto}.log div{padding:4px;border-bottom:1px solid #22352a}
@@ -30,7 +24,7 @@
 .challenge{background:#1a3120;border-left:4px solid #8cda45;padding:10px;margin:10px 0}.answers button{display:block;width:100%;padding:9px;margin:6px 0;border:1px solid #456b4d;border-radius:8px;background:#102219;color:white;text-align:left;cursor:pointer}.answers button:hover{background:#25472e}.answers button:disabled{cursor:default}
 .badge{display:inline-block;border:1px solid #5f7c59;border-radius:99px;padding:3px 7px;margin:2px;font-size:9px}
 .qtimerbar{height:10px;background:#29382b;border-radius:8px;overflow:hidden;margin-top:9px}.qtimerfill{height:100%;background:#e0544c;width:100%}
-@media(max-width:1050px){.side{width:185px}.logo{min-width:170px;font-size:18px}.objective{display:none}}
+@media(max-width:1050px){.side{width:185px}.logo{min-width:170px;font-size:18px}}
 </style>
 </head>
 <body>
@@ -42,7 +36,7 @@
  <div class="stat">⚡ Energy <b id="energyText">80/100</b><div class="bar"><div id="energyFill" class="fill" style="width:80%"></div></div></div>
  <div class="stat water">💧 Water <b id="waterText">75/100</b><div class="bar"><div id="waterFill" class="fill" style="width:75%"></div></div></div>
  <div class="stat breath">🌬️ Breath <b id="breathText">100/100</b><div class="bar"><div id="breathFill" class="fill" style="width:100%"></div></div></div>
- <div class="objective">🏆 <b>Goal:</b> answer hard ecology questions (trophic levels, energy/biomass pyramids, carbon/nitrogen/phosphorus cycles, and species interactions) in 15 seconds. Eating, reproducing, and escaping predators all earn skill points, which climb you up the food chain — higher levels need more points. Hold Shift to sprint. Missing a predator question is fatal, and you can't swim into deep water.</div>
+ <button class="helpBtn" onclick="showHelp()" style="margin-left:auto">❓ Help</button>
 </header>
 <main class="main">
 <aside class="side">
@@ -51,45 +45,24 @@
   <div class="org locked" data-kind="frog"><span class="emoji">🐸</span><div><b>Frog</b><br><small>Level 2 • secondary consumer</small></div><span class="lockIcon">🔒</span></div>
   <div class="org locked" data-kind="snake"><span class="emoji">🐍</span><div><b>Snake</b><br><small>Level 3 • secondary consumer</small></div><span class="lockIcon">🔒</span></div>
   <div class="org locked" data-kind="hawk"><span class="emoji">🦅</span><div><b>Hawk</b><br><small>Level 4 • tertiary consumer</small></div><span class="lockIcon">🔒</span></div>
-  <p style="font-size:9px;color:#aebdaf;margin:6px 0 0">You always start as a grasshopper. Earn skill points by eating, reproducing, and escaping predators to automatically advance to the next stage — you can't pick a stage directly.</p>
  </div>
- <div class="panel"><h3>🧬 YOUR REPRODUCTION</h3>
-  <div id="sexText">Sex: —</div><div id="reproText">Find a compatible mate, then answer a question.</div>
+ <div class="panel"><h3>🧬 REPRODUCTION</h3>
+  <div id="sexText">Sex: —</div>
  </div>
  <div class="panel"><h3>✨ SKILL POINTS</h3>
   <div id="progressText">0 / 50 skill pts</div><div class="bar"><div id="progressFill" class="fill" style="width:0%"></div></div>
-  <p style="font-size:9px;color:#aebdaf">Earn skill points by eating, reproducing, and escaping predators. Higher trophic levels need more points to advance.</p>
- </div>
- <div class="panel guide"><h3>📖 ECOLOGY GUIDE</h3>
-  <button onclick="showInfo('biomes')">Biome blending</button>
-  <button onclick="showInfo('food')">Trophic levels & food webs</button>
-  <button onclick="showInfo('biomass')">Biomass & energy pyramids</button>
-  <button onclick="showInfo('carbon')">Carbon cycle</button>
-  <button onclick="showInfo('nitrogen')">Nitrogen cycle</button>
-  <button onclick="showInfo('phosphorus')">Phosphorus cycle</button>
-  <button onclick="showInfo('interactions')">Species interactions</button>
-  <button onclick="showInfo('population')">Population & reproduction</button>
-  <button onclick="showInfo('survivorship')">Survivorship curves</button>
-  <button onclick="showInfo('water')">Water, lakes & drowning</button>
-  <button onclick="showInfo('city')">City & hazards</button>
  </div>
 </aside>
 <section id="gameWrap">
  <canvas id="game"></canvas>
- <canvas id="game3d" style="display:none"></canvas>
- <div id="crosshair">✛</div>
  <div id="shield">🛡️ Spawn protection: <b id="shieldTime">10</b>s — predators can't touch you</div>
- <button class="mode-toggle" id="toggle3d" onclick="toggle3D()">🎥 3D View</button>
- <div id="tip">WASD / arrows = move • Shift = sprint • E = interact • R = reproduce • I = info</div>
  <div id="toast"></div>
- <div class="controls">🎮 <b>Move</b> WASD/arrows &nbsp; 🏃 <b>Sprint</b> Shift &nbsp; 🍽️ <b>Eat</b> E &nbsp; 🧬 <b>Reproduce</b> R &nbsp; 🔎 <b>Info</b> I</div>
  <div class="modal" id="modal"><div class="modalBox"><button class="close" onclick="closeModal()">×</button><div id="modalContent"></div></div></div>
 </section>
 <aside class="side right">
  <div class="panel"><h3>🗺️ LOCAL MAP</h3><canvas id="mini"></canvas><div style="font-size:8px;color:#aebdaf;margin-top:4px">The world generates as you explore.</div></div>
  <div class="panel"><h3>👥 POPULATIONS</h3><div id="pop"></div></div>
  <div class="panel"><h3>📜 EVENT LOG</h3><div class="log" id="log"></div></div>
- <div class="panel"><h3>🧠 ECOLOGY QUESTION</h3><div id="challenge">Questions appear when you try to eat or reproduce. You get 15 seconds to answer. Missing a predator question ends your run.</div></div>
 </aside>
 </main>
 </div>
@@ -102,22 +75,6 @@ const TILE=50; // gameplay "block" unit — used for chase/safe radius distances
 const TERRAIN_RES=25; // terrain color sampling resolution — finer than TILE so the smooth climate
                        // blend actually reads as smooth on screen instead of showing flat color bands
 let terrainCache=new Map();
-// --- First-person 3D mode state ---
-const SCALE=0.04; // converts world px units into Three.js scene units
-const EYE_HEIGHT=1.6;
-const GROUND_TILES=44; // ground mesh spans 44x44 tiles around the player, with vertex-blended colors
-const GROUND_SEGS=26; // mesh subdivisions across that span — terrain varies on a ~820px scale, so a
-                      // coarser mesh than one-vertex-per-tile loses no visible detail and rebuilds ~3x faster
-const HILL=2.6; // amplitude of 3D terrain elevation, in scene units
-// Rolling elevation for the 3D view only — the simulation itself stays 2D, so this is purely visual.
-// Two octaves give broad hills with smaller undulations on top instead of one uniform wave.
-function heightAt(x,y){
- return ((noise(x/820+11,y/820-7)-0.5)*1.0+(noise(x/260-3,y/260+5)-0.5)*0.32)*HILL;
-}
-// Fixed sun direction used to shade terrain slopes; the slope itself is derived from the height grid
-// in updateGroundColors, which avoids re-sampling the terrain four extra times per vertex.
-const SUN=(function(){let v=[0.45,1,0.3],l=Math.hypot(v[0],v[1],v[2]);return [v[0]/l,v[1]/l,v[2]/l]})();
-let mode3D=false,three=null,emojiTexCache={};
 // Each biome occupies a position in temperature/moisture space (0=cold/dry, 1=hot/wet), the same
 // idea behind a real-world Whittaker biome diagram. Terrain color blends continuously across ALL
 // biomes based on distance in this space, rather than just between two neighbors in a list — this
@@ -146,7 +103,7 @@ const SAFE_RADIUS=TILE*10; // "10 blocks" — no predator may spawn this close t
 const SPAWN_IMMUNITY=10; // seconds of protection after a (re)spawn, so a fresh run always gets a fair start
 let player={x:0,y:0,r:18,kind:'grasshopper',sex:'',energy:80,water:75,breath:100,meals:0,skill:0,offspring:0,alive:true,wasInWater:false,immunity:SPAWN_IMMUNITY,waterBump:0};
 let animals=[],plants=[],waters=[],humans=[],fishes=[],cars=[],pedestrians=[],chunkCache=new Map(),pop={grasshopper:60,rabbit:37,frog:18,snake:8,hawk:3};
-function resize(){dpr=devicePixelRatio||1;W=c.clientWidth;H=c.clientHeight;c.width=W*dpr;c.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);if(three){three.renderer.setSize(W,H,false);three.camera.aspect=W/H;three.camera.updateProjectionMatrix()}}addEventListener('resize',resize);resize();
+function resize(){dpr=devicePixelRatio||1;W=c.clientWidth;H=c.clientHeight;c.width=W*dpr;c.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0)}addEventListener('resize',resize);resize();
 // Integer bit-mixing hash. The original used Math.sin(...) on very large arguments, which forces
 // expensive floating-point argument reduction; this benchmarked ~2.3x faster with an equivalent
 // uniform [0,1) distribution. Still fully deterministic, so the world regenerates identically.
@@ -323,7 +280,7 @@ function updateOrgSidebar(){
  });
 }
 updateOrgSidebar();
-addEventListener('keydown',e=>{let k=e.key.toLowerCase();keys[k]=true;if([' ','arrowup','arrowdown','arrowleft','arrowright'].includes(k))e.preventDefault();if(k==='e'||k===' ')attemptEat();if(k==='r')attemptReproduce();if(k==='i')showInfo('food')});
+addEventListener('keydown',e=>{let k=e.key.toLowerCase();keys[k]=true;if([' ','arrowup','arrowdown','arrowleft','arrowright'].includes(k))e.preventDefault();if(k==='e'||k===' ')attemptEat();if(k==='r')attemptReproduce();if(k==='i')showHelp()});
 addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
 
 // ---- Ecology question bank ----
@@ -621,12 +578,6 @@ function update(dt){
  if((vx||vy)&&!questionLock){
   let l=Math.hypot(vx,vy),spdMult=sprinting?1.6:1;
   let mx=vx/l,my=vy/l;
-  if(mode3D&&three){
-   // In first person, W should mean "forward from where I'm looking", not "north". Rotate the input
-   // by the camera yaw: forward = (-sin, -cos), right = (cos, -sin) in world x/y.
-   let s=Math.sin(three.yaw),cs=Math.cos(three.yaw),fwd=-my,strafe=mx;
-   mx=cs*strafe-s*fwd;my=-s*strafe-cs*fwd;
-  }
   let step=d.speed*spdMult*dt,margin=player.r*0.75,blocked=false;
   // Axis-separated collision: shorelines act as a solid wall, but sliding along one axis at a time
   // lets you walk along the water's edge instead of getting stuck the instant you touch it.
@@ -705,10 +656,23 @@ function draw(){
 function updateHUD(){
  let sh=document.getElementById('shield');
  if(sh){if(player.immunity>0){sh.style.display='block';document.getElementById('shieldTime').textContent=Math.ceil(player.immunity)}else sh.style.display='none'}
- let b=biomeAt(player.x,player.y),d=defs[player.kind];document.getElementById('biomeTop').textContent=b.name;document.getElementById('coord').textContent='x '+Math.round(player.x)+' · y '+Math.round(player.y);document.getElementById('level').textContent='Level '+d.level;document.getElementById('role').textContent=d.role;document.getElementById('energyText').textContent=Math.round(player.energy)+'/100';document.getElementById('waterText').textContent=Math.round(player.water)+'/100';document.getElementById('breathText').textContent=Math.round(player.breath)+'/100';document.getElementById('energyFill').style.width=Math.max(0,player.energy)+'%';document.getElementById('waterFill').style.width=Math.max(0,player.water)+'%';document.getElementById('breathFill').style.width=Math.max(0,player.breath)+'%';document.getElementById('sexText').innerHTML='Sex: <b>'+player.sex+'</b> · Offspring: <b>'+player.offspring+'</b>';document.getElementById('reproText').textContent='R = find a compatible mate + answer an ecology question';
+ let b=biomeAt(player.x,player.y),d=defs[player.kind];document.getElementById('biomeTop').textContent=b.name;document.getElementById('coord').textContent='x '+Math.round(player.x)+' · y '+Math.round(player.y);document.getElementById('level').textContent='Level '+d.level;document.getElementById('role').textContent=d.role;document.getElementById('energyText').textContent=Math.round(player.energy)+'/100';document.getElementById('waterText').textContent=Math.round(player.water)+'/100';document.getElementById('breathText').textContent=Math.round(player.breath)+'/100';document.getElementById('energyFill').style.width=Math.max(0,player.energy)+'%';document.getElementById('waterFill').style.width=Math.max(0,player.water)+'%';document.getElementById('breathFill').style.width=Math.max(0,player.breath)+'%';document.getElementById('sexText').innerHTML='Sex: <b>'+player.sex+'</b> · Offspring: <b>'+player.offspring+'</b>';
  if(d.next){let need=levelRequirement(player.kind);document.getElementById('progressText').textContent=Math.floor(player.skill)+' / '+need+' skill pts';document.getElementById('progressFill').style.width=Math.min(100,player.skill/need*100)+'%'}
  else{document.getElementById('progressText').textContent='🏆 Apex predator — max level';document.getElementById('progressFill').style.width='100%'}
  document.getElementById('pop').innerHTML=Object.entries(pop).map(([k,v])=>'<div class="poprow">'+({grasshopper:'🦗',rabbit:'🐇',frog:'🐸',snake:'🐍',hawk:'🦅'}[k])+' '+k[0].toUpperCase()+k.slice(1)+' <span>'+v+'</span></div>').join('')}
+function showHelp(){
+ let closeBtn=document.querySelector('.close');if(closeBtn)closeBtn.style.display='block';
+ document.getElementById('modalContent').innerHTML=
+  '<h2>❓ How to Play</h2>'+
+  '<p>Answer hard ecology questions in 15 seconds to eat, reproduce, and escape predators. Eating, reproducing, and escaping all earn skill points, which climb you up the food chain — higher levels need more points. Missing a predator question is fatal, and you can\'t swim into deep water.</p>'+
+  '<div class="challenge"><b>🎮 Controls</b><br>Move: WASD / arrows &nbsp; Sprint: Shift &nbsp; Eat: E &nbsp; Reproduce: R &nbsp; Info: I</div>'+
+  '<h3 style="margin-bottom:4px">📖 Ecology Guide</h3>'+
+  ['biomes','food','biomass','carbon','nitrogen','phosphorus','interactions','population','survivorship','water','city'].map(t=>{
+   let label={biomes:'Biome blending',food:'Trophic levels & food webs',biomass:'Biomass & energy pyramids',carbon:'Carbon cycle',nitrogen:'Nitrogen cycle',phosphorus:'Phosphorus cycle',interactions:'Species interactions',population:'Population & reproduction',survivorship:'Survivorship curves',water:'Water, lakes & drowning',city:'City & hazards'}[t];
+   return '<button class="quizBtn" onclick="showInfo(\''+t+'\')">'+label+'</button>';
+  }).join('');
+ document.getElementById('modal').style.display='flex';
+}
 function showInfo(type){
  let closeBtn=document.querySelector('.close');if(closeBtn)closeBtn.style.display='block';
  let data={
@@ -726,233 +690,10 @@ function showInfo(type){
  city:['🏙️ City Biome','Cities are rare (about a 0.5% chance per area) but now bustling with roaming cars and pedestrians. They still represent real danger: entering one ends your run immediately, reflecting genuine human-wildlife conflict, without depicting graphic harm.'],
  water:['🌊 Lakes & Drowning','Lakes now have a soft sandy shoreline and an irregular, natural shape instead of a plain circle. None of the five playable organisms are true aquatic animals, so swimming into deep water starts draining your breath meter — get back to land before it hits zero or you will drown. Small fish live inside lakes and swim freely, since they are the ones actually adapted to water.']
  }[type]||['Ecology','Explore, learn, eat, reproduce, and climb the food web.'];
- document.getElementById('modalContent').innerHTML='<h2>'+data[0]+'</h2><p>'+data[1]+'</p>';document.getElementById('modal').style.display='flex'
-}
-// ---- First-person 3D mode ----
-// Renders the SAME shared simulation state (player, animals, plants, waters, etc.) that drives the
-// 2D top-down view — nothing about update(dt) changes based on which view is active. Entities are
-// drawn as camera-facing billboard sprites (classic Doom/Build-engine technique) built from the same
-// emoji used in the 2D view, and the ground reuses blendedColorAt() so both views agree visually.
-function getEmojiTexture(emoji){
- if(emojiTexCache[emoji])return emojiTexCache[emoji];
- // 128px (not 64) with mipmaps and anisotropic filtering — emoji sprites are viewed from very close
- // range in first person, where a low-res texture reads as an obvious blurry smear.
- let cnv=document.createElement('canvas');cnv.width=128;cnv.height=128;
- let cctx=cnv.getContext('2d');cctx.font='96px serif';cctx.textAlign='center';cctx.textBaseline='middle';cctx.fillText(emoji,64,70);
- let tex=new THREE.CanvasTexture(cnv);
- tex.minFilter=THREE.LinearMipmapLinearFilter;tex.magFilter=THREE.LinearFilter;
- tex.generateMipmaps=true;
- if(three&&three.renderer)tex.anisotropy=three.renderer.capabilities.getMaxAnisotropy();
- emojiTexCache[emoji]=tex;
- return tex;
-}
-function makeSprite(emoji,scale){
- let mat=new THREE.SpriteMaterial({map:getEmojiTexture(emoji),transparent:true});
- let spr=new THREE.Sprite(mat);
- spr.scale.set(scale,scale,1);spr.visible=false;spr._kind=emoji;
- return spr;
-}
-function init3D(){
- if(three)return;
- let scene=new THREE.Scene();
- let sky=new THREE.Color('#9ccbe4');
- scene.background=sky;
- // Fog fades distant terrain into the sky, so the edge of the drawn ground never shows as a hard line.
- scene.fog=new THREE.Fog(sky,14,GROUND_TILES*TILE*SCALE*0.48);
- let camera=new THREE.PerspectiveCamera(75,Math.max(1,W)/Math.max(1,H),0.1,400);
- camera.rotation.order='YXZ';
- let renderer=new THREE.WebGLRenderer({canvas:document.getElementById('game3d'),antialias:true});
- renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
- renderer.setSize(W,H,false);
- // One large ground mesh with a per-vertex color attribute. The GPU interpolates between vertices,
- // so biome transitions come out as a continuous gradient instead of visible flat-colored tiles.
- let span=GROUND_TILES*TILE*SCALE;
- let groundGeo=new THREE.PlaneGeometry(span,span,GROUND_SEGS,GROUND_SEGS);
- groundGeo.rotateX(-Math.PI/2);
- groundGeo.setAttribute('color',new THREE.BufferAttribute(new Float32Array(groundGeo.attributes.position.count*3),3));
- let ground=new THREE.Mesh(groundGeo,new THREE.MeshBasicMaterial({vertexColors:true}));
- scene.add(ground);
- function buildPool(n,emoji,scale){let arr=[];for(let i=0;i<n;i++){let s=makeSprite(emoji,scale);scene.add(s);arr.push(s)}return arr}
- let plantPool=buildPool(170,'🌿',1.1);
- let animalPool=buildPool(75,'❓',1.4);
- let labelPool=buildPool(75,'M',0.55); // M/F badge floated above each animal sprite
- let fishPool=buildPool(24,'🐟',0.7);
- let carPool=buildPool(6,'🚗',1.7);
- let pedPool=buildPool(10,'🧍',1.5);
- // Circle geometry (not a square plane) so lakes read as actual ponds from ground level.
- let waterPool=[],waterGeo=new THREE.CircleGeometry(0.5,28);waterGeo.rotateX(-Math.PI/2);
- for(let i=0;i<15;i++){let mesh=new THREE.Mesh(waterGeo,new THREE.MeshBasicMaterial({color:0x2f96bd,transparent:true,opacity:.88}));mesh.visible=false;scene.add(mesh);waterPool.push(mesh)}
- let cityPool=[];
- for(let i=0;i<2;i++){let mesh=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),new THREE.MeshBasicMaterial({color:0x8a8a86}));mesh.visible=false;scene.add(mesh);cityPool.push(mesh)}
- // Soft blob shadows under animals — without them, sprites read as floating stickers on the hillside.
- let shadowPool=[],shadowGeo=new THREE.CircleGeometry(0.34,14);shadowGeo.rotateX(-Math.PI/2);
- for(let i=0;i<75;i++){let mesh=new THREE.Mesh(shadowGeo,new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:0.2,depthWrite:false}));mesh.visible=false;scene.add(mesh);shadowPool.push(mesh)}
- three={scene,camera,renderer,ground,plantPool,animalPool,labelPool,fishPool,carPool,pedPool,waterPool,cityPool,shadowPool,yaw:0,pitch:0,dragging:false,lastX:0,lastY:0,snapX:null,snapY:null};
- setup3DControls();
-}
-function updateGroundColors(){
- let t=three,geo=t.ground.geometry,pos=geo.attributes.position,col=geo.attributes.color;
- let N=GROUND_SEGS,W1=N+1,step=GROUND_TILES*TILE*SCALE/N,half=N*step/2;
- let Hs=t._heights||(t._heights=new Float32Array(W1*W1));
- let GI=t._gridIdx||(t._gridIdx=new Int32Array(pos.count));
- let WX=t._wx||(t._wx=new Float32Array(pos.count)),WY=t._wy||(t._wy=new Float32Array(pos.count));
- // Pass 1 — sample elevation once per vertex. Map each vertex to grid coordinates from its own local
- // position, so this does not depend on PlaneGeometry's internal vertex ordering.
- for(let i=0;i<pos.count;i++){
-  let lx=pos.getX(i),lz=pos.getZ(i);
-  let ix=Math.round((lx+half)/step),iy=Math.round((lz+half)/step);
-  ix=ix<0?0:(ix>N?N:ix);iy=iy<0?0:(iy>N?N:iy);
-  let g=iy*W1+ix;GI[i]=g;
-  let wx=(t.ground.position.x+lx)/SCALE,wy=(t.ground.position.z+lz)/SCALE;
-  WX[i]=wx;WY[i]=wy;
-  Hs[g]=heightAt(wx,wy);
- }
- // Pass 2 — slope comes from neighbouring grid samples we already have, so lighting costs no extra
- // terrain evaluations (this replaced 4 heightAt calls per vertex and was the main rebuild cost).
- let inv=1/(2*step);
- for(let i=0;i<pos.count;i++){
-  let g=GI[i],ix=g%W1,iy=(g-ix)/W1;
-  let l=Hs[iy*W1+(ix>0?ix-1:ix)],r=Hs[iy*W1+(ix<N?ix+1:ix)];
-  let u=Hs[(iy>0?iy-1:iy)*W1+ix],d=Hs[(iy<N?iy+1:iy)*W1+ix];
-  let sx=(l-r)*inv,sz=(u-d)*inv;
-  let len=Math.sqrt(sx*sx+1+sz*sz),dot=(sx*SUN[0]+SUN[1]+sz*SUN[2])/len;
-  let s=0.70+0.34*(dot>0?dot:0);
-  pos.setY(i,Hs[g]);
-  let rgb=blendedRgbAt(WX[i],WY[i]);
-  let cr=rgb[0]/255*s,cg=rgb[1]/255*s,cb=rgb[2]/255*s;
-  col.setXYZ(i,cr>1?1:cr,cg>1?1:cg,cb>1?1:cb);
- }
- pos.needsUpdate=true;col.needsUpdate=true;
- geo.computeBoundingSphere();
-}
-function setup3DControls(){
- let canvas3d=document.getElementById('game3d');
- function look(dx,dy){three.yaw-=dx*0.0026;three.pitch=Math.max(-1.3,Math.min(1.3,three.pitch-dy*0.0026))}
- // Pointer lock gives proper free-look mouse aiming; click-drag stays as the fallback for browsers
- // that refuse the lock, and touch drag covers mobile.
- canvas3d.addEventListener('click',()=>{if(mode3D&&canvas3d.requestPointerLock)canvas3d.requestPointerLock()});
- addEventListener('mousemove',e=>{
-  if(document.pointerLockElement===canvas3d){look(e.movementX||0,e.movementY||0);return}
-  if(!three||!three.dragging)return;
-  look(e.clientX-three.lastX,e.clientY-three.lastY);three.lastX=e.clientX;three.lastY=e.clientY;
- });
- canvas3d.addEventListener('mousedown',e=>{three.dragging=true;three.lastX=e.clientX;three.lastY=e.clientY});
- addEventListener('mouseup',()=>{if(three)three.dragging=false});
- canvas3d.addEventListener('touchstart',e=>{let t=e.touches[0];three.dragging=true;three.lastX=t.clientX;three.lastY=t.clientY},{passive:true});
- canvas3d.addEventListener('touchmove',e=>{if(!three.dragging)return;let t=e.touches[0];look((t.clientX-three.lastX)*1.7,(t.clientY-three.lastY)*1.7);three.lastX=t.clientX;three.lastY=t.clientY},{passive:true});
- canvas3d.addEventListener('touchend',()=>{three.dragging=false});
-}
-function placeInPool(list,pool,getEmoji,heightFn,isStatic){
- let px=player.x,py=player.y;
- // Nearest-first, and drop anything past the fog wall — a sprite drawn beyond the visible ground
- // would otherwise hang in the haze with nothing under it.
- let maxD=(GROUND_TILES*TILE*0.5),maxD2=maxD*maxD;
- let scored=[];
- for(let i=0;i<list.length;i++){let o=list[i],dx=o.x-px,dy=o.y-py,d=dx*dx+dy*dy;if(d<=maxD2)scored.push({o,d})}
- scored.sort((a,b)=>a.d-b.d);
- for(let i=0;i<pool.length;i++){
-  let spr=pool[i];
-  if(i<scored.length){
-   let o=scored[i].o;
-   // Plants never move, so their terrain height is computed once and cached on the object.
-   let gh=isStatic?(o._h!==undefined?o._h:(o._h=heightAt(o.x,o.y))):heightAt(o.x,o.y);
-   spr.visible=true;spr._groundY=gh;
-   spr.position.set(o.x*SCALE,gh+(heightFn?heightFn(o):0.6),o.y*SCALE);
-   if(getEmoji){let emo=getEmoji(o);if(spr._kind!==emo){spr.material.map=getEmojiTexture(emo);spr.material.needsUpdate=true;spr._kind=emo}}
-  }else spr.visible=false;
- }
-}
-function placeAnimalsIn3D(){
- let t=three,px=player.x,py=player.y;
- let maxD=(GROUND_TILES*TILE*0.5),maxD2=maxD*maxD;
- let scored=[];
- for(let i=0;i<animals.length;i++){let o=animals[i],dx=o.x-px,dy=o.y-py,d=dx*dx+dy*dy;if(d<=maxD2)scored.push({o,d})}
- scored.sort((a,b)=>a.d-b.d);
- for(let i=0;i<t.animalPool.length;i++){
-  let spr=t.animalPool[i],lbl=t.labelPool[i];
-  if(i<scored.length){
-   let o=scored[i].o,gh=heightAt(o.x,o.y),baseY=gh+(o.chasing?0.9:0.7);
-   spr.visible=true;spr._groundY=gh;
-   spr.position.set(o.x*SCALE,baseY,o.y*SCALE);
-   let emo=defs[o.kind].emoji;
-   if(spr._kind!==emo){spr.material.map=getEmojiTexture(emo);spr.material.needsUpdate=true;spr._kind=emo}
-   let letter=sexLetter(o.sex);
-   lbl.visible=true;
-   lbl.position.set(o.x*SCALE,baseY+0.55,o.y*SCALE);
-   if(lbl._kind!==letter){lbl.material.map=getEmojiTexture(letter);lbl.material.needsUpdate=true;lbl._kind=letter}
-  }else{spr.visible=false;lbl.visible=false}
- }
-}
-function draw3D(){
- if(!three)return;
- let t=three;
- let groundY=heightAt(player.x,player.y);
- t.camera.position.set(player.x*SCALE,groundY+EYE_HEIGHT,player.y*SCALE);
- t.camera.rotation.y=t.yaw;t.camera.rotation.x=t.pitch;
- // A subtle FOV widening while sprinting reads as speed without changing the simulation.
- let wantFov=(keys.shift&&(keys.w||keys.a||keys.s||keys.d||keys.arrowup||keys.arrowdown||keys.arrowleft||keys.arrowright)&&player.energy>8)?82:75;
- if(Math.abs(t.camera.fov-wantFov)>0.15){t.camera.fov+=(wantFov-t.camera.fov)*0.12;t.camera.updateProjectionMatrix()}
- // Underwater: drop the camera, tint everything blue and choke the fog, so running out of breath
- // is something you can see coming rather than just a bar ticking down.
- let submerged=player.wasInWater;
- if(submerged!==t._sub){
-  t._sub=submerged;
-  let col=new THREE.Color(submerged?'#14688f':'#9ccbe4');
-  t.scene.background=col;t.scene.fog.color=col;
-  t.scene.fog.near=submerged?0.5:14;
-  t.scene.fog.far=submerged?7:GROUND_TILES*TILE*SCALE*0.48;
- }
- if(submerged)t.camera.position.y=groundY+EYE_HEIGHT*0.45;
- // Snap the ground to whole tiles and only recolor when that snap actually changes — recomputing
- // ~2000 vertex colors every frame would be wasteful when the player hasn't crossed a tile yet.
- // Snap on a coarser grid than a single tile: the mesh is 44 tiles wide, so moving it in 4-tile steps
- // keeps the player far from the edge while cutting rebuild frequency by 4x.
- let GS=TILE*4,snapX=Math.round(player.x/GS)*GS,snapY=Math.round(player.y/GS)*GS;
- if(snapX!==t.snapX||snapY!==t.snapY){
-  t.snapX=snapX;t.snapY=snapY;
-  t.ground.position.set(snapX*SCALE,0,snapY*SCALE);
-  updateGroundColors();
- }
- placeInPool(plants.filter(p=>!p.used),t.plantPool,p=>p.emoji||'🌿',()=>0.5,true);
- placeAnimalsIn3D();
- // Mirror each visible animal sprite with a shadow sitting flat on the terrain beneath it,
- // reusing the ground height already computed for that sprite.
- for(let i=0;i<t.shadowPool.length;i++){
-  let spr=t.animalPool[i],sh=t.shadowPool[i];
-  if(spr&&spr.visible){sh.visible=true;sh.position.set(spr.position.x,spr._groundY+0.03,spr.position.z)}
-  else sh.visible=false;
- }
- placeInPool(fishes,t.fishPool,null,()=>0.05);
- placeInPool(cars,t.carPool,null,()=>0.5);
- placeInPool(pedestrians,t.pedPool,null,()=>0.7);
- let ws=waters.slice(0,t.waterPool.length);
- for(let i=0;i<t.waterPool.length;i++){let mesh=t.waterPool[i];if(i<ws.length){let w=ws[i];mesh.visible=true;mesh.position.set(w.x*SCALE,heightAt(w.x,w.y)+0.04,w.y*SCALE);mesh.scale.set(w.r*2*SCALE,1,w.r*2*SCALE)}else mesh.visible=false}
- let cts=humans.filter(h=>h.kind==='city').slice(0,t.cityPool.length);
- for(let i=0;i<t.cityPool.length;i++){let mesh=t.cityPool[i];if(i<cts.length){let h=cts[i],hx=h.x+h.w/2,hy=h.y+h.h/2;mesh.visible=true;mesh.scale.set(h.w*SCALE,6,h.h*SCALE);mesh.position.set(hx*SCALE,heightAt(hx,hy)+3,hy*SCALE)}else mesh.visible=false}
- t.renderer.render(t.scene,t.camera);
-}
-function toggle3D(){
- mode3D=!mode3D;
- if(mode3D){
-  init3D();
-  three.snapX=null;three.snapY=null; // force a ground recolor on the first 3D frame
-  document.getElementById('game').style.display='none';
-  document.getElementById('game3d').style.display='block';
-  document.getElementById('crosshair').style.display='block';
-  document.getElementById('toggle3d').textContent='🗺️ 2D Map';
-  document.getElementById('tip').textContent='Click to lock mouse look • WASD = move where you face • Shift = sprint • E = interact • R = reproduce';
-  resize();
-  toast('🎥 First-person mode: click to lock the mouse, WASD moves where you face.');
- }else{
-  document.getElementById('game').style.display='block';
-  document.getElementById('game3d').style.display='none';
-  document.getElementById('crosshair').style.display='none';
-  document.getElementById('toggle3d').textContent='🎥 3D View';
-  document.getElementById('tip').textContent='WASD / arrows = move • Shift = sprint • E = interact • R = reproduce • I = info';
- }
+ document.getElementById('modalContent').innerHTML='<h2>'+data[0]+'</h2><p>'+data[1]+'</p><button class="quizBtn" style="margin-top:8px" onclick="showHelp()">← Back to Help</button>';document.getElementById('modal').style.display='flex'
 }
 log('Welcome! You are a Level 1 grasshopper.');log('All animals have male/female sexes and can reproduce, eat, and grow the ecosystem on their own.');log('Answer a hard ecology question — trophic levels, biomass pyramids, carbon/nitrogen/phosphorus cycles, or species interactions — every time you eat or reproduce.');log('You get 15 seconds per question, so think it through but do not stall.');log('You start with '+SPAWN_IMMUNITY+' seconds of spawn protection, and no predator can spawn within 10 blocks of you.');log('Predators spot you from 5 blocks away and give chase. Hold Shift to sprint away, or answer the escape question in time — miss it and your run ends.');log('None of the playable organisms can swim. Deep water drains your breath, and running out means drowning.');updateHUD();
-function loop(t){let dt=Math.min(.035,(t-last)/1000||0);last=t;update(dt);if(mode3D&&three)draw3D();else draw();requestAnimationFrame(loop)}requestAnimationFrame(loop);
+function loop(t){let dt=Math.min(.035,(t-last)/1000||0);last=t;update(dt);draw();requestAnimationFrame(loop)}requestAnimationFrame(loop);
 </script>
 </body>
 </html>
