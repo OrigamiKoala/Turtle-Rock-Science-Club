@@ -108,8 +108,8 @@ interface HeroProps {
 //                             italic "Science" fade/slide in using the exact
 //                             same big-title formatting as Moment 1's
 //                             "Turtle Rock" / "Science Club", and a
-//                             "Sign Me Up!" button (sized to match Moment 1's
-//                             "Join the Club" button) fades/slides in last —
+//                             "Sign up!" button (sized to match Moment 1's
+//                             "Sign up!" button) fades/slides in last —
 //                             this is what actually stays at opacity 1
 //                             forever once progress reaches 1
 // ThreeThings.tsx used to be its own `<section>` in normal document flow,
@@ -866,7 +866,7 @@ export default function Hero({ onOpenJoin, onOpenEvents, progress, locked, photo
 
             <div className="mt-10">
               {/* Bumped from the original px-7 py-3.5 text-sm to match Moment
-                  7's "Sign Me Up!" button (hero-final-signup-btn) — direct
+                  7's "Sign up!" button (hero-final-signup-btn) — direct
                   request: modestly bigger than before, not a dramatic jump,
                   and identical between the two so neither reads as the
                   "real" CTA over the other. */}
@@ -875,7 +875,7 @@ export default function Hero({ onOpenJoin, onOpenEvents, progress, locked, photo
                 onClick={onOpenEvents}
                 className="px-8 py-4 rounded-full font-hero font-bold uppercase tracking-wide text-base transition-all duration-300 hover:scale-[1.03] active:scale-95 cursor-pointer bg-[#6CC24A]/90 backdrop-blur-md text-[#0B2A2E] border border-[#E4F5DA]/40 shadow-[0_4px_20px_rgba(108,194,74,0.35)] flex items-center gap-2"
               >
-                <span>Sign up</span>
+                <span>Sign up!</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
@@ -1080,17 +1080,17 @@ export default function Hero({ onOpenJoin, onOpenEvents, progress, locked, photo
             </p>
           </motion.div>
 
-          {/* Same size as the intro's "Join the Club" button (hero-intro-
-              join-btn, Moment 1) — direct request: both bumped up together
+          {/* Same size as the intro's "Sign up!" button (hero-intro-
+              signup-btn, Moment 1) — direct request: both bumped up together
               from the original px-7 py-3.5 text-sm to this, modestly bigger
               rather than a dramatically different size. */}
           <motion.div style={{ opacity: finalCtaOpacity, y: finalCtaY }} className="mt-10">
             <button
               id="hero-final-signup-btn"
-              onClick={onOpenJoin}
+              onClick={onOpenEvents}
               className="px-8 py-4 rounded-full font-hero font-bold uppercase tracking-wide text-base transition-all duration-300 hover:scale-[1.03] active:scale-95 cursor-pointer bg-[#6CC24A]/90 backdrop-blur-md text-[#0B2A2E] border border-[#E4F5DA]/40 shadow-[0_4px_20px_rgba(108,194,74,0.35)] flex items-center gap-2"
             >
-              <span>Sign Me Up!</span>
+              <span>Sign up!</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </motion.div>
