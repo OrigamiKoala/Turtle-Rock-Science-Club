@@ -45,6 +45,7 @@ const DECEL_EASE = cubicBezier(0.76, 0, 0.24, 1);
 
 interface HeroProps {
   onOpenJoin: () => void;
+  onOpenEvents: () => void;
   progress: MotionValue<number>;
   /** True until intro progress reaches 1. While locked the panel is
    * `fixed inset-0` (the document itself is scroll-locked by useHeroScroll,
@@ -576,7 +577,7 @@ const SPARKS: SparkSpec[] = [
   { left: '72%', top: '16%', size: 4, color: '#E4F5DA', delay: 2.0 }
 ];
 
-export default function Hero({ onOpenJoin, progress, locked, photos }: HeroProps) {
+export default function Hero({ onOpenJoin, onOpenEvents, progress, locked, photos }: HeroProps) {
   // Sheet-published photos win once there are any (same "Sheet is the
   // source of truth once it has content" rule the rest of the site
   // follows); otherwise the bundled real club photos (LOCAL_CAROUSEL_PHOTOS)
@@ -870,11 +871,11 @@ export default function Hero({ onOpenJoin, progress, locked, photos }: HeroProps
                   and identical between the two so neither reads as the
                   "real" CTA over the other. */}
               <button
-                id="hero-intro-join-btn"
-                onClick={onOpenJoin}
+                id="hero-intro-signup-btn"
+                onClick={onOpenEvents}
                 className="px-8 py-4 rounded-full font-hero font-bold uppercase tracking-wide text-base transition-all duration-300 hover:scale-[1.03] active:scale-95 cursor-pointer bg-[#6CC24A]/90 backdrop-blur-md text-[#0B2A2E] border border-[#E4F5DA]/40 shadow-[0_4px_20px_rgba(108,194,74,0.35)] flex items-center gap-2"
               >
-                <span>Join the Club</span>
+                <span>Sign up</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>

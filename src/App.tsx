@@ -605,6 +605,7 @@ export default function App() {
               <div key="home" className="animate-tab-in-fade">
                 <Hero
                   onOpenJoin={() => navigateTo('/join')}
+                  onOpenEvents={() => handleTabChange('missions')}
                   progress={heroProgress}
                   locked={heroLocked}
                   photos={content.photos}

@@ -1032,7 +1032,7 @@ All mathematical expressions, chemical formulas, reaction equations, and physica
 ## Hero Scroll
 
 `src/useHeroScroll.ts` drives the landing hero screen transitions:
-- Landing screen loads directly with navbar visible, "Turtle Rock Science Club" lit, and "Join the Club" CTA (no dimmed opening frame).
+- Landing screen loads directly with navbar visible, "Turtle Rock Science Club" lit, and "Sign up" CTA leading to the Events tab (no dimmed opening frame).
 - Light scroll gestures (`WHEEL_MIN_DELTA = 3`) immediately advance to the next screen and stop.
 - Per-gesture lock isolates trackpad inertia tails so a single scroll cannot advance past multiple screens.
 - Re-arms upon brief idle pause (~110ms), direction reversal, or distinct swipe acceleration, allowing rapid scrolling to proceed screen-by-screen.
