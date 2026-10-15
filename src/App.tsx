@@ -24,6 +24,7 @@ import LoginModal from './components/LoginModal';
 import ResetPasswordModal from './components/ResetPasswordModal';
 import SignupModal from './components/SignupModal';
 import EcologyGame from './components/EcologyGame';
+import HomeAnnouncements from './components/HomeAnnouncements';
 
 import { Trophy, Star, MailCheck, Mail, X, Loader2 } from 'lucide-react';
 
@@ -609,6 +610,11 @@ export default function App() {
                   progress={heroProgress}
                   locked={heroLocked}
                   photos={content.photos}
+                />
+                <HomeAnnouncements
+                  announcements={content.announcements}
+                  contentStatus={content.status}
+                  onViewAll={() => handleTabChange('logs')}
                 />
               </div>
             ) : (

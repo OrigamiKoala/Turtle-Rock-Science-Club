@@ -43,9 +43,39 @@ export default function LabLogAnnouncements({ logs, announcements, contentStatus
 
   return (
     <section className="py-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-14 text-left relative z-10 font-sans">
-      <div className="space-y-8">
+      <div className="space-y-6">
+        <div className="space-y-1">
+          <h3 className="font-display font-bold text-2xl sm:text-3xl tracking-tight text-[#1F3A42]">Club Announcements</h3>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {announcements.length === 0 ? (
+            <div className="col-span-full p-6 rounded-2xl border-2 border-[#1F3A42]/8 bg-white text-center space-y-1">
+              <p className="font-display font-bold text-sm text-[#1F3A42]">
+                {contentStatus === 'loading' ? 'Loading...' : 'No announcements yet...'}
+              </p>
+              {contentStatus !== 'loading' && (
+                <p className="text-xs text-[#4B6169] font-sans">Check back later!</p>
+              )}
+            </div>
+          ) : (
+            announcements.map((ann) => (
+              <div id={`announcement-${ann.id}`} key={ann.id} className="p-5 rounded-2xl border-2 border-[#1F3A42]/8 bg-white space-y-2.5 hover:border-[#1F3A42]/15 transition-all">
+                <div className="flex items-center justify-between gap-4">
+                  <span className="px-2.5 py-1 rounded-full text-[10px] font-display font-bold bg-[#E4F5DA] text-[#2E7D46]">{ann.category}</span>
+                  <span className="text-[10px] text-[#9AA6A6] font-bold">{ann.date}</span>
+                </div>
+                <SafeHtml as="h5" content={ann.title} className="font-display font-bold text-sm tracking-tight leading-snug text-[#1F3A42]" />
+                <SafeHtml content={ann.content} className="text-xs leading-relaxed text-[#4B6169]" />
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      <div className="space-y-8 pt-6 border-t-2 border-[#1F3A42]/8">
         <div>
-          <h3 className="font-display font-bold text-2xl sm:text-3xl tracking-tight text-[#1F3A42]">Latest From the Lab Log</h3>
+          <h4 className="font-display font-bold text-xl sm:text-2xl tracking-tight text-[#1F3A42]">Latest From the Lab Log</h4>
         </div>
 
         {logs.length === 0 ? (
@@ -94,36 +124,6 @@ export default function LabLogAnnouncements({ logs, announcements, contentStatus
             ))}
           </div>
         )}
-      </div>
-
-      <div className="space-y-6 pt-6 border-t-2 border-[#1F3A42]/8">
-        <div className="space-y-1">
-          <h4 className="font-display font-bold text-xl sm:text-2xl tracking-tight text-[#1F3A42]">Club Announcements</h4>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {announcements.length === 0 ? (
-            <div className="col-span-full p-6 rounded-2xl border-2 border-[#1F3A42]/8 bg-white text-center space-y-1">
-              <p className="font-display font-bold text-sm text-[#1F3A42]">
-                {contentStatus === 'loading' ? 'Loading...' : 'No announcements yet...'}
-              </p>
-              {contentStatus !== 'loading' && (
-                <p className="text-xs text-[#4B6169] font-sans">Check back later!</p>
-              )}
-            </div>
-          ) : (
-            announcements.map((ann) => (
-              <div id={`announcement-${ann.id}`} key={ann.id} className="p-5 rounded-2xl border-2 border-[#1F3A42]/8 bg-white space-y-2.5 hover:border-[#1F3A42]/15 transition-all">
-                <div className="flex items-center justify-between gap-4">
-                  <span className="px-2.5 py-1 rounded-full text-[10px] font-display font-bold bg-[#E4F5DA] text-[#2E7D46]">{ann.category}</span>
-                  <span className="text-[10px] text-[#9AA6A6] font-bold">{ann.date}</span>
-                </div>
-                <SafeHtml as="h5" content={ann.title} className="font-display font-bold text-sm tracking-tight leading-snug text-[#1F3A42]" />
-                <SafeHtml content={ann.content} className="text-xs leading-relaxed text-[#4B6169]" />
-              </div>
-            ))
-          )}
-        </div>
       </div>
 
       {activeLog && createPortal(
