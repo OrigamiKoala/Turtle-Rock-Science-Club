@@ -1,1078 +1,141 @@
-# Turtle Rock Science Club — website
+# Turtle Rock Science Club
 
-Single-page React site for a local elementary school science club. Parents and
-kids browse events, sign up for them, read announcements, and play science
-minigames.
+Single-page React site for Turtle Rock Science Club. Content is managed via Google Sheets + Google Apps Script backend.
 
-The club's content is **not** in this repo — it lives in a Google Sheet that a
-Google Apps Script publishes to the site. See "Content pipeline" below before
-changing anything about events, announcements, or the lab log.
+## Tech Stack & Commands
 
-## Stack
-
-- React 19 + TypeScript, built with Vite 6
-- Tailwind v4 via `@tailwindcss/vite` (no `tailwind.config.js`; utilities only)
-- `lucide-react` for icons, `motion` available but barely used
-- No router — the "page" is a `currentTab` string in `App.tsx`
-- No test suite. `npm run lint` is `tsc --noEmit`; that plus `npm run build` is
-  the full check.
-
-```bash
-npm run dev     # localhost:3000
-npm run lint    # tsc --noEmit
-npm run build
-```
+- React 19 + TypeScript, Vite 6, Tailwind CSS v4 (`@tailwindcss/vite`).
+- Icons: `lucide-react`. Styling: dark-mode only (Tailwind utilities + `:root.dark` overrides).
+- Navigation: state-based (`currentTab` in `App.tsx`), no router.
+- Lint/Typecheck: `npm run lint` (`tsc --noEmit`).
+- Dev: `npm run dev` (port 3000). Build: `npm run build`.
 
 ## Deployment (GitHub Pages)
 
-`.github/workflows/deploy-gh-pages.yml` runs `npm ci && npm run build` and
-publishes `dist/` via `actions/deploy-pages`. Always ensure `package-lock.json`
-stays in sync with `package.json` (run `npm install` when adding packages) or
-`npm ci` will fail and GitHub Pages will serve stale builds. It replaced a stock
-"Jekyll + GitHub Pages" workflow that copied the raw source unbuilt — Jekyll
-never ran Vite, so `index.html`'s `<script src="/src/main.tsx">` shipped as-is
-and the browser 404'd trying to fetch uncompiled TypeScript as a module.
+- **Workflow**: `.github/workflows/deploy-gh-pages.yml` runs `npm ci && npm run build` -> `actions/deploy-pages`. Always keep `package-lock.json` in sync (`npm install`).
+- **Domain**: `trscienceclub.org`. `vite.config.ts` sets `base: '/'`.
+- **Public Assets**: Reference runtime assets in `public/` using `${import.meta.env.BASE_URL}asset.png` in JS/TSX.
+- **SPA Routing**: `spaFallbackPlugin` in `vite.config.ts` copies `index.html` to `404.html` and creates directory fallbacks for direct route access (`titration`, `admin`, `join`, `events`, `games`, `resources`, `announcements`, `gallery`, `about`, `dashboard`).
+- **Standalone Pages**:
+  - `public/ariadne-console/index.html`: Chem curriculum terminal (`?week=N`, `#1,2,3`).
+  - `public/station-1c/index.html`: Session 1-C Beam Deflector sim.
+  - `public/ecology/index.html`: 2D canvas ecosystem simulator, embedded via iframe in `EcologyGame.tsx`.
 
-The site is served at the custom domain **trscienceclub.org** (configured via
-the repo's GitHub Pages settings — `gh api repos/:owner/:repo/pages` — not a
-checked-in `CNAME` file, since Pages uses the Actions/`workflow` build type
-here rather than legacy branch deployment). Because that's a domain root, not
-a subpath, `vite.config.ts` sets `base: '/'`. It was previously
-`/Turtle-Rock-Science-Club/` back when the site lived at the project-page URL
-`OrigamiKoala.github.io/Turtle-Rock-Science-Club/`; moving to the custom
-domain without updating `base` reproduced the exact 404-on-built-assets
-pattern that switching away from Jekyll originally fixed (browser requests
-`trscienceclub.org/Turtle-Rock-Science-Club/assets/...`, which doesn't exist).
-If the site ever moves again — back to the project-page URL, to a
-`<user>.github.io` root, or to a different custom domain — update `base` to
-match: `'/'` for any domain-root deploy (custom domain or user/org root page),
-`'/<repo-name>/'` for a project page with no custom domain.
-
-Static assets referenced at runtime (not imported as modules) live in
-`public/` (`Logo.png`, `favicon.ico`) and must be addressed with
-`${import.meta.env.BASE_URL}Logo.png` rather than a hardcoded
-`/Logo.png` — a leading-slash string in JS resolves against the domain root,
-not the configured `base`, so it 404s under the `/Turtle-Rock-Science-Club/`
-subpath the same way the old Jekyll deploy did. HTML-level references (the
-`<link rel="icon">` in `index.html`) don't need the same treatment — Vite
-rewrites root-relative asset URLs it finds in `index.html` itself to include
-`base` at build time.
-
-`spaFallbackPlugin` in `vite.config.ts` copies `dist/index.html` to `dist/404.html`
-and generates `index.html` inside route subdirectories (`titration`, `admin`, `join`,
-`events`, `games`, `resources`, `announcements`, `gallery`, `about`, `dashboard`) so
-direct navigation and hard refreshes avoid HTTP 404 on GitHub Pages.
-
-### Standalone static pages (`public/<name>/index.html`)
-
-Two pages are plain, self-contained HTML (no React, no build step, no external
-assets) that live outside the SPA. GitHub Pages serves them at
-`/ariadne-console/` and `/station-1c/` (it redirects the no-slash form):
-
-- `public/ariadne-console/index.html` — the Ariadne ship-systems terminal from
-  the chem-lessons curriculum (`~/chem-lessons/ariadne-console.html`, which is
-  the source of truth; copy it over by hand when it changes). Supports
-  `?week=N` and `#1,2,3` exactly as the original does.
-- `public/station-1c/index.html` — a digital version of Session 1's Station
-  1-C "The Beam Deflector" (`~/chem-lessons/session-01-reactor.md` § 1-C),
-  in the console's visual style. It has a simulated ramp and magnet with a
-  distance slider (replacing the physical ramp and ball bearings; magnet
-  strength `K` was tuned with a Node script so the ball sticks up close,
-  curves hard at middle distances and bends only slightly when far) and an
-  animated sensor trace of the three beams passing the + plate. It
-  deliberately never reveals or checks the answer (beam 1): pods write it in
-  their paper logbook, same as the printed card. All three beams are drawn
-  the same colour so colour can't give the answer away. Keys: `F`
-- `public/ecology/index.html` — "Ecology: Infinite Food Web", a standalone 2D
-  canvas ecosystem simulator with food chain levels, reproduction, predation,
-  and ecology questions. Embedded in the React SPA via `src/components/EcologyGame.tsx`
-  inside an iframe pointing to `/ecology/index.html`.
-
-Nothing in the React app links to the first two pages.
-
-The repo was originally generated by Google AI Studio, which explains
-`metadata.json`, the `GEMINI_API_KEY` in `.env.example`, and the AI Studio link
-in `README.md`. None of that is wired into the running app anymore.
-
-## Content pipeline
+## Content Pipeline (Google Sheets + Apps Script)
 
 ```
-Google Sheet  ──[🐢 Website ▸ Publish]──▶  hidden _Published tab (JSON chunked across col A, <=40k/cell)
-                                                     │
-                                          doGet ─────┤ web app /exec
-                                                     ▼
-                              src/useSiteContent.ts  ──▶  App.tsx  ──▶  components
+Google Sheet ──[🐢 Website ▸ Publish]──▶ hidden _Published tab (JSON chunked col A <=40k/cell)
+                                                  │
+                                       doGet ─────┤ /exec
+                                                  ▼
+                            src/useSiteContent.ts ──▶ App.tsx ──▶ Components
 ```
 
-| Thing | Where |
-|---|---|
-| Spreadsheet | `1F-4w57Cehlh-55I8fmAzeYY0DUFYS2I6FpOfjjqUhV0` — "Turtle Rock Science Club — Website Content", root of My Drive |
-| Apps Script project | `1ZG7i5Bm7qf6W6xZ0ylltG12xDP9R35aSdvqqjpykAbwYSHAH8SH9bJmg` — "TRSC Website Backend", container-bound |
-| Script source of truth | `apps-script/Code.gs` in this repo — **paste it into the editor by hand**, there is no `clasp` sync |
-| Web app URL | `src/config.ts` → `SHEET_API_URL` |
-| Operator instructions | `apps-script/SETUP.md` |
+- **Sheet ID**: `1F-4w57Cehlh-55I8fmAzeYY0DUFYS2I6FpOfjjqUhV0`
+- **Script ID**: `1ZG7i5Bm7qf6W6xZ0ylltG12xDP9R35aSdvqqjpykAbwYSHAH8SH9bJmg`
+- **Script Source**: `apps-script/Code.gs` (paste manually into Apps Script editor; no clasp sync).
+- **Web App URL**: `src/config.ts` (`SHEET_API_URL`).
+- **Sheet Tabs**:
+  - Manual edit: `Events`, `Announcements`, `Lab Log`, `Resources`.
+  - Script-managed: `Members`, `Signups`, `Newsletter`, `_Published` (hidden cache).
+- **Publish**: Explicit via `🐢 Website ▸ Publish to Website`. No bundled fallback data; empty sheet returns empty arrays.
+- **Photos**: In `Events` tab `Photos` col (index 10). Plain URL renders external link button; HTML (`<...`) renders via `HtmlEmbedCard` with patched `/embed-ui.min.js`.
+
+## Sign-ups & Membership
+
+- **Flow**: `SignupModal` collects Name, School, Parent Email. Logged-in members skip email prompt.
+- **Backend (`Code.gs`)**:
+  - Lock-protected. Dedupes by `(Event, Student Name)`.
+  - Appends to `Signups`, increments `Spots Taken`, updates `_Published` via `bumpPublishedSpots_`.
+  - Records event in member row if authenticated.
+  - Subscribes parent email to Sender.net `newsletter` audience.
+- **Multiple Students**: Same family can sign up multiple students; duplicate student name per event is rejected.
+- **Cancellation**: `handleCancelSignup_` deletes `Signups` row, decrements `Spots Taken`, clears member record. Guest signups persist student names in `localStorage` (`tr_sc_signup_names`). XP is not revoked on cancel.
+
+## Email & Newsletter Systems
+
+### Sender.net (Mass Newsletters)
+- **Audiences**: `newsletter` -> **Newsletter** group; `parent` -> **Parents** + **Newsletter**; `student` -> **Students** + **Newsletter**.
+- **Opt-in**: Join form opt-in checkbox controls newsletter signup. Logged-in non-opted members see top banner (`subscribeMember` action).
+- **Confirmation**: Double opt-in confirmation email links to `https://trscienceclub.org/?confirm_newsletter=<token>`.
+  - **CRITICAL**: Sender automation on confirmation link click MUST **Copy** subscriber to **Confirmed** (never Move, which wipes audience groups).
+  - Campaigns MUST target `(Audience Group) AND Confirmed` segment.
+- **Credentials**: `SENDER_API_TOKEN`, `SENDER_FROM_NAME`, `SENDER_REPLY_EMAIL` stored in Script Properties.
+- **Templates**: Stored in `docs/newsletter/` (e.g. `06-scioly-tryouts.html`, `confirm-subscription.html`).
+
+### Zoho Mail (Private / Transactional / Inbox)
+- **Mailbox**: `contact@trscienceclub.org`.
+- **API**: Handles individual emails (Compose) and inbox checking/replies in Admin Hub.
+- **OAuth Scopes**: `ZohoMail.messages.READ`, `ZohoMail.folders.READ`, `ZohoMail.messages.CREATE`, `ZohoMail.accounts.READ`.
+- **Credentials**: `ZOHO_*` stored in Script Properties.
+
+## Admin Hub (`/admin`)
+
+- Staff-only portal (`src/components/AdminHub.tsx`).
+- **Auth**: Single shared password configured via `🐢 Website ▸ 🔐 Set Admin Hub Password`. Session token in Script Properties (`ADMIN_SESSION`, 12h expiry); stored on client in `sessionStorage` (`tr_sc_admin_token`).
+- **Capabilities**:
+  - Edit Events & Announcements via generic `adminListRows_` / `adminSaveRow_`.
+  - Publish content via `publishToWebsite_core_`.
+  - Compose & send newsletters via Sender.net (two-step draft + type 'SEND').
+  - Read & reply to `contact@trscienceclub.org` via Zoho Mail API.
+  - Quick link to Google Sheet for `Lab Log`, `Resources`, `Signups`, `Members`.
+
+## Apps Script Gotchas
+
+- **`getLastRow()` counts checkbox formatting**: `insertCheckboxes()` writes `FALSE`, making `getLastRow()` return thousands. Use `isSheetEmpty_()` / `isBlankRow_()`.
+- **`SpreadsheetApp.getUi()`**: Throws when run from editor. Use `notify_()` (falls back to `Logger.log`).
+- **Deployments**: Always update existing deployment (**New version**) to preserve `/exec` URL.
+- **Cache Lag**: `/exec` lags behind sheet publish by 1-2 minutes. Verify via `Preview Published JSON`.
+- **POST Requests**: Must send `Content-Type: text/plain;charset=utf-8` with JSON string body to bypass CORS preflight.
+- **Schema Changes**: Renaming or adding headers in `*_HEADERS` requires running `🐢 Website ▸ ⚙️ Set Up / Repair Sheets`.
+
+## Frontend Conventions
+
+- **Modals**: Full-screen modals (`SignupModal`, `LoginModal`, `ConfirmEmailModal`, `ResetPasswordModal`, log reader) MUST use `createPortal(..., document.body)` with `will-change-transform` and NO `backdrop-blur-*` (prevents Chromium compositing crash when `Hero.tsx` toggles `position: fixed`).
+- **Theming**: Dark-only.
+  - `src/useTheme.ts` returns `{ theme: 'dark' }`.
+  - `index.html` adds `.dark` class to `<html>` synchronously.
+  - `index.css` defines `@custom-variant dark (&:where(.dark, .dark *));` directly after `@import "tailwindcss"`.
+  - Dark styling uses `:root.dark <selector>` overrides for hardcoded hexes. Only use hexes with existing overrides in `index.css` or add them.
+- **LocalStorage Keys** (`tr_sc_*`):
+  - `tr_sc_user_profile`: Member account data.
+  - `tr_sc_signed_up_ids`: Reserved mission IDs.
+  - `tr_sc_signup_names`: Guest signup student names for cancellation.
+  - `tr_sc_sheet_content_v1`: 5-minute site content cache.
+  - `tr_sc_game_progress`: Solved puzzle level indices.
+  - `tr_sc_cave_best`: SF Cave high score.
+  - `tr_sc_titration_progress`: Titration modules and mystery samples progress.
+  - `tr_sc_newsletter_banner_dismissed`: Hides member newsletter prompt banner.
+
+## Minigames & Virtual Lab
+
+- Hosted in `VirtualLab.tsx` (`src/components/games/`).
+- **Live Notes**: Commentary appears only after a concrete event/outcome (crash, burn, unbalance, win), never during exploration.
+- **Key Games**:
+  - `OrbitalSlingshot.tsx`: Canvas gravity sim, state kept in refs for 60fps performance.
+  - `MoleculeBuilder.tsx`: SVG builder. Requires satisfied valence and connected bond graph.
+  - `RobotProgrammer.tsx`: Grid bot with recursive subroutines.
+  - `Lightbender.tsx`: Ray-traced optics (Snell's law). Nudges rays `1e-4` past boundary. Includes "Admire the beam" win state.
+  - `ShortCircuit.tsx`: Nodal-analysis solver using Gaussian elimination with partial pivoting.
+  - `Epicenter.tsx`: Trilateration with seeded RNG (`mulberry32`).
+  - `CritterRanch.tsx`: Mendelian genetics simulator.
+  - `IslandKeeper.tsx`: Lotka-Volterra food web. Consumers require positive damping despite negative growth rate.
+  - `StarlightDecoder.tsx`: Spectral line matching with Doppler shifts.
+  - `ReactorLine.tsx`: Stoichiometry balancing with unbalance warning banner.
+  - `SortSquad.tsx`: 10 sorting algorithm puzzles (`10 + 5*index` XP). Levels 1-5 order is fixed. Tuned via `node scripts/check-sortsquad.mjs`.
+  - `SFCave.tsx`: Faithful PalmOS port. Fixed 75ms tick (`TICK_MS`), symmetric gravity/thrust (`ACCEL`), `VELOCITY_CLAMP` = `STEP_X`. 5 distance milestones award XP.
+  - `ChemTextAdventure.tsx`: External link-out.
+- **Badges**: 15 badges cataloged in `Dashboard.tsx` (`badgeCatalog`).
+
+## Titration Lab (`/titration`)
+
+- Standalone component (`src/components/TitrationLab.tsx`).
+- Polyprotic charge-balance equilibrium solver (`src/components/titration/chem.ts`, verified via `scripts/check-titration.mjs`).
+- Direct manipulation: click/hold stopcock to dispense, shake mouse on flask to mix, hover over fluid for optical meniscus magnifier.
+- Modes: Visual Indicator (default, colorimetric) and pH Probe Mode (plots titration curve).
 
-Sheet tabs: **Events**, **Announcements**, **Lab Log**, **Resources**
-(hand-edited) and **Members**, **Signups**, **Newsletter** (written by the
-script — do not type in them). `_Published` is hidden and holds the snapshot
-(chunked across column A in 40,000-character segments to respect Google Sheets' 50,000-char cell limit).
+## LaTeX & Formats
 
-**Publish is explicit.** Editing the sheet changes nothing until someone clicks
-🐢 Website ▸ Publish to Website. That is deliberate — half-drafted events stay
-private. The exceptions are event sign-ups, club joins and newsletter
-subscriptions, which all write through immediately (see below).
-
-There is no bundled fallback content: if `SHEET_API_URL` is empty, the fetch
-fails, or nothing has been published yet, `useSiteContent.ts` returns empty
-missions/announcements/labLogs arrays and the site shows its normal empty
-state rather than demo data.
-
-## Past-event photo albums
-
-There is no albums tab. `readEvents_` walks the **Events** tab and emits a
-second array alongside `events`: any row whose **Photos** column (index 10) is
-non-blank becomes an `EventPhoto` in the payload, keyed `sheet-photo-<row>`.
-That array feeds `PhotoGallery` ("Past Event Photos"); the gallery page only
-displays past event photos. The separate **Photos** tab was removed from Google
-Sheet handling; photos are posted via the **Events** tab's **Photos** column.
-
-Two render paths, chosen by whether the Photos cell contains a `<`:
-
-- **No `<`** → treated as a URL, surfaced as an external "View Event Photo
-  Album" link button.
-- **Contains `<`** → treated as embed HTML and mounted by `HtmlEmbedCard`,
-  which strips `<script>` tags, rewrites publicalbum CDN URLs to the local
-  patched `/embed-ui.min.js` (which guards against Chromium's `tabIndex` on null
-  race condition where `setTimeout(0)` fires before iframe load, fixes missing semicolon before listener call, and exports
-  `window.PublicAlbum.init(container)`), and calls `init()` on re-renders so
-  several Google Photos carousels can cleanly coexist without crashing.
-  `albumEmbed` is set for both paths; `albumUrl` is blank for the HTML one.
-
-Independence rules baked into `readEvents_`, do not "simplify" them away:
-
-- `Show on Site` unticked skips the row entirely, album included.
-- `Done` ticked hides the event from Upcoming Missions but **keeps** the album —
-  that is the normal steady state for a past event.
-- `Spots Taken > Spots Total` hides the event but **not** the album; a
-  data-entry typo in an unrelated column must not take the photos down.
-
-The album's cover comes from `Image URL` (index 7); `image` is optional and the
-card just omits the header block when blank. The description falls back to
-`Photo album for <title>` and is rendered through `SafeHtml`.
-
-Embed blobs used to count against a ~45,000-character publish cap on the
-whole snapshot — removed once `_Published` started chunking across cells
-(`writePublishedJson_`/`readPublishedJson_`, `PUBLISHED_CHUNK_SIZE`; see
-"Content pipeline" above), so many inline carousels no longer crowd out
-other content the way they once did.
-
-## Sign-up flow
-
-Each event card opens `SignupModal` asking for Student Name + School + a
-Parent/Guardian Email (required client-side for guests). On submit the script, under a
-`LockService` lock:
-
-1. checks **Signups** for duplicate signups (same event title + student name); if already registered, ensures the event ID is stored in the member account and returns `{ ok: false, alreadySignedUp: true }` without taking another spot
-2. appends a row to **Signups** (`Timestamp`, `Event`, `Student Name`, `School`, `Parent Email`)
-3. increments that event's **Spots Taken** by 1
-4. patches *only that event's* `spotsReserved` inside the `_Published` snapshot
-5. records the event ID in the member's row in **Members** (`Missions` column) if matched via `sessionToken` or student name
-6. subscribes the parent email to Sender.net under `newsletter` (see
-   "Newsletter" below) — this is what the post-signup "check your email/spam
-   folder" `ConfirmEmailModal` is confirming
-
-Step 4 is why the live "spots left" counter stays honest without republishing
-anything still being drafted. If you change how events are published, keep
-`bumpPublishedSpots_` in sync.
-
-The logged-in-member fast path (`App.tsx`'s `handleSignUp`, used when an
-already-logged-in visitor signs up for an event they haven't reserved yet)
-skips `SignupModal` entirely and calls `submitSignup` directly with their session
-token and no `parentEmail` — members have no email on file to send, so that path
-neither prompts for one nor triggers the confirm-email modal. `parentEmail` is
-therefore optional in `SignupDetails`/`handleSignup_` even though the modal
-itself requires it.
-
-**Multiple student signups and duplicate prevention:**
-- Once signed up for an event, `signedUpIds` and `userProfile.reservedMissionIds` store the event ID in `localStorage` (`tr_sc_signed_up_ids` and `tr_sc_user_profile`) and sync to the spreadsheet via `syncProfile` and `recordMemberMission_`.
-- In `UpcomingMissions.tsx`, an already-reserved mission renders the `You're Signed Up ✔` badge, a "Sign up another student" button (`mission-signup-again-btn-${mission.id}`), and a "Cancel my spot" action (`mission-cancel-btn-${mission.id}`).
-- Clicking "Sign up another student" opens `SignupModal` with an empty student name field (defaulting to the same school and parent email from localStorage), enabling one account or family to register multiple students for the same event while still linking to the member session.
-- Duplicate prevention is enforced per (event title + student name) by `handleSignup_` in `Code.gs`. If a user attempts to register the same student name again for the same event, it returns `{ ok: false, alreadySignedUp: true }` with an informational error, preventing duplicate spots from being consumed.
-
-**Cancelling a signup** is the exact inverse of the flow above, via a `cancelSignup` action / `handleCancelSignup_` in `Code.gs`, triggered by `UpcomingMissions.tsx`'s "Cancel my spot" link:
-1. matches the **Signups** row by (event title, student name) — the same pair `handleSignup_` dedupes on — and deletes it
-2. decrements that event's **Spots Taken** (floored at 0) and patches `_Published`'s `spotsReserved` via the same `bumpPublishedSpots_`
-3. drops the event id from the member's **Members** row `Missions` column via `removeMemberMission_`, the mirror of `recordMemberMission_` (session token first, student-name fallback)
-4. is idempotent: if the event or the Signups row is already gone, it still returns `{ ok: true }` rather than erroring — the visitor's actual goal ("not signed up") is already true, and there is nothing to charge them for getting there
-
-A guest has no session token, so cancelling has to resubmit the *exact* student name the signup was made under — which the client has no other record of once `SignupModal` closes. `App.tsx` keeps a small `signupNames` map (`Record<missionId, studentName>`, persisted to `localStorage` as `tr_sc_signup_names`) purely for this: populated in `handleSignupSuccess` alongside `signedUpIds`, read by `handleCancelSignUp` for a guest (a logged-in member's is always just `userProfile.name`), and pruned on a successful cancel. This is a separate concern from XP: cancelling does not claw back the +15 XP a signup already granted — reversing gamification state on an unwind like this was judged not worth the complexity.
-
-## Account verification group is unused & simplified password reset
-
-The Sender.net **Account Verification** group is now unused.
-1. **Join opt-in only:** Joining sets `Email Verified` to `true` immediately and no verification email is sent. Only if the user explicitly checks the newsletter opt-in box (`newsletterOptIn`) are addresses added to Sender.net under the **Newsletter** (+ **Parents** / **Students**) groups. If the box is not checked, no emails are added to Sender.net.
-2. **Password resets:** `handleRequestPasswordReset_` normalises input emails against `Members` rows. If a matching account row exists in **Members**, `issueAccountToken_` writes the reset token onto that row, and `sendAccountEmail_` clears any prior membership in the Sender.net **Password Reset** group before re-adding them so Sender's automation reliably re-triggers. If no member row matches, no orphan token email is dispatched.
-3. **Banner removed:** The client-side unverified email banner in `App.tsx` and the verification note on the join completion screen have been removed.
-
-## Newsletter (Sender.net)
-
-The footer's "Get the Club Newsletter" box and the Join form both push email
-addresses into Sender.net, routed by where they came from:
-
-| Source | `audience` | Sender groups |
-|---|---|---|
-| Footer subscribe box | `newsletter` | **Newsletter** |
-| Join form, Parent 1 Email | `parent` | **Parents** + **Newsletter** |
-| Join form, Parent 2 Email (optional) | `parent` | **Parents** + **Newsletter** |
-| Join form, Student Email | `student` | **Students** + **Newsletter** |
-| Event sign-up, Parent Email | `newsletter` | **Newsletter** |
-| "You're not getting updates" banner | `newsletter` | **Newsletter** |
-
-Event sign-up deliberately uses the plain `newsletter` audience, not `parent`
-— RSVPing a kid into one event isn't joining the club, so that email
-shouldn't land in **Parents** (a segment implying club membership). It gets
-the same "check your spam folder" `ConfirmEmailModal` treatment as everyone
-else who reaches **Newsletter**, just from a different `source` string
-(`'Event sign-up'`) for the same reason `audienceForRow_` cares about
-**Source** at all — see below.
-
-**The same address typed into two Join fields only ever gets subscribed
-once, under whichever field it was seen in first.** `handleJoin_` tracks
-normalised (case-insensitive/trimmed via `normaliseEmail_`) addresses it has
-already subscribed in a plain object as it works through Parent 1 → Parent 2
-→ Student, in that order, and skips `subscribeEmail_` entirely for a later
-field whose address it has already seen. This is what stops a family that
-reuses the guardian's address as the "student email" (no separate inbox for
-the kid) from also landing in **Students** — that address already got
-**Parents** + **Newsletter** from the Parent 1 call, and it belongs to an
-adult, not a student. The same logic covers Parent 2 typing the same address
-as Parent 1 (or, less usefully but harmlessly, as the student).
-
-**Parent 2's email is optional and only subscribed if it looks like a valid
-email** (`isEmail_`) — unlike Parent 1 and Student, which the Join form
-requires client-side, so `handleJoin_` never validates their format itself.
-
-**A logged-in member who never opted in sees a dismissible banner at the top
-of every page** (`App.tsx`, right below the `showConfirmedBanner` block)
-offering a "Sign up" button. Clicking it hits a new `subscribeMember` action
-(`handleSubscribeMember_` in `Code.gs`) — the *session token*, not a typed
-email, identifies the member; the handler looks up their own Parent/Student
-email from their Members row (`pickAccountEmail_`, same "prefer the guardian's
-address" rule used for account-verification emails) and calls the exact same
-`subscribeEmail_(..., AUDIENCE_NEWSLETTER)` the footer box uses, then flips
-that member's **Newsletter Opt-In** column to `true` so the banner stays gone
-on future logins/devices too, not just in this browser. Dismissing the banner
-without subscribing is separate and purely local: `tr_sc_newsletter_banner_dismissed`
-in localStorage, permanent until cleared, alongside the site's other `tr_sc_*`
-keys (see "Site conventions"). Reuses the same `ConfirmEmailModal` as
-everywhere else, skipped if `alreadySubscribed` comes back true (mirrors the
-footer box's own handling of that case).
-
-**Campaigns go to the Confirmed *segment*, never to a raw group.**
-`senderSubscribe_` writes every signup straight into its audience groups, so
-group membership on its own does **not** mean the address ever confirmed. A
-Sender automation fires on joining **Newsletter**, sends the confirmation email
-(`newsletter/confirm-subscription.html`), and adds anyone who clicks the button
-to a **Confirmed** group. Campaigns are then sent to a segment of *(audience
-group) AND Confirmed*. Sending to the bare **Newsletter** group mails everyone
-who ignored the confirmation and turns that email's "you won't receive anything
-until you do" into a lie. Do not "simplify" this by targeting the group
-directly. Nothing in this repo enforces it — it is a discipline in the Sender
-UI, which is why it is written down here.
-
-**Newsletter confirmation tokens and tracking:**
-The `Newsletter` tab includes `Confirmation Token`, `Confirmed`, and `Confirmed At`. On subscription, `subscribeEmail_` generates a unique token and supplies `confirm_link` / `account_link` (`https://trscienceclub.org/?confirm_newsletter=<token>`) to Sender.net subscriber fields. `docs/newsletter/confirm-subscription.html` links its confirmation button to `{{confirm_link}}`.
-When clicked, `App.tsx` calls `confirmNewsletter(token)` (`handleConfirmNewsletter_` in Apps Script), which marks `Confirmed = true` and `Confirmed At` on that row in the `Newsletter` sheet, and also ensures the subscriber is copied to Sender.net's **Confirmed** group. (Legacy `?confirmed=1` and `?confirmed=<token>` links are also supported for backward compatibility).
-
-**The confirm-click automation in Sender must use *Copy* to group, never *Move*.**
-Audited 2026-09-12: The Sender automation "Confirm Email" triggered by link clicks must copy the subscriber to **Confirmed**.
-What was wrong previously was the *action*: it was set to **Move subscriber to another
-group**, which strips the subscriber out of Newsletter, Parents, Students and
-Account Verification on the way in. Confirming therefore deleted exactly the
-audience membership the `(audience group) AND Confirmed` segment depends on —
-31 of 37 confirmed people were left in **Confirmed and nothing else**. Changed
-to **Copy subscriber to another group** and the lost memberships were restored
-from the Newsletter tab's **Sender Groups** column. If you ever rebuild this
-automation, check the action before activating.
-
-Note also that a Sender **import** does not fire automations unless the
-"Trigger active automations upon import" box is ticked — that is what makes
-bulk group repair safe, and it is unticked by default.
-
-**The Join form only subscribes when the guardian ticks the newsletter box.**
-`JoinModal`'s opt-in checkbox defaults to unchecked and rides through as
-`newsletterOptIn`; `handleJoin_` records it in the Members tab's **Newsletter
-Opt-In** column and skips both `subscribeEmail_` calls when it is false. The
-member row is still written either way — joining the club and joining the
-mailing list are deliberately separate acts, so don't "simplify" this back into
-an unconditional subscribe.
-
-Club members are in Newsletter *as well as* their own group (see
-`SENDER_AUDIENCE_GROUPS`), so a campaign can target parents or students
-specifically while a general newsletter to Newsletter still reaches everyone.
-Someone who only used the footer box gets Newsletter alone — they did not join
-the club. This asymmetry is why `audienceForRow_` trusts the **Source** column
-over the recorded groups: seeing Newsletter proves nothing on its own.
-
-**The API token never touches the frontend.** The bundle is public, so the
-browser POSTs `{action:'subscribe'}` to the same Apps Script web app as
-everything else, and `Code.gs` is what calls `api.sender.net`. The token lives
-in Script Properties (`SENDER_API_TOKEN`), set via 🐢 Website ▸ ✉️ Newsletter ▸
-🔑 — never hardcoded, or it would be committed.
-
-Group ids are resolved by *title* and cached in Script Properties
-(`SENDER_GROUP_ID_PARENTS` etc.). A group that doesn't exist yet is created on
-first use, so the only setup step is the token — and a group pre-created by
-hand in Sender is found by title and reused, not duplicated. Renaming or
-deleting a group in Sender leaves a stale cached id — 👥 Show / Repair Sender
-Groups clears the cache and re-resolves.
-
-**Reads and writes fail independently.** A Sender account awaiting review can
-answer `GET /groups` while rejecting `POST /subscribers` — with a 401, not a
-403, which reads like a bad token and sends you chasing the wrong thing.
-`testSenderConnection` therefore probes both (`senderWriteProbe_`) and reports
-them apart; don't collapse it back into a single read check, and don't treat the
-token-save validation as proof that sign-ups work, because it too is read-only.
-
-Order matters in `subscribeEmail_`: the address is written to the **Newsletter**
-tab *before* the Sender API call, so a Sender outage, an expired token, or a
-script timeout loses nobody. The row keeps a non-`Subscribed` status until
-🔁 Sync Pending Subscribers retries it. That is also why `handleSubscribe_`
-returns `ok: true` with `pending: true` when Sender itself failed — the
-visitor's part succeeded, and the operator sees the failure in the sheet rather
-than the visitor seeing an error they cannot act on.
-
-Dedupe is per *(email, group)*, not per email — the Newsletter tab's **Sender
-Groups** column records which groups an address reached, and `hasAllGroups_`
-decides whether there is anything left to do. A parent who used the footer box
-and later joins the club is already in Newsletter but still needs **Parents**,
-so a row marked `Subscribed` is re-sent when its audience needs a group the row
-has not reached yet.
-
-Creating a subscriber that Sender already knows is a 4xx there, not a success;
-`senderSubscribe_` detects that (`looksLikeDuplicate_`) and falls back to adding
-them to each group individually. That endpoint answers **200 even for addresses
-it rejected**, listing them under `non_existing_subscribers` —
-`wasRejectedByGroupAdd_` checks for that, so don't simplify it to a status-code
-check. A partial failure still records the groups that took, so the retry only
-has the remainder to do.
-
-**Templates in `docs/newsletter/`:** `00-welcome-letter.html` is the Issue 0 welcome
-newsletter / Parent Info Night recap (contains top delivery/not-spam notice, club origin & 4 core goals,
-program structure & fall workshop schedule, Science Olympiad Div B details & tryouts, link to the TRSC
-Master Document study guide, parent volunteering & suggested donation, step-by-step instructions for
-event sign-up and account creation, site tour, and leadership team / school WhatsApp contacts).
-`01-info-recap.html` is the Issue 1 recap newsletter (contains all information from
-`00-welcome-letter.html` plus featured cartoon digital ink artwork below the header logo, dedicated Upcoming Events cards for the 9/19 Chemistry and Astronomy
-workshops, a "Science Tidbits" section exploring cool facts on next week's workshop topics, and a weekly "In the News" science digest section). `01-lab-log-entry.html` is the web/responsive HTML version tailored for the Lab Log tab in Google Sheets (retains all Issue 1 sections, formatted cleanly without email boilerplate to fit comfortably under cell and JSON payload limits). `02-cs-chemistry.html` is the Issue 2 newsletter for the week leading up to 9/26 (features custom cartoon digital ink artwork combining Chemistry and Computer Science, dedicated Upcoming Events cards for the 9/26 Chemistry Session #2 and Computer Science Session #1 workshops, kid-friendly Science Tidbits exploring lava lamp internet security and molecular chirality, In the News breakthroughs on a giant new Moon crater, a newborn baby planet, and the Roman Space Telescope, two placeholder slots for science opportunity advertisements, the Fall Workshop Schedule highlighting 9/26, Master Doc reference card, and condensed community contacts). `02-lab-log-entry.html` is the web/responsive HTML version of Issue 2 tailored for the Lab Log tab in Google Sheets (retains all Issue 2 sections, upcoming events, tidbits, news, opportunities, and schedule, formatted cleanly without email boilerplate). `03-env-cs-physics.html` is the Issue 3 newsletter for the week leading up to 10/3 (features prominent mandatory website sign-up warning callout at the top, custom cartoon digital ink artwork combining Environmental Science, Computer Science, and Physics, dedicated Upcoming Events cards for the 10/3 Environmental Science, Computer Science Session #2, and Physics Session #1 workshops, kid-friendly Science Tidbits on the fungal Wood Wide Web, Grace Hopper's first computer bug, and weighing less at the equator, In the News discoveries on a new penguin species, quantum Big Bang string breaking at Duke, and X-ray physics scans of charred Vesuvius scrolls, recap of 9/26 Chemistry 2 with Drive folder link, updated weekly reminders covering mandatory sign-up / Zoom overflow, laptop requirement, safety, and respect, Fall Workshop Schedule highlighting 10/3 with 9/26 Chemistry 2 and 10/3 CS Part 1, Master Doc reference, and condensed community contacts). `03-lab-log-entry.html` is the web/responsive HTML version of Issue 3 tailored for the Lab Log tab in Google Sheets (cell E4), condensed to match the clean structure of `02-lab-log-entry.html` without redundant banners. `04-forensics-cellbio-physics.html` is the Issue 4 newsletter for the week leading up to 10/10 (features custom cartoon digital ink artwork combining Forensics, Cell Biology & Heredity, and Physics, dedicated Upcoming Events cards for 10/10 Forensics, Cell Biology + Heredity, and Physics Session #2, prominent laptop/computer requirement note for heredity students, word-for-word advertisement for the Bridge Builders Event at University High School on 10/9, kid-friendly elementary-school-level Science Tidbits on superglue revealing invisible fingerprints, DNA stretching past Pluto and back, and boomerang circular flight, kid-friendly In the News breakthroughs on NASA's robotic rover hunting Moon lava caves, brain neurons with double-job jumping genes, and a 25-year linked-light puzzle solved for quantum supercomputers, Fall Workshop Schedule highlighting 10/10, Master Doc reference card, and condensed community contacts). `04-lab-log-entry.html` is the web/responsive HTML version of Issue 4 tailored for the Lab Log tab in Google Sheets (mirrors all edited text sections from the email: intro, reminders, upcoming event cards, tidbits, news, opportunities, and master doc). `05-inquiry-earthsci-anatomy.html` is the Issue 5 newsletter for the week leading up to 10/17 (features custom cartoon digital ink artwork combining Scientific Inquiry, Earth Science, and Anatomy + Epidemiology, dedicated Upcoming Events cards for 10/17 Scientific Inquiry, Earth Science, and Anatomy + Epidemiology, editable custom organizer message placeholder, reminders for mandatory registration and upcoming 10/24–10/25 Science Olympiad Team Tryouts, kid-friendly Science Tidbits on deduction mystery boxes, floating tectonic plate rafts, and Dr. John Snow's London cholera ghost map, kid-friendly In the News breakthroughs on NASA tracking Earth's shifting center of mass, 3.1-billion-year-old Australian rocks revealing ancient water plumbing deep in the mantle, and the world's first standalone thorium nuclear clock, Fall Workshop Schedule highlighting 10/17, Master Doc reference card, and condensed community contacts). `05-lab-log-entry.html` is the web/responsive HTML version of Issue 5 tailored for the Lab Log tab in Google Sheets (mirrors text sections word-for-word from the email: intro, reminders with tryout registration form links, upcoming event cards for Inquiry, Earth Science, and Anatomy + Epidemiology with detailed coach notes, science tidbits, news items with direct ScienceDaily links, schedule, and master doc). `06-scioly-tryouts.html` is the Issue 6 newsletter for the week of 10/24 focusing on the 10/24–10/25 Science Olympiad Team Tryouts (features custom cartoon digital ink artwork of students taking tryouts with science equipment, mandatory tryout sign-up form callout due 10/21 at 11:59 PM, detailed tryout schedule and logistics for Sat & Sun 6:30–8:30 PM at UCI, 30-min test windows and 4 sessions per evening, flexible attendance rules, 2–3 event recommendation, team selection criteria of 15–16 students per team, door materials check warning, definitions of cheat sheets and binders, allowed writing utensils rule, full 17-event approved materials table, strict zero-tolerance anti-cheating policy including prohibition on discussing questions prior to Sunday evening across both test versions, link to past lesson Google Drive archive, kid-friendly Science Tidbits on cryptography/frequency analysis, mantle crystal water reservoirs, and superconductors, In the News breakthroughs on the 2026 Nobel Prize in Medicine for optogenetics, discovery of altermagnetism, and exoplanet WASP-189b metal atmospheres, Fall Schedule highlighting 10/24–10/25 tryouts, Master Document reference, and condensed community contacts). `confirm-subscription.html` is the double opt-in confirmation email. Note: `docs/` is gitignored.
-
-`SafeHtml.tsx` parses markdown and rich HTML, stripping unwanted `<br />` tags around block-level elements (tables, headers, lists, divs) and sanitizing with DOMPurify while preserving layout styles, classes, and table attributes. `LabLogAnnouncements.tsx` renders entries in an expanded `max-w-3xl lg:max-w-4xl` modal with top-right and footer close buttons.
-
-**Newsletter Generation Skill:** `.agents/skills/trsc-newsletter-generator/` automates creating weekly newsletters from `docs/schedule.md`. It generates combined cartoon digital ink artwork using Nano Banana (`generate_image`), writes Science Tidbits for each topic, pulls recent discoveries via web search for In the News, and formats the newsletter without the onboarding program logistics while preserving the schedule, upcoming event cards, master doc link, and condensed contacts.
-
-## Admin Hub
-
-`src/components/AdminHub.tsx`, reachable at `/admin` — a staff-only screen, not
-linked from anywhere in the app (same "reachable but never navigated to"
-treatment as `/titration` and `/join`; see `App.tsx`'s `isAdminPage`). Built
-so admins don't have to leave the site to edit Events/Announcements or send
-the newsletter, while the Sheet stays the actual source of truth underneath.
-
-**Why it exists:** editing content meant opening the raw Sheet grid, and
-sending a newsletter meant a second login to Sender.net's own dashboard to
-paste in HTML from `docs/newsletter/`. The Admin Hub wraps both behind one
-password so neither requires knowing the Sheet's tab layout or having a
-Sender.net account.
-
-**Auth is one shared password, not per-person accounts.** Set via 🐢 Website
-▸ 🔐 Set Admin Hub Password (hashed with the same `makePasswordHash_`/
-`verifyPassword_` machinery as a member's password). A successful login mints
-a single opaque session token stored in Apps Script's Script Properties
-(`ADMIN_SESSION`, 12h) — logging in again anywhere invalidates whoever was
-logged in before, since there's only ever one active session. `handleAdminLogin_`
-reuses the existing `isLoginLocked_`/`recordFailedLogin_` throttle (keyed
-`'admin'`) so this isn't brute-forceable. The frontend stores its copy of the
-token in `sessionStorage` (`tr_sc_admin_token`) rather than `localStorage` —
-deliberately not one of the site's other `tr_sc_*` visitor keys, since an
-admin session shouldn't silently outlive the browser tab.
-
-**Every admin-scoped `doPost` action calls `requireAdmin_(body)` first**,
-which throws (caught by `doPost`'s existing try/catch) if `body.adminToken`
-doesn't match the live session. New admin actions must call it too, or they're
-unauthenticated.
-
-**Events and Announcements share one generic reader/writer pair**
-(`adminListRows_` / `adminSaveRow_` in Code.gs, `ContentPanel` in
-AdminHub.tsx) keyed by each tab's own `*_HEADERS` array, rather than a
-bespoke handler per tab — the two only differ in which `FieldConfig[]` they
-render. Appending a new row uses `nextBlankRow_` (scans with `bodyRows_` +
-`isBlankRow_`), not `getLastRow() + 1` — see "Apps Script gotchas" below for
-why trusting `getLastRow()` on these specific tabs is wrong.
-
-**Publishing reuses the exact same code the sheet menu uses.**
-`publishToWebsite_core_` is the actual read/build/size-check/lock/write
-logic; both `publishToWebsite()` (the 🐢 Website menu item) and the
-`adminPublish` web action call it and translate the result into their own
-kind of prompt (a `ui.alert` dialog vs. a card in the hub). Keeping this one
-function the single source of truth is what keeps the hub's Publish button
-doing exactly what the sheet's already did — including the same "found N
-problems, publish anyway?" confirmation step.
-
-**Sending a newsletter is a deliberate two-step call**, since it reaches real
-families and can't be undone: `adminCreateCampaign` only ever creates a
-Sender.net DRAFT and returns its id; a separate `adminSendCampaign` call
-actually sends it, and the hub's UI only unlocks that second call once the
-admin types SEND. The composer also warns inline if a raw Group is selected
-without a Segment, since (per the Newsletter section above) a bare group
-includes people who never confirmed — the tool now surfaces that discipline
-instead of relying on whoever's sending to remember it. "From name" and
-reply-to are configured once via 🐢 Website ▸ ✉️ Newsletter ▸ 📧 Set From
-Name / Reply-To (`SENDER_FROM_NAME`/`SENDER_REPLY_EMAIL` Script Properties),
-not typed per-campaign — the reply-to must be on a domain verified in
-Sender.net or sending fails.
-
-**The "Backup Sheet" tab is a link-out, not an embed.** Google blocks its
-Sheets editor (and its own sign-in page) from being framed by another
-origin — a clickjacking protection with no opt-out — so an `<iframe>`
-pointing at the `/edit` URL just renders blank; confirmed live, not assumed.
-`BackupSheetPanel` is a plain "Open the Google Sheet" link to the exact
-spreadsheet instead. Don't reintroduce an iframe here without a different
-approach (e.g. a published-to-web read-only view, which has its own privacy
-tradeoffs and wouldn't be editable anyway).
-
-**Scope of what's actually in the hub today:** Events, Announcements, the
-newsletter composer/sender, one-off email via Compose, and reading/replying
-to the Inbox. Lab Log, Resources, Signups, and Members are still Sheet-only —
-the Backup Sheet tab's link is how an admin reaches those for now. Extending
-`ContentPanel` to Lab Log would follow the same pattern as Events/Announcements.
-
-**Newsletter and Compose/Inbox-Reply are all a real WYSIWYG editor, not raw
-HTML.** `RichTextEditor` in `AdminHub.tsx` is a small `contentEditable`-based
-component (bold/italic/heading/link/list toolbar, plus the browser's native
-Ctrl/Cmd+B and Ctrl/Cmd+I) shared by all three composers — nobody typing a
-newsletter or an email needs to know HTML exists. It's deliberately
-uncontrolled: the DOM is the source of truth while focused, and `onChange`
-just mirrors `innerHTML` out to React state; syncing `value` back into the
-DOM on every keystroke (a fully controlled component) resets the cursor to
-the start of the field, a classic contentEditable-in-React bug. Built on
-`document.execCommand` — officially deprecated, but still the only way to do
-this without a whole editor library for what is, in the end, five formatting
-actions.
-
-### Compose and Inbox tabs (Zoho Mail) — why two email systems, not one
-
-Sender.net can't send a one-off private email (mass campaigns only) or read a
-mailbox, and Zoho Mail doesn't give campaign stats — so the club genuinely
-needs both, not one simplified down to the other (confirmed with Carl, who
-originally set both up). `contact@trscienceclub.org` is a real Zoho Mail
-mailbox — replies to Sender.net campaigns already land there, which is also
-why `SENDER_REPLY_EMAIL` should be set to that address, not something
-invented. The Compose tab wraps Zoho Mail's own REST API (`POST
-/api/accounts/{accountId}/messages`) and the Inbox tab wraps its message-list
-and message-content endpoints, so neither a one-off email nor checking that
-inbox requires leaving the Hub for mail.zoho.com, while mass sends stay on
-Sender.net for the stats.
-
-**Connected once, like the Sender.net token,** via 🐢 Website ▸ 🔌 Zoho Mail
-▸ 🔗 Connect Zoho Mail (see SETUP.md for the click-by-click version,
-including creating the "Self Client" in Zoho's API console this needs).
-`connectZohoMail()` exchanges a short-lived authorization code for a
-refresh token that does not expire, discovers which mailbox it belongs to
-(`GET /api/accounts`) and that mailbox's Inbox folder id (`GET
-/api/accounts/{accountId}/folders`, matched on `folderType === 'Inbox'`),
-and stores `ZOHO_CLIENT_ID`/`ZOHO_CLIENT_SECRET`/`ZOHO_REFRESH_TOKEN`/
-`ZOHO_ACCOUNT_ID`/`ZOHO_FROM_ADDRESS`/`ZOHO_INBOX_FOLDER_ID` in Script
-Properties — same never-in-the-repo storage as every other credential here.
-`zohoAccessToken_()` mints (and caches, ~50 min) short-lived access tokens
-from that refresh token per call; nothing about Zoho ever touches the
-public bundle.
-
-**Reading the Inbox needs a wider OAuth scope than sending does** —
-`ZohoMail.messages.READ` and `ZohoMail.folders.READ` on top of the
-`messages.CREATE`/`accounts.READ` Compose alone needs. A connection made
-before the Inbox tab existed will send fine but show "Inbox access is not
-set up" until reconnected with a fresh authorization code carrying the wider
-scope (re-running Connect Zoho Mail with the *same* old code changes
-nothing — the scope is fixed at code-generation time in Zoho's console, not
-at the token-exchange step this script controls).
-
-The Compose tab checks `adminZohoStatus` before showing a form, so an admin
-who hasn't run the connect step yet sees a clear message instead of a
-send failure. No two-step SEND confirmation like the newsletter — one
-targeted email to one person is an ordinary, low-blast-radius action, not a
-mass send. The Inbox tab's "Reply" (pre-filled To/"Re: " subject) reuses the
-exact same `adminSendEmail` action Compose uses, not a separate code path.
-
-`adminListInbox_` calls Zoho's `GET .../messages/view` for summaries only
-(subject/from/date/snippet/read-state) — the full body is a separate,
-per-message call (`adminGetMessage_` → `GET
-.../folders/{folderId}/messages/{messageId}/content`), fetched lazily only
-when a message is actually opened, not for the whole list up front.
-
-### Campaign stats in the Newsletter tab
-
-`adminListCampaigns_` calls Sender.net's own `GET /campaigns` (which already
-returns `opens`/`clicks`/`bounces_count` per campaign — no separate
-per-campaign detail call needed), filters to `status === 'SENT'`, and the
-Newsletter tab renders it as a small table above the composer. This is
-read-only visibility into stats that already existed in Sender.net; it
-doesn't change anything about how campaigns are sent.
-
-## Apps Script gotchas (all of these bit us)
-
-- **`getLastRow()` lies on these sheets.** `insertCheckboxes()` writes `FALSE`
-  into every cell of its column, so a freshly formatted tab reports a last row
-  in the thousands. Use `isSheetEmpty_()` / `isBlankRow_()`, never
-  `getLastRow() < 2`, to decide whether a tab has content.
-- **`SpreadsheetApp.getUi()` throws when run from the Apps Script editor.**
-  `setupSheets` is documented as an editor-run function, so its dialog goes
-  through `notify_()`, which falls back to `Logger.log`. Any new editor-run
-  function needs the same treatment.
-- **Editing `Code.gs` does nothing until you re-deploy.** Deploy ▸ Manage
-  deployments ▸ pencil ▸ Version: **New version** ▸ Deploy. This keeps the same
-  `/exec` URL. Creating a *new deployment* mints a different URL and breaks
-  `src/config.ts`.
-- **`/exec` lags behind a publish by seconds to a couple of minutes.** The cell
-  is written immediately (verify with 👀 Preview Published JSON, which reads it
-  directly) but the served response catches up later. Do not "fix" a phantom
-  caching bug — check Preview first.
-- **POST must be `text/plain`.** Apps Script web apps cannot answer a CORS
-  preflight, so `submitSignup` sends `Content-Type: text/plain;charset=utf-8`
-  with a JSON string body. Switching to `application/json` will break sign-ups
-  in the browser while still working from curl.
-- Event ids are row-derived (`sheet-event-<rowNumber>`). Rows move when you
-  insert or delete above them, so `resolveEventRow_` also verifies the title and
-  falls back to a title search.
-- **Renaming a `*_HEADERS` entry does not rename the live column.**
-  `ensureSheet_` rewrites row 1 unconditionally, but the write paths only call
-  it when the tab is *missing* — an existing tab keeps its old header until
-  someone runs 🐢 Website ▸ ⚙️ Set Up / Repair Sheets. The Members tab's 7th column
-  went from `Age` to `Grade` this way, so a sheet that predates that change
-  still reads `Age` over grade values until it is repaired. The same applies
-  to *adding* a column: an existing Signups tab won't grow the new `Parent
-  Email` header on its own — `handleSignup_` will still append the value into
-  column 5, but the header cell stays blank until 🐢 Website ▸ ⚙️ Set Up /
-  Repair Sheets is run.
-
-## Site conventions
-
-- **Every full-screen modal (`ConfirmEmailModal`, `SignupModal`,
-  `LoginModal`, `ResetPasswordModal`, `LabLogAnnouncements`'s log modal,
-  `App.tsx`'s level-up modal) renders via `createPortal(..., document.body)`,
-  not as a plain JSX sibling inline in the tree.** This is load-bearing, not
-  a style preference — don't revert it back to an inline `{show && <div
-  className="fixed inset-0 ...">}` even if it looks like unnecessary
-  indirection.
-
-  The actual bug: `Hero.tsx` dynamically switches its own root panel between
-  `position: relative` (unlocked, normal scroll) and `position: fixed inset-0
-  z-40` (locked, scroll-hijacked intro) based on `useHeroScroll`'s `locked`
-  state (`Hero.tsx:866`). Scrolling back up to the top re-triggers `relock()`
-  in `useHeroScroll.ts`, flipping Hero back to `fixed` **while a modal is
-  already open, mounted above it in the same stacking context**. On paper
-  this is harmless — Hero's `z-40` is still less than any modal's `z-50`+ —
-  but a sibling *dynamically* toggling its own element to `position: fixed`
-  while other fixed, GPU-layered elements are already stacked above it is a
-  real trigger for Chromium to get the paint order wrong until a full
-  re-layout happens, and the effect is scroll-position-dependent: reported
-  live (not just in a screenshot) as "scroll up and the modal vanishes
-  behind Hero's dark background." A portal sidesteps the whole problem by
-  moving the modal completely outside the tree that contains Hero, so there
-  is no shared stacking context for Hero's runtime position changes to ever
-  interfere with, regardless of what Hero does.
-
-  Two *other*, real, separately-confirmed-via-DevTools bugs were fixed along
-  the way and are still worth keeping even with the portal in place:
-  1. **Stale frame left on screen after the modal unmounts.** With no CSS
-     transition-out, a `backdrop-filter` (`backdrop-blur-*`) layer can be
-     left composited on screen after its element is already gone from the
-     DOM — confirmed by searching the Elements panel for the still-visible
-     modal's own `id`, which found nothing. None of these modals use
-     `backdrop-blur-*` any more; the dimming is a plain translucent
-     background instead (opacity bumped up a bit to compensate).
-  2. A `will-change-transform` class on each wrapper, which helps Chromium
-     give the newly-inserted fixed layer its own compositing layer instead
-     of reusing a stale one — cheap insurance, kept even though the portal
-     is the fix for the actual reported bug.
-
-  `Header` never needed any of this: it's mounted once for the app's whole
-  life (bug 1 never applies) and is a sibling of Hero but never toggles its
-  *own* position dynamically, and `motion.header`'s `y` value already gives
-  it an inline `transform` (covering bug 2 incidentally). It also isn't
-  portaled — it doesn't need to be, since nothing else in the tree
-  dynamically fights it for a stacking slot the way modals do against Hero.
-
-  This took four passes to actually fix, each wrong for a specific,
-  instructive reason: (1) blamed a Safari-only bug when the reporter was on
-  Chrome; (2) correctly fixed the stale-frame bug but wrongly concluded that
-  fixed the whole thing because the remaining symptom *looked* identical in
-  a screenshot; (3) correctly fixed a real paint/layout desync bug via
-  `will-change-transform`, which also didn't touch the actual reported bug
-  for the same screenshot-shaped reason. What actually broke the deadlock
-  was the reporter noticing the bug was tied to a specific *interaction*
-  (scrolling up) rather than trusting any single static screenshot — if this
-  regresses, get a repro tied to a specific interaction and a
-  `getBoundingClientRect()`/`scrollY` DevTools reading before changing
-  anything, rather than pattern-matching off what a screenshot looks like.
-- **`STYLE.md` is the brand/style guide** — palette (with dark-mode
-  counterparts and measured contrast), type scale, component recipes, motion,
-  iconography, and voice. Read it before adding UI or writing visitor-facing
-  copy. It documents the same dark-mode hex-enumeration trap described under
-  "Theming" below.
-- Everything the visitor "owns" is `localStorage`, keyed `tr_sc_*`:
-  `tr_sc_user_profile`, `tr_sc_gallery_photos`, `tr_sc_signed_up_ids`,
-  `tr_sc_sheet_content_v1` (5-minute content cache), `tr_sc_last_school`,
-  `tr_sc_theme` (manual light/dark override — see "Theming" below),
-  `tr_sc_game_progress` (per-game solved-level indices, see "Minigames"
-  below), `tr_sc_cave_best` (SF Cave's personal-best distance — that game has
-  no discrete levels, so its high score lives outside `tr_sc_game_progress`),
-  `tr_sc_titration_progress` (per-module progress, trials notebook, and mystery samples),
-  `tr_sc_newsletter_banner_dismissed` (permanently hides the "you're not
-  signed up for updates" member banner once closed — see "Newsletter" above).
-  Clear `tr_sc_sheet_content_v1` when testing a fresh publish.
-- FAQ copy, press mentions, and the seed gallery photos are static site
-  content unrelated to the Sheet. They live inline as local constants in
-  `AboutUs.tsx`, `LabLogAnnouncements.tsx`, and `App.tsx` respectively (there
-  used to be a `src/data.ts` bundling all of this plus Sheet-fallback demo
-  content; it was removed — Sheet data now has no fallback, see "Content
-  pipeline" above).
-- The event list is deliberately **not** cached as app state — an earlier
-  version stored missions in `localStorage` and returning visitors never saw
-  newly published events.
-- Sheet rows are untrusted input. `useSiteContent.ts` drops rows with no title
-  and coerces every field; do the same for any new column.
-- There is a gamification layer (XP, levels, badges) tied to the "Join" flow.
-  Guests can browse, play games, and sign up for events; only members bank XP.
-- **There is no second club.** The template shipped a "Kinetic Lab" identity
-  toggle — a fictional company — which was removed. If you see `identity`,
-  `isTurtle`, or `ClubIdentity` reappear, it is a regression.
-
-## Theming (dark-only)
-
-The site is dark-only — no OS-preference tracking, no manual toggle, no
-stored override. It used to default to the OS color-scheme setting with a
-half-moon/sun toggle button in the header next to the profile/Join button;
-both were removed by direct request. What's left is the mechanics of how
-"dark" actually gets applied, since that machinery is still exactly how the
-whole site is styled:
-
-- `src/useTheme.ts` is a thin hook that just applies a `dark` class to
-  `document.documentElement` on mount and always returns `{ theme: 'dark' }`.
-  Kept (rather than deleted) because several components — `SFCave.tsx`, the
-  Titration apparatus pieces (`Burette`/`Flask`/`CurvePlot`/`Apparatus.tsx`)
-  — still destructure `theme` off it to pick their dark-mode color branch;
-  always getting `'dark'` back is exactly the wanted behavior post-removal
-  without touching every one of those call sites. `tr_sc_theme` in
-  localStorage is no longer read or written.
-- An inline script in `index.html`'s `<head>` applies that same class
-  synchronously on load, before React mounts, so there's no flash of
-  unstyled/light content.
-- `src/index.css` implements the actual dark styling as `:root.dark
-  <selector>` overrides (`!important`) on the site's hardcoded `bg-[#hex]` /
-  `text-[#hex]` classes. This is *not* dead code now that there's no toggle —
-  it's the only styling those elements have; removing the override system
-  and inlining the dark values directly would mean touching every one of
-  those hardcoded classes across the codebase instead of just always keeping
-  the `.dark` class present, which is what was done here.
-- **Both dark-mode mechanisms must still key off that same `.dark` class,
-  even with the toggle gone.** The site styles dark mode two ways — the
-  enumerated `:root.dark` overrides above, and plain Tailwind `dark:`
-  utilities (`CuratedResources`, `LabLogAnnouncements`, `SafeHtml`). Tailwind
-  v4 compiles `dark:` to `@media (prefers-color-scheme: dark)` by default,
-  which reads the *visitor's OS setting*, not this site's (now-permanent)
-  `.dark` class — back when there was a toggle, that mismatch only bit
-  someone whose stored preference disagreed with their OS; now that the site
-  is always dark, reverting to that default would mean the split shows up
-  for anyone whose OS isn't in dark mode, i.e. most visitors, not an edge
-  case. `index.css` declares `@custom-variant dark (&:where(.dark, .dark
-  *));` immediately after `@import "tailwindcss"` to bind `dark:` to the
-  class instead. A compiled bundle (`dist/assets/*.css`) containing any
-  `prefers-color-scheme` rule means that line was lost and the split is
-  back.
-- **Only use hex values that already have an override.** The dark rules are
-  enumerated per hex, so a new `text-[#hex]` that isn't in that list renders
-  identically in both themes — which usually means dark text on a dark
-  background. `ConfirmEmailModal` shipped unreadable this way with
-  `text-[#3D5259]`. Reuse `text-[#1F3A42]` / `text-[#4B6169]` /
-  `text-[#2E7D46]` and `bg-[#FBF7EC]` / `bg-white` / `bg-[#E4F5DA]`, or add the
-  override alongside the new colour. `text-[#14351F]` is deliberately *not*
-  flipped — it is the dark label on `bg-[#6CC24A]` buttons.
-- Known gap: those dark-mode rules include scoped variants meant to flip
-  `MoleculeBuilder`/`RobotProgrammer`/the chem adventure link-out between
-  their own dark chrome and a light-mode look, gated on `.game-molecule` /
-  `.game-robot` / `.game-adventure` wrapper classes — but nothing in
-  `src/components/games/` or `VirtualLab.tsx` actually applies those classes,
-  so the rules never fire. In practice those three currently render with
-  their own dark styling regardless of site theme, same as
-  `OrbitalSlingshot.tsx` (which is intentionally always-dark). Wiring up the
-  wrapper classes is unfinished work, not a regression.
-- `SFCave.tsx` is the one place that reads `theme` directly in JS
-  (`useTheme()`) instead of through the `:root.dark` CSS mechanism above —
-  its cave/ship colors are `<canvas>` fill styles, which CSS can't reach at
-  all, so there was never an option to add them to the enumerated hex list.
-  Before the toggle was removed, this was the one game with a genuinely
-  light interior that tracked it live (see the Minigames section below); now
-  that `useTheme()` always returns `'dark'`, `SFCave` always renders that
-  branch — its light-interior identity is effectively retired along with the
-  toggle, not a bug. The call itself is harmless dead weight rather than
-  something to rip out: it's a second, independent call to the same hook
-  `App.tsx` used to own (now nobody else does), safe because `useTheme`'s
-  `classList.add` is idempotent.
-
-## Minigames
-
-`src/components/games/` — twelve real puzzle games, not click toys, plus one
-link-out. `docs/game-ideas.md` is the original design doc for the seven
-science-domain games (Lightbender through Reactor Line); read it before
-touching their level data or science model, since each level's numbers were
-tuned (some with scratch Node scripts, not just eyeballed) to make a specific
-lesson land. SF Cave postdates that doc and isn't in it.
-
-Every hosted game (all twelve but `ChemTextAdventure`, which links out)
-carries a small "live note" — plain-language commentary on the science behind
-an actual *outcome* — distinct from the per-level `hint` text hidden behind
-the Hint toggle, and deliberately **not** shown while the player is still
-exploring. It only appears once there's something to react to: a crash
-(`RobotProgrammer`, `OrbitalSlingshot`, `SFCave`), a burnt-out part
-(`ShortCircuit`), a molecule that's fully bonded but split into two
-disconnected pieces (`MoleculeBuilder`), an unbalanced equation someone hit
-Run on anyway (`ReactorLine`), overgrazing that's already happened
-(`IslandKeeper`), a just-submitted guess (`Epicenter`), or the level being
-solved (`StarlightDecoder` and the win state everywhere else). The first pass
-at this showed commentary continuously as state changed — tool selected,
-slider dragged, atom picked — which amounted to narrating the solving method
-before the player had even tried it; don't regress back to that. Gate any new
-note behind a genuine mess-up or success, never a mere selection or drag.
-
-- `OrbitalSlingshot.tsx` — Newtonian gravity sim on canvas; drag *toward* the
-  target to launch, speed scales with drag distance. Sim state lives in refs
-  because 60fps React state would thrash.
-- `MoleculeBuilder.tsx` — SVG modelling kit. Win condition is every atom's
-  valence exactly satisfied **and** the bond graph connected. Levels are keyed
-  by formula, not molecule name, because C₂H₆O has valid isomers. Starting
-  atom positions come from `MOLECULE_GEOMETRY`, a hand-placed layout per
-  formula that approximates the molecule's real shape (water bent, CO₂
-  linear, methane's tetrahedral splay) — a formula not in that table falls
-  back to an evenly spaced ring.
-- `RobotProgrammer.tsx` — write a program, then run it. Later mazes give too
-  few main slots on purpose, forcing the F1 subroutine to call itself.
-- `Lightbender.tsx` — real ray-traced optics on a grid (Snell's law, dispersion,
-  total internal reflection). Beam is re-traced every drag frame; rays are
-  nudged `1e-4` along their direction after each bounce to avoid re-intersecting
-  the surface they just left. Target radii matter: a target circle wide enough
-  to already overlap the emitter's un-refracted straight-line beam auto-solves
-  the level with zero components placed, as "Through the Glass" did before its
-  radius was tightened from 24 to 16 — check the unsolved default (no pieces on
-  the grid) actually fails before shipping a new target position. The solved
-  overlay is a full opaque panel over the whole board, which used to hide the
-  beam path the instant a level solved with no way to actually look at it; an
-  "Admire the beam" button dismisses it (state `peeking`) with a small
-  "Back to results" button to bring it back — keep that escape hatch on any
-  overlay that covers a visualization worth seeing after the win.
-- `ShortCircuit.tsx` — an SVG breadboard backed by a hand-written nodal-analysis
-  solver (Gaussian elimination with partial pivoting), not a series/parallel
-  special case — that generality is what makes the Wheatstone-bridge level
-  solvable at all. Pure-wire branches are union-found together before the
-  matrix is built, or shorted nodes make it singular.
-- `Epicenter.tsx` — P/S-wave arrival-gap trilateration. Each level is generated
-  from a hidden true epicenter + magnitude via a seeded RNG (mulberry32), so
-  the puzzle is internally consistent and reproducible rather than random per
-  load.
-- `CritterRanch.tsx` — Mendelian breeding puzzle. Genotype is a
-  `Record<GeneId, [Allele, Allele]>`; phenotype is a pure resolver function per
-  gene (dominant / incomplete / epistatic-on:X). The test-cross level requires
-  an actual statistical proof of homozygosity (zero recessive offspring across
-  a sample), not just producing the right-looking critter.
-- `IslandKeeper.tsx` — coupled Lotka-Volterra food web,
-  `dN_i/dt = N_i·(r_i − damp_i·(N_i/K_i) + Σ a_ij·N_j)`, stepped in a
-  `requestAnimationFrame` loop (sim state in a ref, pushed to React state at a
-  throttled rate, same reasoning as `OrbitalSlingshot`). Producers use the
-  textbook logistic form (`damp_i = r_i`); consumers get a *negative* baseline
-  `r_i` (they starve without food) plus a `damp_i` that is always positive
-  regardless of `r_i`'s sign — conflating the two for consumers is what makes
-  the simulation blow up to `Infinity`, since a negative `r_i` flips the
-  logistic brake into a throttle once population exceeds `K_i`. Removing the
-  hawk from the Keystone level's five-species web is a genuine emergent
-  cascade (voles boom, overgraze the grass, and drag rabbits and foxes down
-  with them), not scripted.
-- `StarlightDecoder.tsx` — spectral-line matching with a real wavelength→RGB
-  gradient (Bruton's approximation) and actual element line wavelengths
-  (Balmer, sodium D, calcium H&K). The Doppler levels apply
-  `λ_obs = λ_rest·(1+v/c)` as one multiplicative shift to a whole line pattern
-  at once — that simultaneity, not any single line, is what the puzzle tests.
-- `ReactorLine.tsx` — stoichiometry factory. Formulas are tokenized into
-  element-count maps (handles `Fe2O3`, `Ca(OH)2`-style nesting) and balance is
-  checked by comparing scaled reagent/product counts — coefficients are never
-  hardcoded per level. The sim is a discrete tick (`min(available/ratio)`
-  per reaction per tick), so a half-built line still produces something.
-  Silos keep pouring into the shared stock pool every tick regardless of node
-  balance, so hitting Run on an unbalanced node used to look completely inert
-  — no pipe glow, no silo countdown (infinite-cap silos just show a static
-  rate), tank frozen at zero. A red banner now appears whenever `running` is
-  true and an enabled node is still unbalanced, naming it explicitly; don't
-  remove it as "redundant" with the inline `unbalanced` tag next to the
-  steppers — that tag is easy to miss, the banner is the one players notice.
-- `SortSquad.tsx` + `sortsquad/` — started as a port of a standalone canvas
-  game, then rebuilt as ordinary page chrome in the siblings' own vocabulary
-  (level pills, the amber Hint link, tinted chips, `rounded-full` action
-  buttons — the class strings are lifted from `RobotProgrammer` and collected
-  in `sortsquad/ui.tsx`). **The only canvas is the row of bars**
-  (`sortsquad/stage.ts`, wrapped by `BarStage.tsx`), so every control is a real
-  button a keyboard or screen reader can reach, and the text stays readable on
-  a phone. `sortsquad/logic.ts` is pure — no DOM, no React — so
-  `node scripts/check-sortsquad.mjs` can import it straight into Node, the same
-  arrangement as `titration/chem.ts`; `puzzles.tsx` has one panel per kind of
-  question, `FreePlay.tsx` has hand-sorting and watch-a-robot, and
-  `usePlayback.ts` plays a recorded run onto the stage.
-
-  The robots are *recorded*: `buildSteps` runs an algorithm once on a private
-  copy of the list and writes down every look / swap / write, and the game
-  replays that list. Knowing the whole run up front is what makes the puzzles
-  possible — "which robot is this?" is answered by running every candidate on
-  the same list and finding the first step where it would have acted
-  differently (`whyNot`), so a wrong guess gets a rigorous reason, never a
-  guess about the robot's style.
-
-  **Ten Robot Puzzles, seven kinds of question, and they are the only thing
-  that awards XP** (`10 + 5·index`, 325 in total — more than a typical 5-7
-  level game, which is a deliberate trade for having more levels). Hand-sorting
-  and watching a robot are free play *on purpose*: hand-sorting has no strategy
-  to discover — swapping any adjacent out-of-order pair reaches par — so it
-  should not pay XP.
-  - *Who's That Robot?* (`identify`, levels 1, 3, 5): the robot's name and its
-    algorithm-specific wording are hidden; the player sees raw evidence (which
-    slots, look / swap / place counts, the robot's opening moves and latest
-    moves) and gets two guesses. A round is only kept if the evidence rules out
-    every other robot in the pool within the first 40% of the run
-    (`DECISIVE_FRACTION`). The *opening* moves stay on screen because that is
-    where the evidence is — a "last few steps" tape alone lets it scroll away.
-  - *Which Robot Wins?* (`race`, 2, 4): which robot needs the fewest steps
-    (looks + swaps + placements) on a fixed *shape* of list, then a race.
-  - *Flip Flop* (`flip`, 6): pancake sorting — click a bar to reverse it and
-    everything left of it. Par comes from a breadth-first search over every
-    arrangement (`flipTable`), checked against the known pancake numbers.
-  - *Count the Swaps* (`count`, 7): Bubble and Insertion make exactly as many
-    swaps as there are wrong-way pairs; typed answer, two tries, and the pairs
-    are listed once it is over.
-  - *After One Pass* (`afterPass`, 8): pick the picture that shows the list
-    after the robot's first pass (`PASS_RULE` says what a pass is). Every
-    wrong picture is something real — another robot's pass, a half-finished
-    pass, an almost-right list — and says so, so a wrong pick teaches.
-  - *Swap Any Two* (`swapAny`, 9): sort by swapping any pair; par is bars
-    minus loops (`minSwaps`), confirmed against brute force.
-  - *Worst Day* (`worst`, 10): *build* the list that gives a robot its hardest
-    day, then run it. The goal is 90% of the true worst case, found by running
-    the robot on every arrangement (`worstInfo`) — and Quick Sort's real worst
-    case is `[2,3,4,5,6,1]`, not just "sorted".
-
-  Commentary follows the site's live-note rule: nothing explains an answer
-  until the player has committed to one (hints live behind the Hint link).
-
-  **Level order is load-bearing.** Visitors' progress is stored by *index*, and
-  the shell pays `10 + 5·index`, so levels 1-5 must never move or be removed;
-  new levels are *appended*. The check script asserts the first five.
-  **Every number in `PUZZLES` is tuned by `scripts/check-sortsquad.mjs`** — list
-  sizes, robot pools, candidate sets, `minPar`, `goalFraction`. Change one and
-  run it: it asserts every kind is fair (a race has one clear winner with at
-  least a 15% margin, every pass question has exactly one right picture checked
-  against independent re-implementations of each pass, a worst-day goal is
-  reachable but not something luck hits, and so on).
-
-  Integration notes learned the hard way: this project has **no
-  `@types/react`**, so JSX `key` on a custom component fails to type-check
-  unless its props accept it — the older components dodge this by typing
-  themselves `React.FC<…>`, which resolves to `any`; Sort Squad keeps its props
-  checked and adds `Keyed` (in `ui.tsx`) instead. The stage outlives every
-  render, so it reads its handlers through refs. And one thing kept from the
-  original on purpose: Merge, Timsort and Radix write into the bar row in
-  place, so duplicate bar heights flash mid-pass.
-- `ChemTextAdventure.tsx` — not hosted here. Links out to an external
-  choose-your-own-path chemistry story; clicking the link *is* the win
-  condition and the only way to earn its "Adventurer" badge.
-- `SFCave.tsx` — a port of the original game's *actual logic*, not just its
-  vibe, modeled on a faithful HTML5 clone
-  (github.com/yuzawa-san/sfcave2) rather than guessed at. The real game ticks
-  at a fixed 75ms (`TICK_MS`) — not 60fps — and every tick either does
-  `velocity -= ACCEL` (holding) or `velocity += ACCEL` (not holding), clamped
-  to `±VELOCITY_CLAMP`, position `+= velocity`. That symmetry (gravity and
-  thrust are the exact same magnitude, opposite sign — no separate "thrust
-  wins" constant) and the coarse tick cadence are the actual feel; an earlier
-  pass here used mismatched gravity/thrust constants at 60fps with
-  sub-stepped collision, which was both 4x too strong (accel was applied in
-  full every sub-step instead of divided across them) and just structurally
-  different from the source game. Only the cave's gap narrows over time,
-  checked every 10 ticks (`genNextColumn`) — scroll speed and turn sharpness
-  are constant for the whole run, matching the original exactly; they don't
-  ramp. `VELOCITY_CLAMP` is deliberately equal to the cave's column width
-  (`STEP_X`) because the original enforces that same equality — it's what
-  lets the ship never cross an entire column in one tick, so no per-tick
-  sub-stepping is needed to catch a thin wall.
-  Unlike every other game here it has **no discrete levels** — the cave
-  generates forever (`genNextColumn` appends exactly one column per tick
-  while flying, seeded once with `INITIAL_COLUMNS` up front) and there is no
-  floor on the gap beyond a render-safety clamp, so — like the original —
-  every run necessarily ends eventually, however skilled the player. Because
-  `VirtualLab`'s XP/badge plumbing expects a `solvedLevels: number[]` +
-  `onSolve(levelIndex)` per game, five fixed distance thresholds
-  (`MILESTONES`) stand in for levels — crossing one in a single run awards XP
-  and the "Spelunker" badge, same mechanism as every other game, even though
-  there's no way to "select" milestone 3 without flying through 1 and 2
-  first. Input is polled once per tick from a plain `holdingRef` set by
-  pointer/key events, not triggered from the input handler itself — same as
-  the original's global `down` boolean — which is what lets a hold still
-  down when a run ends (or the "ready" screen returns) just start working on
-  the very next tick with no extra click. `resetFlight` explicitly zeroes
-  `holdingRef`, again mirroring the original's `down = false` the instant it
-  returns to its start screen, so holding through the whole death animation
-  does *not* auto-relaunch — a fresh press is always required. Graphics are
-  blocky per-column rectangles (not a smooth path) with green walls and a
-  light passable interior, matching the original's actual (surprising, if
-  you assumed black-background/white-walls) color relationship — only the
-  specific hex values were swapped to the site's palette, and *those* are
-  real brand hexes, not arbitrary Tailwind shades: wall green is Forest
-  (`#2E7D46`), the interior is Cream (`#FBF7EC`), the ship is Gold
-  (`#F2C94C`), and the crashed ship / every obstacle block share Alert Red
-  (`#E4574B`) — see STYLE.md §2.1 for the full table. This is also the one
-  game of the thirteen that is *not* an "always-dark instrument panel"
-  (STYLE.md §11) — its light interior is what makes it read as SF Cave. It
-  still reads `useTheme()` for that Cream/Forest ↔ `#12181A`/`#8FE07A` pair
-  (STYLE.md §2.1), a leftover from when the site had a light/dark toggle it
-  tracked live; now that the toggle is gone and `useTheme()` always returns
-  `'dark'`, this always renders the dark branch — the light interior no
-  longer actually appears. Not a bug to fix; ship/hazard/HUD are marked
-  "unchanged" in that same table, so they never had a second variant either
-  way.
-  Free-floating red obstacle blocks (`BLOCK_H`, `CaveGen.blocks`) spawn
-  mid-gap — the
-  original PalmOS game's "mines," reproduced from the same clone source
-  rather than invented. The original spawns one on the exact same
-  every-10-tick beat as the gap shrink, but that beat is *not* copied
-  literally: its 256px canvas only ever shows ~3 columns' worth of blocks at
-  once (32 visible columns / 10), while our much wider 800px canvas at the
-  same period would show far more blocks on screen simultaneously than the
-  original ever did. `BLOCK_SPAWN_EVERY` (currently every 4th shrink-beat,
-  i.e. every 40 columns) is tuned purely by feel to keep it visually sparse
-  like the original rather than derived from any exact ratio — it's been
-  turned down twice already as still "too many blocks," so treat it as a
-  density dial to keep adjusting directly rather than something with a
-  supposedly-correct value. A column's block is guarded against spawning if
-  the gap has already narrowed past `BLOCK_H` (the original has no such
-  guard, so a late-game block there could poke past the wall it's next to —
-  a real edge case in the source, not one worth copying).
-  The "ready" phase renders nothing but the background and HUD strip — no
-  ship, nothing to fly. `beginRun` generates the whole cave up front (cheap:
-  just array pushes) and parks the ship at its first column's center the
-  instant a hold is detected, but doesn't reveal the cave yet — phase goes to
-  `'generating'`, not straight to `'flying'`. During that `GENERATING_TICKS`
-  window the ship *is* visible and already responds to thrust
-  (`stepGenerating` runs the same gravity/thrust integration as `stepFlying`,
-  clamped to the playfield bounds since there's nothing to collide with yet);
-  only the cave stays hidden, so it appears around an already-moving ship
-  instead of the whole scene snapping into existence the instant a hold
-  lands. `draw()` tracks this with two separate flags — `showShip` (any
-  phase but `'ready'`) and `showCave` (`'flying'` or `'crashed'` only) —
-  rather than one combined gate, which is what makes the free-flight window
-  possible: the ship needs to render and move before there's a cave to show
-  around it. A stale previous run's cave sitting frozen behind everything
-  would otherwise be a real risk too, since `caveGenRef` is never explicitly
-  cleared between runs — the phase gate is what keeps it off-screen until a
-  fresh `beginRun` overwrites it.
-
-`VirtualLab.tsx` is the shell that hosts them, keyed by `GameId` in
-`types.ts`, and awards XP once per level (`ChemTextAdventure` only ever has
-level 0; SF Cave's "levels" are its milestones). The tab grid is
-`sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4` — with thirteen tabs it wraps
-into multiple rows by default CSS grid behaviour, no scroll container needed.
-
-All seven science-domain games, and `SortSquad`, are "always-dark" chrome like
-`OrbitalSlingshot`, the same choice the doc's integration notes call for —
-none of them try to hook into the `.game-*` wrapper-class theming scheme
-described below. `SFCave` is the one exception among all thirteen: its play
-surface is a genuinely light interior (see above), and unlike its siblings it
-actually tracks the site's light/dark toggle rather than ignoring it — see
-"Theming" above for how. Its outer wrapper is still a plain `bg-black` canvas
-frame like the other games (the canvas repaints over it every tick regardless
-of theme, so the wrapper's own color is essentially never visible).
-
-`Dashboard.tsx`'s `badgeCatalog` now lists all fifteen earnable badges
-(`Foundation Member` plus one per game, including `ChemTextAdventure`'s and
-Titration Lab's `Analytical Chemist` badge) instead of the leftover
-AI-Studio-era placeholder names it used to have. If you add another game or
-badge, add its badge here too, or the achievements grid will silently drift out
-of sync again.
-
-## Titration Lab
-
-`src/components/TitrationLab.tsx` — a standalone top-level tab (not a
-`VirtualLab` minigame) providing an acid–base titration simulator and 9-module
-curriculum backed by an exact polyprotic charge-balance equilibrium solver
-(`src/components/titration/chem.ts`, verified by `scripts/check-titration.mjs`).
-The apparatus laboratory view is a unified physical setup (`src/components/titration/Apparatus.tsx`)
-with a graduated burette clamped to a retort stand directly above a realistically proportioned ungraduated tall Erlenmeyer flask.
-Two experimental methods are available (defaulting to Visual Indicator):
-1. **Visual Indicator Mode (Default)**: Pure glassware setup without pH probe; the titration curve is hidden, requiring the student to observe the color change and read the burette meniscus visually.
-2. **pH Probe Mode**: Submerges the glass electrode probe and plots the live pH titration curve (`CurvePlot.tsx`).
-Interactivity is purely direct-manipulation without external button trays or hint popups:
-clicking/holding the stopcock valve delivers drops or continuous stream; holding and physically
-shaking the mouse on the flask swirls and mixes the solution (dispersing static unmixed indicator plumes);
-hovering over the fluid meniscus opens an enlarged precision optical magnifier with high-resolution
-graduation lines and meniscus concave curve for pure visual reading (no text tags or number readouts).
-Progress is stored in `tr_sc_titration_progress`. Guests can access all modules;
-members earn Discovery XP and the "Analytical Chemist" badge on correctly identifying mystery samples.
-
-## Math & Chemistry LaTeX Formatting (KaTeX)
-
-All mathematical expressions, chemical formulas, reaction equations, and physical units across the website use KaTeX rendering via components in `src/components/Latex.tsx`:
-- `<Latex math="..." displayMode={false|true} />`: Renders pure KaTeX expressions directly (e.g. formulas, step equations, variable readouts).
-- `<Chem formula="..." />`: Automatically tokenizes chemical formulas (`H2O`, `CH3COOH`, `Fe2O3`, `(NH4)2SO4`, `CO3^2-`) into standard chemical LaTeX notation (`\text{H}_2\text{O}`, `\text{CH}_3\text{COOH}`, etc.).
-- `<MathText text="..." />`: Parses mixed prose strings with inline `$math$` and block `$$math$$` expressions (and chemistry formulas) into KaTeX spans without string interpolation bugs.
-- `SafeHtml.tsx`: Formats any Sheet-published announcements, missions, or logs containing `$math$` or `$$math$$` via KaTeX. Safely renders HTML tags (e.g. `<a href="...">`, formatting tags, lists) and autolinks bare URLs using DOMPurify with automatic `target="_blank"` and `rel="noopener noreferrer"`.
-- Dark mode: `katex/dist/katex.min.css` is imported in `main.tsx`, and `:root.dark .katex` in `index.css` ensures all equations inherit text colors with high contrast.
-
-## Hero Scroll
-
-`src/useHeroScroll.ts` drives the landing hero screen transitions:
-- Landing screen loads directly with navbar visible, "Turtle Rock Science Club" lit, and "Sign up!" CTA leading to the Events tab (`/events`) (no dimmed opening frame).
-- Both intro (Moment 1) and finale (Moment 7) "Sign up!" CTAs navigate directly to `/events` (`onOpenEvents`).
-- Light scroll gestures (`WHEEL_MIN_DELTA = 3`) immediately advance to the next screen and stop.
-- Per-gesture lock isolates trackpad inertia tails so a single scroll cannot advance past multiple screens.
-- Re-arms upon brief idle pause (~110ms), direction reversal, or distinct swipe acceleration, allowing rapid scrolling to proceed screen-by-screen.
-- Smoothly glides and stops at each resting moment.
-- At finale, forward scroll unlocks the document for natural page scrolling.
-
-## Lab Log & Newsletter Reader System
-
-- **Full-Height Reader Modal** (`src/components/LabLogAnnouncements.tsx`):
-  - `#log-detail-modal` is a unified scroll container (`max-h-[92vh] max-w-4xl lg:max-w-5xl`) with `overflow-y-auto`.
-  - Hero image and title are at the top of the scroll flow and scroll away naturally as the user reads down, giving 100% of the modal height to the content.
-  - Sticky close button (`#close-log-modal-btn`) floats in the top-right corner (`sticky top-0 z-30 pointer-events-none` container with `pointer-events-auto` button).
-  - Centered "Close Newsletter" button at the bottom of the article.
-  - Card and modal images include an `onError` handler automatically falling back from `https://trscienceclub.org/...` to `raw.githubusercontent.com/...` if Cloudflare/Pages CDN cache is stale or deploying.
-- **SafeHtml HTML Snippet Handling** (`src/components/SafeHtml.tsx`):
-  - Automatically detects block HTML tags (`div`, `table`, `section`, etc.) to prevent corrupting tables and flex/grid layouts with unwanted `<br />` tags on newlines.
-- **Newsletter Design System** (`src/index.css`):
-  - `.trsc-newsletter-wrapper`: Base typography and theme-aware colors.
-  - `.trsc-card`, `.trsc-card-accent`, `.trsc-card-warning`: Distinct elevated surfaces (`#1B2426` in dark mode, `#FFFFFF` in light mode) with subtle borders and shadows.
-  - `.trsc-table-wrapper`, `.trsc-table`: Full-width responsive tables with styled headers, alternating row striping, and `.highlight-gold` row support.
-  - `.trsc-goals-grid`, `.trsc-goal-card`: Responsive 2x2 grid with green numbered badges.
-  - `.trsc-roadmap-list`, `.trsc-roadmap-row`, `.trsc-date-badge`: Clean timeline roadmap.
-  - `.trsc-grid-cards`, `.trsc-item-card`, `.trsc-topic-tag`: Structured cards for Science Tidbits and News.
-- **Newsletter 01 Post Code**:
-  - Saved in [docs/newsletter/01-lab-log-entry.html](file:///Users/carlliu/Turtle-Rock-Science-Club/docs/newsletter/01-lab-log-entry.html) for pasting into Google Sheets cell E2.
-- **Newsletter 02 Post Code**:
-  - Saved in [docs/newsletter/02-lab-log-entry.html](file:///Users/carlliu/Turtle-Rock-Science-Club/docs/newsletter/02-lab-log-entry.html) for pasting into Google Sheets cell E3.
-- **Newsletter 03 Post Code**:
-  - Saved in [docs/newsletter/03-lab-log-entry.html](file:///Users/carlliu/Turtle-Rock-Science-Club/docs/newsletter/03-lab-log-entry.html) for pasting into Google Sheets cell E4.
-- **Newsletter 04 Post Code**:
-  - Saved in [docs/newsletter/04-lab-log-entry.html](file:///Users/carlliu/Turtle-Rock-Science-Club/docs/newsletter/04-lab-log-entry.html) for pasting into Google Sheets cell E5.
-
-## Announcements & Lab Log Layout
-
-- **Tab Order Swapped (`LabLogAnnouncements.tsx`)**:
-  - "Club Announcements" now appears first at the top of `/announcements`.
-  - "Latest From the Lab Log" (newsletter issues and reader modal) now sits below Announcements with section divider.
-- **Home Page Announcements (`HomeAnnouncements.tsx`)**:
-  - Renders latest 3 announcements on the homepage below the 7-moment Hero sequence.
-  - Visible upon scrolling down past the final Moment 7 "Sign up!" button.
-  - Includes direct "View all announcements" CTA navigating to `/announcements`.
-
+- Handled via `src/components/Latex.tsx`: `<Latex>`, `<Chem>`, `<MathText>`.
+- `SafeHtml.tsx` parses markdown/HTML, strips unwanted `<br />` around block elements, sanitizes via DOMPurify, and compiles `$math$` expressions.
+- `src/useHeroScroll.ts`: Controls landing page 7-moment narrative scroll, isolates trackpad inertia, unlocks normal page scroll at finale.
