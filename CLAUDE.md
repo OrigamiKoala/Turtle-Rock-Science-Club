@@ -61,7 +61,7 @@ Google Sheet ──[🐢 Website ▸ Publish]──▶ hidden _Published tab (JS
   - **CRITICAL**: Sender automation on confirmation link click MUST **Copy** subscriber to **Confirmed** (never Move, which wipes audience groups).
   - Campaigns MUST target `(Audience Group) AND Confirmed` segment.
 - **Credentials**: `SENDER_API_TOKEN`, `SENDER_FROM_NAME`, `SENDER_REPLY_EMAIL` stored in Script Properties.
-- **Templates**: Stored in `docs/newsletter/` (e.g. `06-scioly-tryouts.html`, `confirm-subscription.html`).
+- **Templates**: Stored in `docs/newsletter/` (e.g. `06-scioly-tryouts.html`, `07-post-tryouts-halloween.html`, `confirm-subscription.html`).
 
 ### Zoho Mail (Private / Transactional / Inbox)
 - **Mailbox**: `contact@trscienceclub.org`.
