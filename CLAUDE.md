@@ -15,7 +15,7 @@ Single-page React site for Turtle Rock Science Club. Content is managed via Goog
 - **Workflow**: `.github/workflows/deploy-gh-pages.yml` runs `npm ci && npm run build` -> `actions/deploy-pages`. Always keep `package-lock.json` in sync (`npm install`).
 - **Domain**: `trscienceclub.org`. `vite.config.ts` sets `base: '/'`.
 - **Public Assets**: Reference runtime assets in `public/` using `${import.meta.env.BASE_URL}asset.png` in JS/TSX.
-- **SPA Routing**: `spaFallbackPlugin` in `vite.config.ts` copies `index.html` to `404.html` and creates directory fallbacks for direct route access (`titration`, `admin`, `join`, `events`, `games`, `resources`, `announcements`, `gallery`, `about`, `dashboard`).
+- **SPA Routing**: `spaFallbackPlugin` in `vite.config.ts` copies `index.html` to `404.html` and creates directory fallbacks for direct route access (`titration`, `slingshot`, `admin`, `join`, `events`, `games`, `resources`, `announcements`, `gallery`, `about`, `dashboard`).
 - **Standalone Pages**:
   - `public/ariadne-console/index.html`: Chem curriculum terminal (`?week=N`, `#1,2,3`).
   - `public/station-1c/index.html`: Session 1-C Beam Deflector sim.
@@ -105,6 +105,7 @@ Google Sheet ──[🐢 Website ▸ Publish]──▶ hidden _Published tab (JS
   - `tr_sc_game_progress`: Solved puzzle level indices.
   - `tr_sc_cave_best`: SF Cave high score.
   - `tr_sc_titration_progress`: Titration modules and mystery samples progress.
+  - `tr_sc_slingshot_progress`: Gravity Slingshot completed stages and best fuel scores.
   - `tr_sc_newsletter_banner_dismissed`: Hides member newsletter prompt banner.
 
 ## Minigames & Virtual Lab
@@ -133,6 +134,20 @@ Google Sheet ──[🐢 Website ▸ Publish]──▶ hidden _Published tab (JS
 - Polyprotic charge-balance equilibrium solver (`src/components/titration/chem.ts`, verified via `scripts/check-titration.mjs`).
 - Direct manipulation: click/hold stopcock to dispense, shake mouse on flask to mix, hover over fluid for optical meniscus magnifier.
 - Modes: Visual Indicator (default, colorimetric) and pH Probe Mode (plots titration curve).
+
+## Gravity Slingshot (`/slingshot`)
+
+- Standalone interactive page (`src/components/GravitySlingshotPage.tsx`, `src/components/slingshot/`).
+- Built following the `science-interactive` skill based on `docs/Science Minigame Ideas.md`.
+- Symplectic Velocity Verlet Newtonian physics engine (`physics.ts`) with central Sun gravity and moving Keplerian planets (Earth, Jupiter, Saturn, Uranus, Neptune).
+- Demonstrates why direct propulsion cannot reach Neptune with limited fuel, and how passing behind a moving planet's wake steals orbital momentum for free ($\Delta v$ boost).
+- Stages:
+  1. Falling and Missing (heliocentric orbit entry)
+  2. The Fuel Wall (direct propulsion reaches only ~4 AU before running out)
+  3. The Moving Slingshot (Jupiter assist flings probe to Saturn)
+  4. The Grand Tour (Voyager 2: Earth → Jupiter → Saturn → Neptune on a single launch tank)
+  5. Deep Space Sandbox (free flight with full telemetry and time warp)
+- Verified via `scripts/check-slingshot.mjs` (`npm run test:slingshot`).
 
 ## LaTeX & Formats
 

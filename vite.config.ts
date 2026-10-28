@@ -14,6 +14,7 @@ function spaFallbackPlugin(): Plugin {
         fs.copyFileSync(indexHtml, path.join(distDir, '404.html'));
         const routes = [
           'titration',
+          'slingshot',
           'admin',
           'join',
           'events',

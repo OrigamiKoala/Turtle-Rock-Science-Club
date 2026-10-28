@@ -17,6 +17,7 @@ import LabLogAnnouncements from './components/LabLogAnnouncements';
 import Dashboard from './components/Dashboard';
 import CuratedResources from './components/CuratedResources';
 import TitrationLab from './components/TitrationLab';
+import GravitySlingshotPage from './components/GravitySlingshotPage';
 import JoinPage from './components/JoinPage';
 import AdminHub from './components/AdminHub';
 import ConfirmEmailModal from './components/ConfirmEmailModal';
@@ -110,13 +111,14 @@ export default function App() {
   };
 
   const isTitrationPage = pathname === '/titration' || pathname === '/titration/' || pathname.startsWith('/titration');
+  const isSlingshotPage = pathname === '/slingshot' || pathname === '/slingshot/' || pathname.startsWith('/slingshot');
   const isJoinPage = pathname === '/join' || pathname.startsWith('/join');
   // Deliberately not linked from anywhere in the app (same as /titration and
   // /join being reachable but un-navigated-to) — an admin gets this URL
   // directly, not through the nav. See CLAUDE.md's Admin Hub section.
   const isAdminPage = pathname === '/admin' || pathname.startsWith('/admin');
   const isEcologyPage = pathname === '/ecology' || pathname === '/ecology/' || pathname.startsWith('/ecology');
-  const isHomeHero = currentTab === 'home' && !isTitrationPage && !isJoinPage && !isAdminPage && !isEcologyPage;
+  const isHomeHero = currentTab === 'home' && !isTitrationPage && !isSlingshotPage && !isJoinPage && !isAdminPage && !isEcologyPage;
   // Drives the Hero scroll sequence across moments. Only active
   // (listens for wheel/touch/key input, locks document scroll) while
   // isHomeHero is true.
@@ -125,6 +127,10 @@ export default function App() {
   const handleTabChange = (tab: string) => {
     if (tab === 'titration') {
       navigateTo('/titration');
+      return;
+    }
+    if (tab === 'slingshot') {
+      navigateTo('/slingshot');
       return;
     }
     navigateTo(TAB_PATHS[tab] ?? '/', tab);
@@ -576,6 +582,14 @@ export default function App() {
             <TitrationLab userProfile={userProfile} onUpdateXp={handleUpdateXp} />
           </main>
         </>
+      ) : isSlingshotPage ? (
+        <GravitySlingshotPage
+          userProfile={userProfile}
+          onUpdateXp={handleUpdateXp}
+          onNavigateHome={() => navigateTo('/', 'home')}
+          onOpenJoin={() => navigateTo('/join')}
+          onOpenLogin={() => setShowLoginModal(true)}
+        />
       ) : (
         <>
           <Header
