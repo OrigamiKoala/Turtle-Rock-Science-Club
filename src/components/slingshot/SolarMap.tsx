@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Run, SUN_HIT_R, planetAt, sampleAt } from './physics';
-import { StageDef, NEPTUNE_TARGET_R } from './stages';
+import { StageDef } from './stages';
 
 export interface MapView {
   radius: number;
@@ -135,14 +135,14 @@ function drawScene(ctx: CanvasRenderingContext2D, w: number, h: number, p: Props
   }
   ctx.setLineDash([]);
 
-  // Neptune target ring
-  const nep = stage.drawn.find((b) => b.id === 'neptune');
-  if (nep) {
-    const [nx, ny] = planetAt(nep, t);
+  // target ring
+  const tgt = stage.target ? stage.drawn.find((b) => b.id === stage.target!.id) : undefined;
+  if (tgt && stage.target) {
+    const [nx, ny] = planetAt(tgt, t);
     ctx.setLineDash([4, 4]);
     ctx.strokeStyle = 'rgba(111,140,255,0.6)';
     ctx.beginPath();
-    ctx.arc(tx(nx), ty(ny), NEPTUNE_TARGET_R * scale, 0, Math.PI * 2);
+    ctx.arc(tx(nx), ty(ny), stage.target.r * scale, 0, Math.PI * 2);
     ctx.stroke();
     ctx.setLineDash([]);
   }
@@ -217,7 +217,7 @@ function drawScene(ctx: CanvasRenderingContext2D, w: number, h: number, p: Props
   } else {
     // starting point marker
     const [ox, oy] = stage.origin;
-    const o = stage.id === 3 || stage.id === 1 ? { x: tx(ox), y: ty(oy) } : null;
+    const o = !stage.preview ? { x: tx(ox), y: ty(oy) } : null;
     if (o) {
       ctx.fillStyle = PROBE;
       ctx.beginPath();

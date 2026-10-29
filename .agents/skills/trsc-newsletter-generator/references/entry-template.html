@@ -1,0 +1,120 @@
+<div class="trsc-newsletter space-y-6 text-left">
+  <!-- Welcome / Issue Intro -->
+  <div class="space-y-3">
+    <p class="text-base sm:text-lg font-semibold text-[#1F3A42] dark:text-[#E7EDE9] leading-relaxed">
+      Welcome to Issue No. {{ISSUE_NUM}} of the Turtle Rock Science Club Lab Log &middot; {{SUBTITLE}}!
+    </p>
+    <h3 class="font-display font-bold text-xl sm:text-2xl text-[#1F3A42] dark:text-white">
+      {{HEADLINE}}
+    </h3>
+    <p class="text-sm sm:text-base leading-relaxed text-[#4B6169] dark:text-[#93A6A0]">
+      Hi TRSC Families,
+    </p>
+    <p class="text-sm sm:text-base leading-relaxed text-[#4B6169] dark:text-[#93A6A0]">
+      {{INTRO_PARAGRAPH}}
+    </p>
+  </div>
+
+  <!-- Key Program Announcements -->
+  <div class="space-y-3">
+    <div class="trsc-eyebrow">Program Announcements</div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      {{ANNOUNCEMENT_CARDS}}
+    </div>
+  </div>
+
+  <!-- Upcoming Schedule / Timeline Table -->
+  <div class="trsc-card space-y-3">
+    <div class="trsc-eyebrow">Upcoming Timeline</div>
+    <div class="overflow-x-auto">
+      <table class="trsc-schedule-table w-full text-xs sm:text-sm">
+        <thead>
+          <tr>
+            <th class="w-28 text-left">Date</th>
+            <th class="text-left">Milestone &amp; Details</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{SCHEDULE_ROWS}}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Science Tidbits -->
+  <div class="space-y-3">
+    <div class="trsc-eyebrow">Science Tidbits</div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+      {{TIDBIT_CARDS}}
+    </div>
+  </div>
+
+  <!-- In the News -->
+  <div class="space-y-3">
+    <div class="trsc-eyebrow">In the News</div>
+    <div class="space-y-3">
+      {{NEWS_CARDS}}
+    </div>
+  </div>
+
+  <!-- Weekly Science Interactive -->
+  <div class="space-y-3">
+    <div class="trsc-eyebrow">Weekly Science Interactive</div>
+    <div class="trsc-card space-y-3" style="background-color:#F5FAF2;border:2px solid #CBE6C5;">
+      <div class="flex items-center justify-between flex-wrap gap-2">
+        <span class="inline-block text-[11px] font-bold uppercase tracking-wider text-[#2E7D46]">{{INTERACTIVE_TOPIC_KICKER}}</span>
+        <span class="text-[11px] font-semibold text-[#4C9A3A] bg-[#E2F2DE] dark:bg-[rgba(108,194,74,0.2)] px-2.5 py-0.5 rounded-full">New Weekly Feature</span>
+      </div>
+      <h4 class="font-display font-bold text-lg text-[#1F3A42] dark:text-white">
+        {{INTERACTIVE_TITLE}} ({{INTERACTIVE_ROUTE}})
+      </h4>
+      <p class="text-xs sm:text-sm text-[#3D5259] dark:text-[#C5D2CE] leading-relaxed">
+        Every week, we're releasing a new interactive science tool or game on our website so students can experiment hands-on from home.
+      </p>
+      <p class="text-xs sm:text-sm text-[#3D5259] dark:text-[#C5D2CE] leading-relaxed">
+        {{INTERACTIVE_DESCRIPTION}}
+      </p>
+      <div class="pt-1">
+        <a href="{{INTERACTIVE_ROUTE}}"
+          class="inline-flex items-center gap-2 px-6 py-2.5 rounded-full text-xs font-display font-bold bg-[#6CC24A] text-[#14351F] hover:bg-[#5bb33b] transition-colors shadow-sm"
+          style="text-decoration:none !important;">
+          <span>🚀</span> {{INTERACTIVE_CTA}} ({{INTERACTIVE_ROUTE}}) &rarr;
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Master Study Guide & Resources -->
+  <div class="trsc-card text-center space-y-3">
+    <div class="trsc-eyebrow">Essential Reference</div>
+    <h4 class="font-display font-bold text-lg text-[#1F3A42] dark:text-white">TRSC Master Information &amp; Study Guide</h4>
+    <p class="text-xs sm:text-sm text-[#4B6169] dark:text-[#93A6A0] max-w-xl mx-auto leading-relaxed">
+      Access full event breakdowns, rule guidelines, and external practice resources in our Master Document, plus slides and handouts from every previous club workshop.
+    </p>
+    <div class="pt-2 flex flex-wrap items-center justify-center gap-3">
+      <a href="https://docs.google.com/document/d/1ev0rV0iSfNzGwVkLtUcggu7fINd0rD7nv4nyroO3u9c/edit?tab=t.0#heading=h.4zedv5yo7lxg"
+        target="_blank" rel="noopener noreferrer"
+        class="inline-flex items-center gap-2 px-6 py-2.5 rounded-full text-xs font-display font-bold bg-[#6CC24A] text-[#14351F] hover:bg-[#5bb33b] transition-colors shadow-sm"
+        style="text-decoration:none !important;">
+        <span>📖</span> Open Master Document &rarr;
+      </a>
+      <a href="https://drive.google.com/drive/folders/1LYSChBjZh_ZDMTNWjxlhfhE_5LJFgeUI"
+        target="_blank" rel="noopener noreferrer"
+        class="inline-flex items-center gap-2 px-5 py-2 rounded-full text-xs font-display font-bold border-2 border-[#2E7D46] text-[#2E7D46] dark:text-[#8FE07A] dark:border-[#8FE07A] hover:bg-[#E4F5DA] dark:hover:bg-[rgba(108,194,74,0.15)] transition-colors"
+        style="text-decoration:none !important;">
+        <span>📁</span> Past Lessons Drive &rarr;
+      </a>
+    </div>
+  </div>
+
+  <!-- Questions / Contact -->
+  <div class="text-center text-xs text-[#4B6169] dark:text-[#93A6A0] pt-2 pb-1 space-y-1">
+    <p>Questions, ideas, or feedback? Email our coaching team at <a href="mailto:contact@trscienceclub.org"
+        class="text-[#2E7D46] dark:text-[#8FE07A] font-bold underline">contact@trscienceclub.org</a> &middot; Visit <a
+        href="https://trscienceclub.org" target="_blank" rel="noopener noreferrer"
+        class="text-[#2E7D46] dark:text-[#8FE07A] font-bold underline">trscienceclub.org</a>.</p>
+    <p>WhatsApp Community Groups: Turtle Rock, University Park, Bonita Canyon (links in Master Doc).</p>
+    <p class="text-[11px] text-[#9AA6A6]">Turtle Rock Science Club &middot; Fostering passion in STEM for elementary students</p>
+  </div>
+</div>
+

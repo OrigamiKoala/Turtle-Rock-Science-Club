@@ -3,7 +3,7 @@
  * Run: npm run test:slingshot
  */
 import { simulate, circularSpeed, GM_SUN } from '../src/components/slingshot/physics.ts';
-import { STAGES, kmsToAu, auToKms, NEPTUNE_A, SATURN_A, neptuneClosest } from '../src/components/slingshot/stages.ts';
+import { STAGES, kmsToAu, auToKms, NEPTUNE_A, SATURN_A, neptuneClosest, stageAt, closestToBody, shiftBody } from '../src/components/slingshot/stages.ts';
 
 let failed = 0;
 const ok = (cond, desc, extra = '') => {
@@ -15,7 +15,8 @@ const ok = (cond, desc, extra = '') => {
 };
 const close = (a, b, tol, desc) => ok(Math.abs(a - b) <= tol, desc, `(got ${a.toFixed(4)}, expected ${b.toFixed(4)})`);
 
-const [s1, s2, s3, s4] = STAGES;
+const [s1, s2, s3, s4, s5, s6, s7, s8, s9, s10] = STAGES;
+const DEG = Math.PI / 180;
 const run = (stage, dirDeg, kms, opts = { sampleEvery: 0.05 }) =>
   simulate(stage.world, stage.makeLaunch((dirDeg * Math.PI) / 180, kmsToAu(kms)), opts);
 const sunOnly = { bodies: [], tMax: 60 };
@@ -128,6 +129,96 @@ for (const dv of [1.0, 1.5, 2.0, 2.3]) {
       if (neptuneClosest(r) <= 6) robust++;
     }
   ok(robust / total >= 0.5, 'stage 4: the solution survives small aiming errors', `(${robust}/${total})`);
+}
+
+
+// ---- stages 5-10 ----
+const fly = (st, months, dirDeg, kms) => {
+  const at = stageAt(st, months / 12);
+  const r = simulate(at.world, at.makeLaunch(dirDeg * DEG, kmsToAu(kms)), { sampleEvery: 0.1 });
+  return { r, at, ev: at.evaluate(r, kmsToAu(kms), [false], months / 12) };
+};
+const robustness = (st, months, dir, kms) => {
+  let n = 0;
+  let total = 0;
+  for (const dm of [-0.3, 0, 0.3])
+    for (const dd of [-0.5, 0, 0.5]) {
+      total++;
+      if (fly(st, Math.max(0, months + dm), dir + dd, kms).ev.done) n++;
+    }
+  return [n, total];
+};
+const sunOnlyStage = (st) => ({ ...st, world: { bodies: [], tMax: st.world.tMax } });
+
+// 5: launch window
+{
+  ok(fly(s5, 5, 0, 8.9).ev.done, 'stage 5: a full prograde burn launched in month 5 reaches Jupiter');
+  ok(!fly(s5, 0, 0, 8.9).ev.done, 'stage 5: the same burn launched now misses Jupiter');
+  ok(!fly(s5, 8, 0, 8.9).ev.done, 'stage 5: the same burn launched in month 8 misses Jupiter');
+  const [n, t] = robustness(s5, 5, 0, 8.9);
+  ok(n / t >= 0.5, 'stage 5: the solution survives small timing and aiming errors', `(${n}/${t})`);
+}
+
+// 6: falling in
+{
+  const zero = fly(s6, 0, 0, 0);
+  ok(!zero.ev.done, 'stage 6: no burn does not get inside Mercury\'s orbit', `(min ${zero.r.minR.toFixed(2)} AU)`);
+  const sol = fly(s6, 0, -108, 1.5);
+  ok(sol.ev.done, 'stage 6: reference burn gets inside 0.39 AU', `(min ${sol.r.minR.toFixed(2)} AU)`);
+  const f = sol.r.flybys[0];
+  ok(f && f.complete && f.vOut < f.vIn, 'stage 6: reference flyby lowers speed from the Sun', f ? `(${auToKms(f.vIn).toFixed(1)} -> ${auToKms(f.vOut).toFixed(1)} km/s)` : '');
+  let best = Infinity;
+  for (let d = -180; d < 180; d += 3) {
+    const r = simulate(sunOnlyStage(s6).world, s6.makeLaunch(d * DEG, s6.tank), { sampleEvery: 0.2 });
+    if (r.end !== 'sun') best = Math.min(best, r.minR);
+  }
+  ok(best > 0.39, 'stage 6: the tank alone cannot get inside 0.39 AU', `(best ${best.toFixed(2)} AU)`);
+  const [n, t] = robustness(s6, 0, -108, 1.5);
+  ok(n / t >= 0.5, 'stage 6: the solution survives small aiming errors', `(${n}/${t})`);
+}
+
+// 7: escape
+{
+  const zero = fly(s7, 0, 0, 0);
+  ok(!zero.ev.done, 'stage 7: no burn does not escape', `(farthest ${zero.r.maxR.toFixed(1)} AU)`);
+  const sol = fly(s7, 0, -30, 1.5);
+  ok(sol.ev.done, 'stage 7: reference burn escapes past 48 AU');
+  const f = sol.r.flybys[0];
+  ok(f && auToKms(f.vOut) > 0, 'stage 7: reference burn flies past Jupiter');
+  let escaped = false;
+  for (let d = -180; d < 180; d += 3) {
+    const r = simulate(sunOnlyStage(s7).world, s7.makeLaunch(d * DEG, s7.tank), { sampleEvery: 0.5 });
+    if (r.end === 'lost') escaped = true;
+  }
+  ok(!escaped, 'stage 7: the tank alone cannot escape');
+  const [n, t] = robustness(s7, 0, -30, 1.5);
+  ok(n / t >= 0.5, 'stage 7: the solution survives small aiming errors', `(${n}/${t})`);
+}
+
+// 8-10: planet chains
+for (const [st, mo, dir, kms, label] of [
+  [s8, 20.5, 0, 8.5, 'Saturn'],
+  [s9, 7.5, 0, 8.5, 'Uranus'],
+  [s10, 23, 1.5, 8.5, 'Neptune'],
+]) {
+  const sol = fly(st, mo, dir, kms);
+  ok(sol.ev.done, `stage ${st.id}: reference launch gets within ${st.target.r} AU of ${label}`);
+  ok(kms <= auToKms(st.tank), `stage ${st.id}: reference burn fits in the tank`);
+  ok(sol.r.flybys.filter((x) => x.complete).length >= 1, `stage ${st.id}: reference launch flies past an earlier planet first`);
+  const [n, t] = robustness(st, mo, dir, kms);
+  ok(n / t >= 0.5, `stage ${st.id}: the solution survives small timing and aiming errors`, `(${n}/${t})`);
+  let reached = false;
+  const bare = sunOnlyStage(st);
+  for (let m = 0; m <= st.windowMonths; m += 1)
+    for (let d = -30; d <= 30; d += 5) {
+      const at = stageAt(bare, m / 12);
+      const r = simulate(at.world, at.makeLaunch(d * DEG, st.tank), { sampleEvery: 0.5 });
+      const tb = shiftBody(st.world.bodies.find((b) => b.id === st.target.id), m / 12);
+      if (closestToBody(r, tb) <= st.target.r) reached = true;
+    }
+  ok(!reached, `stage ${st.id}: a full tank without planets cannot reach ${label}`);
+  const early = fly(st, 0, 0, 0);
+  ok(!early.ev.done, `stage ${st.id}: doing nothing does not complete it`);
 }
 
 // ---- words appear only once earned ----

@@ -15,7 +15,7 @@ Single-page React site for Turtle Rock Science Club. Content is managed via Goog
 - **Workflow**: `.github/workflows/deploy-gh-pages.yml` runs `npm ci && npm run build` -> `actions/deploy-pages`. Always keep `package-lock.json` in sync (`npm install`).
 - **Domain**: `trscienceclub.org`. `vite.config.ts` sets `base: '/'`.
 - **Public Assets**: Reference runtime assets in `public/` using `${import.meta.env.BASE_URL}asset.png` in JS/TSX.
-- **SPA Routing**: `spaFallbackPlugin` in `vite.config.ts` copies `index.html` to `404.html` and creates directory fallbacks for direct route access (`titration`, `slingshot`, `admin`, `join`, `events`, `games`, `resources`, `announcements`, `gallery`, `about`, `dashboard`).
+- **SPA Routing**: `spaFallbackPlugin` in `vite.config.ts` copies `index.html` to `404.html` and creates directory fallbacks for direct route access (`titration`, `slingshot`, `interactives`, `admin`, `join`, `events`, `games`, `resources`, `announcements`, `gallery`, `about`, `dashboard`).
 - **Standalone Pages**:
   - `public/ariadne-console/index.html`: Chem curriculum terminal (`?week=N`, `#1,2,3`).
   - `public/station-1c/index.html`: Session 1-C Beam Deflector sim.
@@ -61,7 +61,9 @@ Google Sheet ──[🐢 Website ▸ Publish]──▶ hidden _Published tab (JS
   - **CRITICAL**: Sender automation on confirmation link click MUST **Copy** subscriber to **Confirmed** (never Move, which wipes audience groups).
   - Campaigns MUST target `(Audience Group) AND Confirmed` segment.
 - **Credentials**: `SENDER_API_TOKEN`, `SENDER_FROM_NAME`, `SENDER_REPLY_EMAIL` stored in Script Properties.
-- **Templates**: Stored in `docs/newsletter/` (e.g. `06-scioly-tryouts.html`, `07-post-tryouts-halloween.html`, `confirm-subscription.html`).
+- **Templates & Issues**: Stored in `docs/newsletter/` (e.g. `06-scioly-tryouts.html`, `07-post-tryouts-halloween.html`, `07-lab-log-entry.html`, `confirm-subscription.html`). Each issue pairs an email HTML file with an in-site modal entry (`XX-lab-log-entry.html`).
+- **Weekly Science Interactive Feature**: Every newsletter issue includes a dedicated interactive spotlight for a web-based science simulator or game on `trscienceclub.org` (e.g. `/slingshot`, `/titration`, `/ecology`). Copy must remain honest, clear, kid-friendly, and free of promotional marketing fluff.
+- **Newsletter Generator Skill**: `.agents/skills/trsc-newsletter-generator/` manages automated generation from `docs/schedule.md`, including hero art, tidbits, science news, and interactive spotlight cards. Reference templates live in `.agents/skills/trsc-newsletter-generator/references/` (`template.html` for email, `entry-template.html` for web log modal).
 
 ### Zoho Mail (Private / Transactional / Inbox)
 - **Mailbox**: `contact@trscienceclub.org`.
@@ -139,11 +141,18 @@ Google Sheet ──[🐢 Website ▸ Publish]──▶ hidden _Published tab (JS
 
 - Standalone page (`src/components/GravitySlingshotPage.tsx`, `src/components/slingshot/`), rebuilt from scratch from `docs/Science Minigame Ideas.md` using the `science-interactive` skill.
 - **Engine** (`physics.ts`, pure, AU/yr, Sun GM = 4π²): kick-drift-kick leapfrog with adaptive step; planets on exact circles; `simulate(world, launch)` returns samples, per-planet flybys (speed from the Sun and from the planet in/out), end reason, max/min r, swept angle. Planet gravity is multiplied by `PLANET_GRAVITY_SCALE` (10) in `stages.ts` so flybys are aimable; the page says so.
-- **Stages** (`stages.ts`, data + `evaluate`): 1 Sideways (one lap without hitting the Sun), 2 The tank (10 km/s of fuel, chart of farthest distance per launch; unwinnable by design, completes after using a full tank), 3 Jupiter (predict slower/same/faster first, then reach Saturn's orbit with 1.5 km/s of course changes), 4 Neptune (get within 6 AU of Neptune with one 10 km/s tank; dotted preview of the path).
+- **Stages** (`stages.ts`, data + `evaluate`, 10 total): 1 Sideways (one lap without hitting the Sun), 2 The tank (10 km/s of fuel, chart of farthest distance per launch; unwinnable by design, completes after using a full tank), 3 Jupiter (predict slower/same/faster first, then reach Saturn's orbit with 1.5 km/s of course changes), 4 Neptune (within 6 AU of Neptune with one 10 km/s tank; dotted preview), 5 Launch date (within 0.5 AU of Jupiter, 8.9 km/s tank, date slider), 6 Falling in (a Jupiter flyby that slows the probe so it passes inside Mercury's 0.39 AU), 7 Escape (reach 48 AU within 40 yr from a fixed start, 1.5 km/s tank, readout compares speed after Jupiter with the speed needed to leave), 8 Saturn / 9 Uranus / 10 Grand tour (Neptune within 4 AU): chains of planets from Earth with a 0-24 month launch date (built by `windowChain`, tanks 9 / 9.5 / 9.5 km/s). Stages with `windowMonths` use `stageAt(stage, waitYears)`: a later launch is modelled as Earth fixed and every other planet's phase advanced by `(ωplanet − ωEarth)·wait`. `evaluate` takes `wait` as a 4th argument. `target` draws the ring around a planet that counts as reaching it.
 - **UI**: `SolarMap.tsx` (canvas, own rAF loop, reads `tRef`), `Dial.tsx` (drag dial + steppers; direction 0 is the dashed reference line), `Charts.tsx` (speed graph with "Measured from" Sun/planet, attempt chart). Playback slows automatically near planets; earlier attempts stay as ghost trails.
-- Progress: `tr_sc_slingshot_progress` = `{done: boolean[4]}`; stages unlock in order; XP awarded once per stage (10/15/25/40) when logged in. Test hook: `window.__sim` (`getState`, `setState`, `launch`).
-- Verify: `npm run test:slingshot` (`scripts/check-slingshot.mjs`): engine vs vis-viva, every stage's reference solution, impossibility of direct routes, aiming robustness, and word-timing checks ("assist"/"orbit" only after earned).
+- Progress: `tr_sc_slingshot_progress` = `{done: boolean[10]}` (shorter saved arrays are padded); stages unlock in order; XP awarded once per stage (10/15/25/40/30/30/35/40/45/60) when logged in. Test hook: `window.__sim` (`getState`, `setState({stage, dir, kms, months, guess})`, `launch`).
+- Verify: `npm run test:slingshot` (`scripts/check-slingshot.mjs`): engine vs vis-viva, every stage's reference solution (stages 5-10 include timing/aiming robustness and no-planet baselines), impossibility of direct routes, aiming robustness, and word-timing checks ("assist"/"orbit" only after earned).
 - Not browser-tested yet (per owner preference); `OrbitalSlingshot.tsx` in Virtual Lab is a separate game.
+
+## Weekly Science Interactives (`/interactives`)
+
+- Top-level page (`src/components/InteractivesPage.tsx`, `src/data/interactives.ts`) accessible from desktop/mobile navbar (`TAB_PATHS.interactives = '/interactives'`) and footer.
+- Lists weekly browser-based science tools, simulators, and games released each week, ordered chronologically from oldest to newest.
+- Each interactive entry provides week number, release date, scientific discipline/topic, honest mechanical description, core concepts, and direct launch button.
+- Week 1: Gravity Slingshot (`/slingshot`).
 
 ## LaTeX & Formats
 

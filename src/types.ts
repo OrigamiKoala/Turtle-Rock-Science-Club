@@ -121,3 +121,15 @@ export interface Resource {
   type?: 'article' | 'video' | 'website' | 'tool' | 'book' | 'pdf' | string;
 }
 
+export interface ScienceInteractive {
+  id: string;
+  title: string;
+  route: string;
+  week: number;
+  date: string;
+  field: string;
+  description: string;
+  mechanics?: string;
+  concepts: string[];
+}
+

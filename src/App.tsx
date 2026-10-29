@@ -18,6 +18,7 @@ import Dashboard from './components/Dashboard';
 import CuratedResources from './components/CuratedResources';
 import TitrationLab from './components/TitrationLab';
 import GravitySlingshotPage from './components/GravitySlingshotPage';
+import InteractivesPage from './components/InteractivesPage';
 import JoinPage from './components/JoinPage';
 import AdminHub from './components/AdminHub';
 import ConfirmEmailModal from './components/ConfirmEmailModal';
@@ -36,6 +37,7 @@ import { Trophy, Star, MailCheck, Mail, X, Loader2 } from 'lucide-react';
 const TAB_PATHS: Record<string, string> = {
   home: '/',
   missions: '/events',
+  interactives: '/interactives',
   logs: '/announcements',
   resources: '/resources',
   gallery: '/gallery',
@@ -45,7 +47,10 @@ const TAB_PATHS: Record<string, string> = {
 };
 
 const PATH_TABS: Record<string, string> = Object.fromEntries(
-  Object.entries(TAB_PATHS).map(([tab, path]) => [path, tab])
+  Object.entries(TAB_PATHS).flatMap(([tab, path]) => [
+    [path, tab],
+    [path === '/' ? '/' : `${path}/`, tab]
+  ])
 );
 
 export default function App() {
@@ -635,6 +640,10 @@ export default function App() {
               <div key={currentTab} className="animate-tab-in">
                 {currentTab === 'missions' && (
                   <UpcomingMissions missions={content.missions} contentStatus={content.status} signedUpIds={signedUpIds} onSignUp={handleSignUp} onCancelSignUp={handleCancelSignUp} />
+                )}
+
+                {currentTab === 'interactives' && (
+                  <InteractivesPage onNavigate={(route) => navigateTo(route)} />
                 )}
 
                 {currentTab === 'lab' && <VirtualLab userProfile={userProfile} onUpdateXp={handleUpdateXp} />}

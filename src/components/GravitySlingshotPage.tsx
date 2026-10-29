@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeft, Check, Lock, Minus, Pause, Play, Plus, RotateCcw, Rocket, Crosshair } from 'lucide-react';
 import { UserProfile } from '../types';
 import { KMS_PER_AU_YR, Run, planetAt, sampleAt, simulate } from './slingshot/physics';
-import { STAGES, StageDef, StageEval, auToKms, kmsToAu } from './slingshot/stages';
+import { STAGES, StageDef, StageEval, auToKms, kmsToAu, stageAt } from './slingshot/stages';
 import SolarMap, { MapView } from './slingshot/SolarMap';
 import Dial from './slingshot/Dial';
 import { AttemptChart, SpeedGraph } from './slingshot/Charts';
@@ -157,7 +157,9 @@ export default function GravitySlingshotPage({ userProfile, onUpdateXp, onNaviga
     const i = d.findIndex((x) => !x);
     return i === -1 ? STAGES.length - 1 : i;
   });
-  const stage: StageDef = STAGES[stageIdx];
+  const [waitMo, setWaitMo] = useState(0);
+  const baseStage = STAGES[stageIdx];
+  const stage: StageDef = useMemo(() => stageAt(baseStage, waitMo / 12), [baseStage, waitMo]);
 
   const [dir, setDir] = useState(0);
   const [mag, setMag] = useState(0);
@@ -185,6 +187,7 @@ export default function GravitySlingshotPage({ userProfile, onUpdateXp, onNaviga
   const resetStage = useCallback((i: number) => {
     const st = STAGES[i];
     setStageIdx(i);
+    setWaitMo(0);
     setDir(0);
     setMag(0);
     setRun(null);
@@ -253,6 +256,17 @@ export default function GravitySlingshotPage({ userProfile, onUpdateXp, onNaviga
     return simulate(stage.world, stage.makeLaunch(dir, mag), { sampleEvery: 0.1 });
   }, [stage, dir, mag, run]);
 
+  const changeWait = (v: number) => {
+    setWaitMo(v);
+    if (run) {
+      setRun(null);
+      setPlaying(false);
+      setEvalNow(null);
+      tRef.current = 0;
+      setTShown(0);
+    }
+  };
+
   const changeDial = (d: number, m: number) => {
     setDir(d);
     setMag(Math.min(m, stage.tank));
@@ -271,7 +285,7 @@ export default function GravitySlingshotPage({ userProfile, onUpdateXp, onNaviga
     if (needsGuess) return;
     const r = simulate(stage.world, stage.makeLaunch(dir, mag), { sampleEvery: 0.02 });
     const prevMet = goalsMet;
-    const ev = stage.evaluate(r, mag, prevMet);
+    const ev = stage.evaluate(r, mag, prevMet, waitMo / 12);
     const nextMet = ev.goals.map((g, i) => g.met || prevMet[i]);
     setGoalsMet([nextMet[0] ?? false, nextMet[1] ?? false]);
     setEvalNow(ev);
@@ -295,7 +309,7 @@ export default function GravitySlingshotPage({ userProfile, onUpdateXp, onNaviga
     } else {
       setMisses((m) => m + 1);
     }
-  }, [needsGuess, stage, dir, mag, goalsMet, attempts.length, guess, done, stageIdx, userProfile, onUpdateXp]);
+  }, [needsGuess, stage, waitMo, dir, mag, goalsMet, attempts.length, guess, done, stageIdx, userProfile, onUpdateXp]);
 
   const tEnd = run ? run.samples[run.samples.length - 1].t : 0;
   const hasPlanets = stage.world.bodies.length > 0;
@@ -310,9 +324,10 @@ export default function GravitySlingshotPage({ userProfile, onUpdateXp, onNaviga
   // test hook
   useEffect(() => {
     (window as unknown as { __sim: unknown }).__sim = {
-      getState: () => ({ stage: stage.id, dir, mag, done, goalsMet, runEnd: run?.end ?? null, maxR: run?.maxR ?? null }),
-      setState: (s: { stage?: number; dir?: number; kms?: number; guess?: Guess }) => {
+      getState: () => ({ stage: stage.id, months: waitMo, dir, mag, done, goalsMet, runEnd: run?.end ?? null, maxR: run?.maxR ?? null }),
+      setState: (s: { stage?: number; dir?: number; kms?: number; months?: number; guess?: Guess }) => {
         if (s.stage) resetStage(s.stage - 1);
+        if (s.months !== undefined) setWaitMo(s.months);
         if (s.dir !== undefined) setDir(s.dir);
         if (s.kms !== undefined) setMag(kmsToAu(s.kms));
         if (s.guess) setGuess(s.guess);
@@ -322,9 +337,7 @@ export default function GravitySlingshotPage({ userProfile, onUpdateXp, onNaviga
   });
 
   const sunAngle =
-    stage.id === 3 || stage.id === 1 || stage.id === 2 || stage.id === 4
-      ? Math.atan2(-stage.origin[1], -stage.origin[0])
-      : null;
+    Math.atan2(-stage.origin[1], -stage.origin[0]);
 
   const card: React.CSSProperties = { background: panel, border: `1px solid ${line}`, borderRadius: 14 };
   const primaryBtn: React.CSSProperties = {
@@ -559,6 +572,20 @@ export default function GravitySlingshotPage({ userProfile, onUpdateXp, onNaviga
                 onChange={(v) => changeDial((v * Math.PI) / 180, mag)}
               />
             </div>
+            {stage.windowMonths && (
+              <div className="mt-3">
+                <Stepper
+                  label="Launch date"
+                  value={waitMo}
+                  min={0}
+                  max={stage.windowMonths}
+                  step={0.1}
+                  unit="months from now"
+                  decimals={1}
+                  onChange={changeWait}
+                />
+              </div>
+            )}
             <p className="mt-2 text-xs" style={{ color: muted }}>
               Maximum {fmt(auToKms(stage.tank), 1)} km/s. The dashed line on the dial is direction 0°.
             </p>
