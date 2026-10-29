@@ -137,17 +137,13 @@ Google Sheet ──[🐢 Website ▸ Publish]──▶ hidden _Published tab (JS
 
 ## Gravity Slingshot (`/slingshot`)
 
-- Standalone interactive page (`src/components/GravitySlingshotPage.tsx`, `src/components/slingshot/`).
-- Built following the `science-interactive` skill based on `docs/Science Minigame Ideas.md`.
-- Symplectic Velocity Verlet Newtonian physics engine (`physics.ts`) with central Sun gravity and moving Keplerian planets (Earth, Jupiter, Saturn, Uranus, Neptune).
-- Demonstrates why direct propulsion cannot reach Neptune with limited fuel, and how passing behind a moving planet's wake steals orbital momentum for free ($\Delta v$ boost).
-- Stages:
-  1. Falling and Missing (heliocentric orbit entry)
-  2. The Fuel Wall (direct propulsion reaches only ~4 AU before running out)
-  3. The Moving Slingshot (Jupiter assist flings probe to Saturn)
-  4. The Grand Tour (Voyager 2: Earth → Jupiter → Saturn → Neptune on a single launch tank)
-  5. Deep Space Sandbox (free flight with full telemetry and time warp)
-- Verified via `scripts/check-slingshot.mjs` (`npm run test:slingshot`).
+- Standalone page (`src/components/GravitySlingshotPage.tsx`, `src/components/slingshot/`), rebuilt from scratch from `docs/Science Minigame Ideas.md` using the `science-interactive` skill.
+- **Engine** (`physics.ts`, pure, AU/yr, Sun GM = 4π²): kick-drift-kick leapfrog with adaptive step; planets on exact circles; `simulate(world, launch)` returns samples, per-planet flybys (speed from the Sun and from the planet in/out), end reason, max/min r, swept angle. Planet gravity is multiplied by `PLANET_GRAVITY_SCALE` (10) in `stages.ts` so flybys are aimable; the page says so.
+- **Stages** (`stages.ts`, data + `evaluate`): 1 Sideways (one lap without hitting the Sun), 2 The tank (10 km/s of fuel, chart of farthest distance per launch; unwinnable by design, completes after using a full tank), 3 Jupiter (predict slower/same/faster first, then reach Saturn's orbit with 1.5 km/s of course changes), 4 Neptune (get within 6 AU of Neptune with one 10 km/s tank; dotted preview of the path).
+- **UI**: `SolarMap.tsx` (canvas, own rAF loop, reads `tRef`), `Dial.tsx` (drag dial + steppers; direction 0 is the dashed reference line), `Charts.tsx` (speed graph with "Measured from" Sun/planet, attempt chart). Playback slows automatically near planets; earlier attempts stay as ghost trails.
+- Progress: `tr_sc_slingshot_progress` = `{done: boolean[4]}`; stages unlock in order; XP awarded once per stage (10/15/25/40) when logged in. Test hook: `window.__sim` (`getState`, `setState`, `launch`).
+- Verify: `npm run test:slingshot` (`scripts/check-slingshot.mjs`): engine vs vis-viva, every stage's reference solution, impossibility of direct routes, aiming robustness, and word-timing checks ("assist"/"orbit" only after earned).
+- Not browser-tested yet (per owner preference); `OrbitalSlingshot.tsx` in Virtual Lab is a separate game.
 
 ## LaTeX & Formats
 
