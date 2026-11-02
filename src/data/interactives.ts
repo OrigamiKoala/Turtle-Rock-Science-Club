@@ -17,5 +17,18 @@ export const WEEKLY_INTERACTIVES: ScienceInteractive[] = [
     mechanics:
       'Kick-drift-kick leapfrog symplectic n-body gravity simulation. Passing behind a moving planet transfers orbital momentum to the spacecraft relative to the Sun.',
     concepts: ['Gravity assists', 'Heliocentric orbits', 'Orbital velocity', 'Fuel conservation']
+  },
+  {
+    id: 'crucible',
+    title: 'Molar Crucible',
+    route: '/crucible',
+    week: 2,
+    date: 'November 1, 2026',
+    field: 'Chemistry · Stoichiometry',
+    description:
+      'Synthesize chemical compounds in an interactive 3D reaction chamber. Balance mole ratios, discover limiting reactants, and convert grams to moles to satisfy conservation of mass with zero leftover atoms.',
+    mechanics:
+      'Real-time stoichiometric analysis, limiting reactant solver, and procedural 3D molecular models with CPK color mapping.',
+    concepts: ['Conservation of mass', 'Mole ratios', 'Limiting reactants', 'Molar mass', 'Percent yield']
   }
 ];

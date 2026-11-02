@@ -15,6 +15,7 @@ function spaFallbackPlugin(): Plugin {
         const routes = [
           'titration',
           'slingshot',
+          'crucible',
           'interactives',
           'admin',
           'join',

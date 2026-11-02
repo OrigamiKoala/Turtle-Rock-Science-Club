@@ -15,7 +15,7 @@ Single-page React site for Turtle Rock Science Club. Content is managed via Goog
 - **Workflow**: `.github/workflows/deploy-gh-pages.yml` runs `npm ci && npm run build` -> `actions/deploy-pages`. Always keep `package-lock.json` in sync (`npm install`).
 - **Domain**: `trscienceclub.org`. `vite.config.ts` sets `base: '/'`.
 - **Public Assets**: Reference runtime assets in `public/` using `${import.meta.env.BASE_URL}asset.png` in JS/TSX.
-- **SPA Routing**: `spaFallbackPlugin` in `vite.config.ts` copies `index.html` to `404.html` and creates directory fallbacks for direct route access (`titration`, `slingshot`, `interactives`, `admin`, `join`, `events`, `games`, `resources`, `announcements`, `gallery`, `about`, `dashboard`).
+- **SPA Routing**: `spaFallbackPlugin` in `vite.config.ts` copies `index.html` to `404.html` and creates directory fallbacks for direct route access (`titration`, `slingshot`, `crucible`, `interactives`, `admin`, `join`, `events`, `games`, `resources`, `announcements`, `gallery`, `about`, `dashboard`).
 - **Standalone Pages**:
   - `public/ariadne-console/index.html`: Chem curriculum terminal (`?week=N`, `#1,2,3`).
   - `public/station-1c/index.html`: Session 1-C Beam Deflector sim.
@@ -61,7 +61,7 @@ Google Sheet ──[🐢 Website ▸ Publish]──▶ hidden _Published tab (JS
   - **CRITICAL**: Sender automation on confirmation link click MUST **Copy** subscriber to **Confirmed** (never Move, which wipes audience groups).
   - Campaigns MUST target `(Audience Group) AND Confirmed` segment.
 - **Credentials**: `SENDER_API_TOKEN`, `SENDER_FROM_NAME`, `SENDER_REPLY_EMAIL` stored in Script Properties.
-- **Templates & Issues**: Stored in `docs/newsletter/` (e.g. `06-scioly-tryouts.html`, `07-post-tryouts-halloween.html`, `07-lab-log-entry.html`, `confirm-subscription.html`). Each issue pairs an email HTML file with an in-site modal entry (`XX-lab-log-entry.html`).
+- **Templates & Issues**: Stored in `docs/newsletter/` (e.g. `06-scioly-tryouts.html`, `07-post-tryouts-halloween.html`, `07-lab-log-entry.html`, `08-team-training-crucible.html`, `08-lab-log-entry.html`, `confirm-subscription.html`). Each issue pairs an email HTML file with an in-site modal entry (`XX-lab-log-entry.html`).
 - **Weekly Science Interactive Feature**: Every newsletter issue includes a dedicated interactive spotlight for a web-based science simulator or game on `trscienceclub.org` (e.g. `/slingshot`, `/titration`, `/ecology`). Copy must remain honest, clear, kid-friendly, and free of promotional marketing fluff.
 - **Newsletter Generator Skill**: `.agents/skills/trsc-newsletter-generator/` manages automated generation from `docs/schedule.md`, including hero art, tidbits, science news, and interactive spotlight cards. Reference templates live in `.agents/skills/trsc-newsletter-generator/references/` (`template.html` for email, `entry-template.html` for web log modal).
 
@@ -108,6 +108,7 @@ Google Sheet ──[🐢 Website ▸ Publish]──▶ hidden _Published tab (JS
   - `tr_sc_cave_best`: SF Cave high score.
   - `tr_sc_titration_progress`: Titration modules and mystery samples progress.
   - `tr_sc_slingshot_progress`: Gravity Slingshot completed stages and best fuel scores.
+  - `tr_sc_crucible_progress`: Molar Crucible completed puzzle chapters.
   - `tr_sc_newsletter_banner_dismissed`: Hides member newsletter prompt banner.
 
 ## Minigames & Virtual Lab
@@ -153,6 +154,20 @@ Google Sheet ──[🐢 Website ▸ Publish]──▶ hidden _Published tab (JS
 - Lists weekly browser-based science tools, simulators, and games released each week, ordered chronologically from oldest to newest.
 - Each interactive entry provides week number, release date, scientific discipline/topic, honest mechanical description, core concepts, and direct launch button.
 - Week 1: Gravity Slingshot (`/slingshot`).
+- Week 2: Molar Crucible (`/crucible`).
+
+## Molar Crucible (`/crucible`)
+
+- Standalone interactive page (`src/components/MolarCruciblePage.tsx`, `src/components/crucible/`).
+- 3D stoichiometry reaction chamber powered by Three.js with procedural CPK molecular models and Web Audio API synthesizer.
+- 20 puzzles across 4 progressive acts:
+  - Act I: Conservation of Atoms & Mole Ratios (Puzzles 1-5)
+  - Act II: Limiting Reactants & Excess (Puzzles 6-10)
+  - Act III: Mass-to-Mole Conversion (Puzzles 11-15)
+  - Act IV: Percent Yield & Industrial Stoichiometry (Puzzles 16-20)
+  - Plus Free Lab Sandbox allowing open exploration across all reactions.
+- Progress: `tr_sc_crucible_progress` = `{completed: number[]}` saved in `localStorage`; awards 15 XP per solved puzzle when logged in.
+- Verify: `npm run test:crucible` (`scripts/check-crucible.mjs`): checks all element and molecular masses against composition, stoichiometric equation balancing across all reactions, mass conservation and puzzle validity for all 20 chapters, and limiting reactant engine accuracy.
 
 ## LaTeX & Formats
 

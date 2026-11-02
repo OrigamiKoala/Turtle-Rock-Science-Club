@@ -18,6 +18,7 @@ import Dashboard from './components/Dashboard';
 import CuratedResources from './components/CuratedResources';
 import TitrationLab from './components/TitrationLab';
 import GravitySlingshotPage from './components/GravitySlingshotPage';
+import MolarCruciblePage from './components/MolarCruciblePage';
 import InteractivesPage from './components/InteractivesPage';
 import JoinPage from './components/JoinPage';
 import AdminHub from './components/AdminHub';
@@ -117,13 +118,14 @@ export default function App() {
 
   const isTitrationPage = pathname === '/titration' || pathname === '/titration/' || pathname.startsWith('/titration');
   const isSlingshotPage = pathname === '/slingshot' || pathname === '/slingshot/' || pathname.startsWith('/slingshot');
+  const isCruciblePage = pathname === '/crucible' || pathname === '/crucible/' || pathname.startsWith('/crucible');
   const isJoinPage = pathname === '/join' || pathname.startsWith('/join');
   // Deliberately not linked from anywhere in the app (same as /titration and
   // /join being reachable but un-navigated-to) — an admin gets this URL
   // directly, not through the nav. See CLAUDE.md's Admin Hub section.
   const isAdminPage = pathname === '/admin' || pathname.startsWith('/admin');
   const isEcologyPage = pathname === '/ecology' || pathname === '/ecology/' || pathname.startsWith('/ecology');
-  const isHomeHero = currentTab === 'home' && !isTitrationPage && !isSlingshotPage && !isJoinPage && !isAdminPage && !isEcologyPage;
+  const isHomeHero = currentTab === 'home' && !isTitrationPage && !isSlingshotPage && !isCruciblePage && !isJoinPage && !isAdminPage && !isEcologyPage;
   // Drives the Hero scroll sequence across moments. Only active
   // (listens for wheel/touch/key input, locks document scroll) while
   // isHomeHero is true.
@@ -136,6 +138,10 @@ export default function App() {
     }
     if (tab === 'slingshot') {
       navigateTo('/slingshot');
+      return;
+    }
+    if (tab === 'crucible') {
+      navigateTo('/crucible');
       return;
     }
     navigateTo(TAB_PATHS[tab] ?? '/', tab);
@@ -589,6 +595,14 @@ export default function App() {
         </>
       ) : isSlingshotPage ? (
         <GravitySlingshotPage
+          userProfile={userProfile}
+          onUpdateXp={handleUpdateXp}
+          onNavigateHome={() => navigateTo('/', 'home')}
+          onOpenJoin={() => navigateTo('/join')}
+          onOpenLogin={() => setShowLoginModal(true)}
+        />
+      ) : isCruciblePage ? (
+        <MolarCruciblePage
           userProfile={userProfile}
           onUpdateXp={handleUpdateXp}
           onNavigateHome={() => navigateTo('/', 'home')}
