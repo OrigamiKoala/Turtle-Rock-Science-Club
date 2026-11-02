@@ -494,6 +494,7 @@ export function useSiteContent(): SiteContent {
       writeCache(fresh);
     } catch (err: unknown) {
       if (signal?.aborted) return;
+      console.error('[useSiteContent] Failed to fetch or parse site content:', err);
       setError(err instanceof Error ? err.message : 'Could not reach the publish endpoint.');
       // Keep showing whatever we already have; only the status changes.
       setStatus((prev) => (prev === 'live' ? 'live' : 'error'));

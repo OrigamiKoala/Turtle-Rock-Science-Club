@@ -87,6 +87,7 @@ Google Sheet ──[🐢 Website ▸ Publish]──▶ hidden _Published tab (JS
 - **`getLastRow()` counts checkbox formatting**: `insertCheckboxes()` writes `FALSE`, making `getLastRow()` return thousands. Use `isSheetEmpty_()` / `isBlankRow_()`.
 - **`SpreadsheetApp.getUi()`**: Throws when run from editor. Use `notify_()` (falls back to `Logger.log`).
 - **Deployments**: Always update existing deployment (**New version**) to preserve `/exec` URL.
+- **`_Published` Tab Capacity**: `writePublishedJson_` chunks JSON into <=40k slices in Column A. If `_Published` has fewer rows than chunks, `getRange()` throws out-of-bounds. `ensurePublishedSheet_` pads to >=100 rows, and `writePublishedJson_` auto-inserts rows, formats cells as `@` (plain text), and avoids clearing old content before write succeeds.
 - **Cache Lag**: `/exec` lags behind sheet publish by 1-2 minutes. Verify via `Preview Published JSON`.
 - **POST Requests**: Must send `Content-Type: text/plain;charset=utf-8` with JSON string body to bypass CORS preflight.
 - **Schema Changes**: Renaming or adding headers in `*_HEADERS` requires running `🐢 Website ▸ ⚙️ Set Up / Repair Sheets`.

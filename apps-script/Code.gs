@@ -517,10 +517,24 @@ function publishToWebsite_core_(ss, skipProblems) {
     return { ok: false, error: 'Could not get a lock to publish. Please try again in a moment.' };
   }
 
+  var targetSheet = ensurePublishedSheet_(ss);
   try {
-    writePublishedJson_(ensurePublishedSheet_(ss), json);
+    writePublishedJson_(targetSheet, json);
+  } catch (err) {
+    return { ok: false, error: 'Could not write published data: ' + (err && err.message ? err.message : err) };
   } finally {
     publishLock.releaseLock();
+  }
+
+  // Verification: ensure the written chunks reconstruct clean valid JSON
+  var verifyJson = readPublishedJson_(targetSheet);
+  try {
+    JSON.parse(verifyJson);
+  } catch (verifyErr) {
+    return {
+      ok: false,
+      error: 'Publish verification failed: the spreadsheet corrupted the data (' + (verifyErr && verifyErr.message ? verifyErr.message : verifyErr) + ').'
+    };
   }
 
   return {
@@ -850,6 +864,9 @@ function ensurePublishedSheet_(ss) {
       .getRange('C1')
       .setValue('Written automatically when you click Publish. Do not edit by hand.');
     sheet.hideSheet();
+  }
+  if (sheet.getMaxRows() < 100) {
+    sheet.insertRowsAfter(sheet.getMaxRows(), 100 - sheet.getMaxRows());
   }
   return sheet;
 }
@@ -3308,17 +3325,60 @@ function maskToken_(token) {
 }
 
 function writePublishedJson_(sheet, json) {
-  var lastRow = sheet.getLastRow();
-  if (lastRow > 0) {
-    sheet.getRange(1, 1, lastRow, 1).clearContent();
-  }
-  var chunks = [];
-  for (var i = 0; i < json.length; i += PUBLISHED_CHUNK_SIZE) {
-    chunks.push([json.substring(i, i + PUBLISHED_CHUNK_SIZE)]);
-  }
+  var chunks = sliceSafeChunks_(json, PUBLISHED_CHUNK_SIZE);
   if (!chunks.length) chunks.push(['']);
-  sheet.getRange(1, 1, chunks.length, 1).setValues(chunks);
+
+  var maxRows = sheet.getMaxRows();
+  if (maxRows < chunks.length) {
+    sheet.insertRowsAfter(maxRows, chunks.length - maxRows);
+  }
+
+  var lastRow = sheet.getLastRow();
+
+  // Defense-in-depth: If any chunk starts with a formula trigger (=, +, -, @), prepend a single quote prefix
+  for (var c = 0; c < chunks.length; c++) {
+    var val = chunks[c][0];
+    if (val && ('=' === val.charAt(0) || '+' === val.charAt(0) || '-' === val.charAt(0) || '@' === val.charAt(0))) {
+      chunks[c][0] = "'" + val;
+    }
+  }
+
+  // Set plain text format on the exact range
+  sheet.getRange(1, 1, chunks.length, 1).setNumberFormat('@').setValues(chunks);
+
+  // If a previous publish used more rows than this one, clear the remaining rows
+  if (lastRow > chunks.length) {
+    sheet.getRange(chunks.length + 1, 1, lastRow - chunks.length, 1).clearContent();
+  }
+
   sheet.getRange('C1').setValue('Written automatically when you click Publish. Do not edit by hand.');
+}
+
+/**
+ * Splits string into chunks without cutting across UTF-16 surrogate pairs (emojis)
+ * and ensuring no chunk begins with a formula trigger (=, +, -, @) that Google Sheets
+ * would attempt to parse as a formula.
+ */
+function sliceSafeChunks_(str, chunkSize) {
+  var chunks = [];
+  var i = 0;
+  while (i < str.length) {
+    var end = Math.min(i + chunkSize, str.length);
+    if (end < str.length) {
+      // 1. Avoid cutting across UTF-16 surrogate pairs (emojis)
+      var code = str.charCodeAt(end - 1);
+      if (code >= 0xd800 && code <= 0xdbff) {
+        end--;
+      }
+      // 2. Ensure the next chunk NEVER starts with a Google Sheets formula trigger (=, +, -, @)
+      while (end > i && ('=' === str.charAt(end) || '+' === str.charAt(end) || '-' === str.charAt(end) || '@' === str.charAt(end))) {
+        end--;
+      }
+    }
+    chunks.push([str.substring(i, end)]);
+    i = end;
+  }
+  return chunks;
 }
 
 function readPublishedJson_(sheet) {
@@ -3340,6 +3400,7 @@ function readPublishedJson_(sheet) {
     }
     return parts.join('');
   } catch (err) {
+    Logger.log('readPublishedJson_ error: ' + (err && err.message ? err.message : err));
     return '';
   }
 }
