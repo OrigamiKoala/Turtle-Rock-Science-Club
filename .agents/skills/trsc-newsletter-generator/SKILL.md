@@ -1,7 +1,7 @@
 ---
 name: trsc-newsletter-generator
 description: >-
-  Generates the complete weekly Turtle Rock Science Club newsletter HTML from the schedule in docs/schedule.md. Follows the visual format of 01-info-recap.html, generates combined digital ink hero artwork using Nano Banana (generate_image), gathers 2-3 recent breakthroughs via web search for In the News, writes engaging Science Tidbits for each of the week's topics, features the weekly web-based Science Interactive (e.g. /slingshot), includes a custom message placeholder, and formats condensed contact info.
+  Generates the complete weekly Turtle Rock Science Club newsletter HTML from the schedule in docs/schedule.md. Follows the visual format of 01-info-recap.html, generates combined digital ink hero artwork using Nano Banana (generate_image), provides an in-depth intuitive kid-friendly explanation of a major science phenomenon, gathers 2-3 recent breakthroughs via web search for In the News, writes engaging Science Tidbits for each of the week's topics, features the weekly web-based Science Interactive (e.g. /slingshot, /crucible), and formats condensed contact info.
 ---
 
 # TRSC Weekly Newsletter Generator
@@ -13,12 +13,12 @@ Generates production-ready, self-contained HTML newsletters for Turtle Rock Scie
 Each weekly newsletter includes:
 1. **Header & Artwork**: Club brand bar plus a custom cartoonish digital ink hero illustration (`generate_image`) combining all of that week's workshop topics into one scene.
 2. **Spam & Delivery Notice**: Essential prompt to ensure delivery.
-3. **Hero Greeting & Custom Message**: "Welcome to TRSC!" followed by an editable custom message paragraph placeholder for club announcements.
-4. **Upcoming Events**: Workshop cards for each concurrent session with room numbers, times, and descriptions.
-5. **Science Tidbits**: Fun, kid-friendly science facts (1 per workshop topic) introducing students to key concepts.
-6. **In the News**: 2–3 recent real-world science breakthroughs retrieved via `search_web`.
-7. **Weekly Science Interactive**: A featured browser simulation or game hosted on `trscienceclub.org` (e.g. `/slingshot`, `/titration`, `/ecology`) that lets students test real science principles hands-on at home. Includes topic kicker, title with route, honest challenge description (no marketing fluff), and a green CTA button.
-8. **Fall Workshop Schedule**: Full roadmap table of meetings, tryouts, and dates.
+3. **Hero Greeting & Intro**: Welcoming greeting and brief weekly overview.
+4. **In-Depth Science Deep Dive**: An engaging, intuitive, kid-friendly, multi-paragraph conceptual explanation of a key scientific phenomenon (e.g. natural selection and speciation, orbital mechanics, spectroscopy) immediately following the intro paragraph, unpacking core principles with vivid analogies and zero jargon.
+5. **Upcoming Schedule / Milestones**: Roadmap table or event cards of meetings, training sessions, tournaments, and dates.
+6. **Science Tidbits**: Fun, kid-friendly short science facts (introducing key concepts across competition disciplines).
+7. **In the News**: 2–3 recent real-world science breakthroughs retrieved via `search_web`.
+8. **Weekly Science Interactive**: A featured browser simulation or game hosted on `trscienceclub.org` (e.g. `/slingshot`, `/crucible`, `/titration`, `/ecology`) that lets students test real science principles hands-on at home. Includes topic kicker, title with route, honest challenge description (no marketing fluff), and a green CTA button.
 9. **Essential Reference Guide**: Callout card linking to the TRSC Master Document and past lesson slides.
 10. **Condensed Contacts**: Single compact block containing club email, website link, and school WhatsApp coordinators.
 
@@ -48,25 +48,31 @@ Call `generate_image` to create a whimsical cartoon digital ink illustration com
   Commit and push `public/newsletter-XX-art.jpg` to GitHub so it is served reliably via:
   `https://raw.githubusercontent.com/OrigamiKoala/Turtle-Rock-Science-Club/main/public/newsletter-XX-art.jpg`
 
-### 3. Retrieve Recent Science Breakthroughs
+### 3. Draft In-Depth Science Deep Dive
+Write a comprehensive, intuitive, kid-friendly explanation of a major science phenomenon (e.g. natural selection and speciation, orbital gravity assists, quantum tunneling, plate tectonics):
+- Place this immediately following the introductory greeting paragraph.
+- Break down the underlying mechanism step-by-step with intuitive analogies and concrete examples.
+- Explain the "how" and "why" clearly so students with little prior knowledge build genuine conceptual understanding without dense scientific jargon.
+
+### 4. Retrieve Recent Science Breakthroughs
 Use `search_web` to search for 2–3 recent breakthroughs from credible sources (Science News, ScienceDaily, Nature, NASA, MIT Technology Review):
 - Query: recent science discoveries or breakthroughs related to astronomy, AI, biology, chemistry, or physics.
 - Format: Category kicker, title, concise kid-friendly summary with a fun voice (2–3 sentences), and source link. Assume the students have little prior knowledge.
 
-### 4. Draft Science Tidbits
-Write 1 compelling, mind-blowing, kid-friendly paragraph for each workshop topic scheduled for that week:
+### 5. Draft Science Tidbits
+Write 1 compelling, mind-blowing, kid-friendly paragraph for each workshop topic or competition discipline scheduled for that week:
 - Explain an intriguing real-world phenomenon or scientific principle.
 - Connect concepts to what students will explore in the session.
 - Assume the students have little prior knowledge.
 
-### 5. Feature the Weekly Science Interactive
+### 6. Feature the Weekly Science Interactive
 Every week, TRSC releases a new interactive science tool, simulator, or game on the website:
-- Identify that week's interactive route (e.g. `/slingshot`, `/titration`, `/ecology`).
+- Identify that week's interactive route (e.g. `/slingshot`, `/crucible`, `/titration`, `/ecology`).
 - Explain the concrete challenge and scientific principles clearly and honestly (e.g. navigating to Neptune on a small fuel tank by stealing momentum behind Jupiter).
 - **Zero fluff**: Never use feature advertisements, promotional hype, or vague marketing language.
 - Include a CTA button with an absolute URL (`https://trscienceclub.org/<route>`) and mention the route tag `(/route)`.
 
-### 6. Assemble HTML Newsletters
+### 7. Assemble HTML Newsletters
 Generate two matching files:
 1. **Email Newsletter (`docs/newsletter/XX-<slug>.html`)**:
    Follows `references/template.html`:
@@ -74,19 +80,14 @@ Generate two matching files:
    - **Preheader**: Hidden inbox preview text.
    - **Header**: `#1F3A42` background, `https://trscienceclub.org/Logo.png` logo, Georgia serif title, green kicker.
    - **Artwork Row**: Full-bleed `width="600"` image pointing to raw GitHub URL.
-   - **Custom Message Placeholder**:
-     ```html
-     <p style="margin:0 0 18px 0;background-color:#F5FAF2;border-left:4px solid #6CC24A;padding:12px 16px;border-radius:8px;color:#1F3A42;font-style:italic;">
-       [Custom organizer message / weekly update goes here]
-     </p>
-     ```
+   - **In-Depth Science Deep Dive**: Multi-paragraph conceptual explanation card directly under intro greeting.
    - **Interactive Card**: `#F5FAF2` background table with `border:2px solid #CBE6C5`, rounded corners, topic kicker, description, and green CTA button.
    - **Condensed Contacts**: Single compact table with club email, website link, and school WhatsApp contacts.
 
 2. **Web Lab Log Entry (`docs/newsletter/XX-lab-log-entry.html`)**:
    Follows `references/entry-template.html` using Tailwind classes (`trsc-card`, `trsc-eyebrow`, `trsc-schedule-table`, dark mode variants) for the in-app modal reader on the club website.
 
-### 7. Verify & Update CLAUDE.md
+### 8. Verify & Update CLAUDE.md
 - Verify markup rendering, link targets, and email responsiveness.
 - Update `CLAUDE.md` in the project root documenting the newly created newsletter issue and any new interactives.
 

@@ -63,7 +63,7 @@ Google Sheet ──[🐢 Website ▸ Publish]──▶ hidden _Published tab (JS
 - **Credentials**: `SENDER_API_TOKEN`, `SENDER_FROM_NAME`, `SENDER_REPLY_EMAIL` stored in Script Properties.
 - **Templates & Issues**: Stored in `docs/newsletter/` (e.g. `06-scioly-tryouts.html`, `07-post-tryouts-halloween.html`, `07-lab-log-entry.html`, `08-team-training-crucible.html`, `08-lab-log-entry.html`, `confirm-subscription.html`). Each issue pairs an email HTML file with an in-site modal entry (`XX-lab-log-entry.html`).
 - **Weekly Science Interactive Feature**: Every newsletter issue includes a dedicated interactive spotlight for a web-based science simulator or game on `trscienceclub.org` (e.g. `/slingshot`, `/titration`, `/ecology`). Copy must remain honest, clear, kid-friendly, and free of promotional marketing fluff.
-- **Newsletter Generator Skill**: `.agents/skills/trsc-newsletter-generator/` manages automated generation from `docs/schedule.md`, including hero art, tidbits, science news, and interactive spotlight cards. Reference templates live in `.agents/skills/trsc-newsletter-generator/references/` (`template.html` for email, `entry-template.html` for web log modal).
+- **Newsletter Generator Skill**: `.agents/skills/trsc-newsletter-generator/` manages automated generation from `docs/schedule.md`, including hero art, in-depth conceptual science deep dives, tidbits, science news, and interactive spotlight cards. Reference templates live in `.agents/skills/trsc-newsletter-generator/references/` (`template.html` for email, `entry-template.html` for web log modal).
 
 ### Zoho Mail (Private / Transactional / Inbox)
 - **Mailbox**: `contact@trscienceclub.org`.
